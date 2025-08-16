@@ -42,11 +42,14 @@ const MarathonNutritionApp = () => {
   const [aiTestResult, setAiTestResult] = useState('');
   const [isTestingAI, setIsTestingAI] = useState(false);
 
-  // Initialize OpenAI
-  const openai = new OpenAI({
-    apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true
-  });
+  // Initialize OpenAI only if API key exists
+  let openai = null;
+  if (process.env.REACT_APP_OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.REACT_APP_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true
+    });
+  }
 
   const foodOptions = [
     'Chicken', 'Fish', 'Eggs', 'Greek Yogurt', 'Quinoa', 'Brown Rice', 'Oats', 'Sweet Potato',
@@ -124,7 +127,7 @@ const MarathonNutritionApp = () => {
 
   const generateMealSuggestions = async () => {
     // Check if API key exists (only works locally)
-    if (!process.env.REACT_APP_OPENAI_API_KEY) {
+    if (!openai || !process.env.REACT_APP_OPENAI_API_KEY) {
       setAiTestResult('⚠️ AI features only work in development. Using mock data for live site.');
       
       // Use the old mock data for the live site
@@ -140,7 +143,7 @@ const MarathonNutritionApp = () => {
       setMealPlan(mockSuggestions);
       return;
     }
-    
+
     setIsTestingAI(true);
     setAiTestResult('Generating personalized meal plan...');
     
