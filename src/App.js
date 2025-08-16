@@ -130,15 +130,49 @@ const MarathonNutritionApp = () => {
     if (!openai || !process.env.REACT_APP_OPENAI_API_KEY) {
       setAiTestResult('⚠️ AI features only work in development. Using mock data for live site.');
       
-      // Use the old mock data for the live site
       const mockSuggestions = {
         monday: {
           breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
-          lunch: 'Quinoa bowl with grilled chicken (Cal: 450, P: 30g, C: 40g, F: 12g)',
-          dinner: 'Salmon with sweet potato (Cal: 500, P: 35g, C: 35g, F: 18g)',
+          lunch: 'Quinoa bowl with grilled chicken and avocado (Cal: 450, P: 30g, C: 40g, F: 12g)',
+          dinner: 'Salmon with sweet potato and broccoli (Cal: 500, P: 35g, C: 35g, F: 18g)',
           snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
         },
-        // Add other days...
+        tuesday: {
+          breakfast: 'Scrambled eggs with spinach and whole grain toast (Cal: 320, P: 18g, C: 25g, F: 14g)',
+          lunch: 'Turkey and avocado wrap with mixed greens (Cal: 420, P: 25g, C: 35g, F: 16g)',
+          dinner: 'Pasta with lean ground turkey and vegetables (Cal: 550, P: 32g, C: 58g, F: 15g)',
+          snacks: 'Greek yogurt with mixed nuts (Cal: 180, P: 12g, C: 15g, F: 8g)'
+        },
+        wednesday: {
+          breakfast: 'Greek yogurt parfait with granola and berries (Cal: 340, P: 16g, C: 42g, F: 10g)',
+          lunch: 'Chicken and vegetable stir-fry with brown rice (Cal: 460, P: 28g, C: 45g, F: 14g)',
+          dinner: 'Grilled fish with quinoa and steamed vegetables (Cal: 480, P: 33g, C: 38g, F: 16g)',
+          snacks: 'Apple slices with peanut butter (Cal: 190, P: 7g, C: 20g, F: 9g)'
+        },
+        thursday: {
+          breakfast: 'Smoothie bowl with protein powder, banana, and berries (Cal: 380, P: 22g, C: 48g, F: 8g)',
+          lunch: 'Lentil soup with whole grain bread and side salad (Cal: 430, P: 18g, C: 58g, F: 12g)',
+          dinner: 'Lean beef with roasted vegetables and sweet potato (Cal: 520, P: 36g, C: 34g, F: 20g)',
+          snacks: 'Trail mix with dried fruit and nuts (Cal: 210, P: 8g, C: 18g, F: 12g)'
+        },
+        friday: {
+          breakfast: 'Whole grain cereal with milk and sliced banana (Cal: 310, P: 12g, C: 52g, F: 6g)',
+          lunch: 'Tuna salad with mixed greens and chickpeas (Cal: 440, P: 26g, C: 32g, F: 18g)',
+          dinner: 'Chicken breast with brown rice and asparagus (Cal: 490, P: 34g, C: 42g, F: 14g)',
+          snacks: 'Cottage cheese with fresh berries (Cal: 160, P: 14g, C: 18g, F: 4g)'
+        },
+        saturday: {
+          breakfast: 'Whole grain pancakes with Greek yogurt and fresh fruit (Cal: 420, P: 18g, C: 58g, F: 12g)',
+          lunch: 'Chicken Caesar salad wrap with whole wheat tortilla (Cal: 480, P: 28g, C: 38g, F: 20g)',
+          dinner: 'Pasta with marinara sauce and lean turkey meatballs (Cal: 580, P: 30g, C: 65g, F: 18g)',
+          snacks: 'Energy balls made with oats, dates, and nuts (Cal: 220, P: 6g, C: 28g, F: 10g)'
+        },
+        sunday: {
+          breakfast: 'Avocado toast with poached eggs and tomatoes (Cal: 390, P: 16g, C: 32g, F: 22g)',
+          lunch: 'Quinoa salad with chickpeas, vegetables, and feta (Cal: 450, P: 20g, C: 48g, F: 16g)',
+          dinner: 'Grilled chicken with roasted sweet potatoes and green beans (Cal: 510, P: 35g, C: 40g, F: 16g)',
+          snacks: 'Hummus with carrot and cucumber sticks (Cal: 140, P: 6g, C: 16g, F: 6g)'
+        }
       };
       setMealPlan(mockSuggestions);
       return;
