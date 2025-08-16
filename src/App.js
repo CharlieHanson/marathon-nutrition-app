@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, Utensils, CheckCircle, Edit3, Plus, User, Save } from 'lucide-react';
+import OpenAI from 'openai';
 
 const MarathonNutritionApp = () => {
   const [currentView, setCurrentView] = useState('training');
@@ -15,6 +16,14 @@ const MarathonNutritionApp = () => {
     sunday: { type: '', distance: '', intensity: '', notes: '' }
   });
 
+  const [userProfile, setUserProfile] = useState({
+    height: '',
+    weight: '',
+    goal: '', // 'lose', 'maintain', 'gain'
+    activityLevel: '', // 'low', 'moderate', 'high'
+    dietaryRestrictions: ''
+  });
+
   const [foodPreferences, setFoodPreferences] = useState({
     likes: new Set(),
     dislikes: new Set()
@@ -28,6 +37,15 @@ const MarathonNutritionApp = () => {
     friday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
     saturday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
     sunday: { breakfast: '', lunch: '', dinner: '', snacks: '' }
+  });
+
+  const [aiTestResult, setAiTestResult] = useState('');
+  const [isTestingAI, setIsTestingAI] = useState(false);
+
+  // Initialize OpenAI
+  const openai = new OpenAI({
+    apiKey: process.env.REACT_APP_OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true
   });
 
   const foodOptions = [
@@ -80,59 +98,131 @@ const MarathonNutritionApp = () => {
     });
   };
 
-  const generateMealSuggestions = () => {
-    // Mock AI suggestions based on training plan
-    const suggestions = {
-      monday: {
-        breakfast: 'Oatmeal with berries and Greek yogurt',
-        lunch: 'Quinoa bowl with grilled chicken and avocado',
-        dinner: 'Salmon with sweet potato and broccoli',
-        snacks: 'Banana with almond butter'
-      },
-      tuesday: {
-        breakfast: 'Scrambled eggs with spinach and toast',
-        lunch: 'Turkey and avocado wrap',
-        dinner: 'Pasta with lean ground turkey and vegetables',
-        snacks: 'Greek yogurt with nuts'
-      },
-      wednesday: {
-        breakfast: 'Greek yogurt parfait with granola',
-        lunch: 'Chicken and vegetable stir-fry with brown rice',
-        dinner: 'Grilled fish with quinoa and steamed vegetables',
-        snacks: 'Apple with peanut butter'
-      },
-      thursday: {
-        breakfast: 'Smoothie bowl with protein powder and berries',
-        lunch: 'Lentil soup with whole grain bread',
-        dinner: 'Lean beef with roasted vegetables and sweet potato',
-        snacks: 'Trail mix with dried fruit'
-      },
-      friday: {
-        breakfast: 'Whole grain cereal with milk and banana',
-        lunch: 'Tuna salad with mixed greens',
-        dinner: 'Chicken breast with brown rice and asparagus',
-        snacks: 'Cottage cheese with berries'
-      },
-      saturday: {
-        breakfast: 'Pancakes with Greek yogurt and fresh fruit',
-        lunch: 'Chicken Caesar salad wrap',
-        dinner: 'Pasta with marinara sauce and lean meatballs',
-        snacks: 'Energy balls with oats and dates'
-      },
-      sunday: {
-        breakfast: 'Avocado toast with poached eggs',
-        lunch: 'Quinoa salad with chickpeas and vegetables',
-        dinner: 'Grilled chicken with roasted sweet potatoes',
-        snacks: 'Hummus with vegetable sticks'
-      }
-    };
-    setMealPlan(suggestions);
+  const testAI = async () => {
+    setIsTestingAI(true);
+    setAiTestResult('Testing AI connection...');
+    
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: "Reply with exactly: 'AI connection working!'"
+          }
+        ],
+        max_tokens: 10
+      });
+      
+      setAiTestResult(response.choices[0].message.content);
+    } catch (error) {
+      setAiTestResult(`Error: ${error.message}`);
+    } finally {
+      setIsTestingAI(false);
+    }
   };
 
+  const generateMealSuggestions = async () => {
+    setIsTestingAI(true);
+    setAiTestResult('Generating personalized meal plan...');
+    
+    try {
+      // Build the prompt with all user data
+      const likedFoods = Array.from(foodPreferences.likes).join(', ');
+      const dislikedFoods = Array.from(foodPreferences.dislikes).join(', ');
+      
+      // Get training schedule summary
+      const trainingSchedule = Object.entries(trainingPlan)
+        .map(([day, workout]) => `${day}: ${workout.type} ${workout.distance} (${workout.intensity} intensity)`)
+        .filter(item => !item.includes('undefined') && !item.includes(' (intensity)'))
+        .join('\n');
+      
+      const prompt = `You are a sports nutritionist creating a weekly meal plan for a marathon runner.
+
+  USER PROFILE:
+  - Height: ${userProfile.height || 'Not specified'}
+  - Weight: ${userProfile.weight || 'Not specified'}  
+  - Goal: ${userProfile.goal || 'maintain weight'}
+  - Activity Level: ${userProfile.activityLevel || 'moderate'}
+  - Dietary Restrictions: ${userProfile.dietaryRestrictions || 'None'}
+
+  FOOD PREFERENCES:
+  - Likes: ${likedFoods || 'No preferences specified'}
+  - Dislikes: ${dislikedFoods || 'No dislikes specified'}
+
+  TRAINING SCHEDULE:
+  ${trainingSchedule || 'No training plan specified'}
+
+  Create a weekly meal plan with breakfast, lunch, dinner, and snacks for each day. 
+
+  CRITICAL REQUIREMENTS:
+  - NEVER include these disliked foods: ${dislikedFoods || 'None'}
+  - PRIORITIZE these liked foods: ${likedFoods || 'None'}
+  - If no dislikes are specified, use variety
+  - Tailor nutrition to support each day's training  
+  - Support their weight goal (${userProfile.goal || 'maintain'})
+  - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
+
+  FORBIDDEN INGREDIENTS: ${dislikedFoods || 'None'} - Do not include these in ANY meal.
+
+  Format each meal like this:
+  "Meal name - Brief description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
+
+  Respond with ONLY a JSON object in this exact format:
+  {
+    "monday": {
+      "breakfast": "meal with macros",
+      "lunch": "meal with macros", 
+      "dinner": "meal with macros",
+      "snacks": "snack with macros"
+    },
+    "tuesday": { ... },
+    ... (all 7 days)
+  }`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.7
+      });
+      
+      const aiResponse = response.choices[0].message.content;
+      const mealData = JSON.parse(aiResponse);
+      
+      setMealPlan(mealData);
+      setAiTestResult('✅ Personalized meal plan generated successfully!');
+      
+    } catch (error) {
+      console.error('AI Error:', error);
+      setAiTestResult(`❌ Error generating meals: ${error.message}`);
+      
+      // Fallback to mock data if AI fails
+      const fallbackMeals = {
+        monday: {
+          breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
+          lunch: 'Quinoa bowl with grilled chicken (Cal: 450, P: 30g, C: 40g, F: 12g)',
+          dinner: 'Salmon with sweet potato (Cal: 500, P: 35g, C: 35g, F: 18g)',
+          snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
+        }
+        // Add other days as needed...
+      };
+      setMealPlan(fallbackMeals);
+    } finally {
+      setIsTestingAI(false);
+    }
+  };
   const handleMealEdit = (day, meal, value) => {
     setMealPlan(prev => ({
       ...prev,
       [day]: { ...prev[day], [meal]: value }
+    }));
+  };
+
+  const handleProfileChange = (field, value) => {
+    setUserProfile(prev => ({
+      ...prev,
+      [field]: value
     }));
   };
 
@@ -200,7 +290,7 @@ const MarathonNutritionApp = () => {
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
-            {['training', 'preferences', 'meals'].map((view) => (
+            {['training', 'profile', 'preferences', 'meals'].map((view) => (
               <button
                 key={view}
                 onClick={() => setCurrentView(view)}
@@ -211,9 +301,10 @@ const MarathonNutritionApp = () => {
                 }`}
               >
                 {view === 'training' && <Calendar className="w-4 h-4 inline mr-2" />}
+                {view === 'profile' && <User className="w-4 h-4 inline mr-2" />}
                 {view === 'preferences' && <CheckCircle className="w-4 h-4 inline mr-2" />}
                 {view === 'meals' && <Utensils className="w-4 h-4 inline mr-2" />}
-                {view === 'training' ? 'Training Plan' : view === 'preferences' ? 'Food Preferences' : 'Meal Plan'}
+                {view === 'training' ? 'Training Plan' : view === 'profile' ? 'Profile' : view === 'preferences' ? 'Food Preferences' : 'Meal Plan'}
               </button>
             ))}
           </div>
@@ -273,6 +364,88 @@ const MarathonNutritionApp = () => {
           </div>
         )}
 
+        {currentView === 'profile' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">User Profile</h2>
+              <p className="text-gray-600 mb-6">Tell us about yourself so we can personalize your nutrition plan.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Height
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., 5'8&quot; or 173cm"
+                    value={userProfile.height}
+                    onChange={(e) => handleProfileChange('height', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Weight
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., 150 lbs or 68 kg"
+                    value={userProfile.weight}
+                    onChange={(e) => handleProfileChange('weight', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Weight Goal
+                  </label>
+                  <select
+                    value={userProfile.goal}
+                    onChange={(e) => handleProfileChange('goal', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select goal</option>
+                    <option value="lose">Lose weight</option>
+                    <option value="maintain">Maintain weight</option>
+                    <option value="gain">Gain weight</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Activity Level (outside training)
+                  </label>
+                  <select
+                    value={userProfile.activityLevel}
+                    onChange={(e) => handleProfileChange('activityLevel', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select level</option>
+                    <option value="low">Low (desk job, minimal activity)</option>
+                    <option value="moderate">Moderate (some walking, active lifestyle)</option>
+                    <option value="high">High (active job, lots of movement)</option>
+                  </select>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Dietary Restrictions (optional)
+                  </label>
+                  <textarea
+                    placeholder="e.g., vegetarian, gluten-free, nut allergies, etc."
+                    value={userProfile.dietaryRestrictions}
+                    onChange={(e) => handleProfileChange('dietaryRestrictions', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="3"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {currentView === 'preferences' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
@@ -316,14 +489,22 @@ const MarathonNutritionApp = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Weekly Meal Plan</h2>
-                <button
-                  onClick={generateMealSuggestions}
-                  className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Generate AI Suggestions
-                </button>
+                <div className="space-x-2">
+                  <button
+                    onClick={generateMealSuggestions}
+                    className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Generate AI Suggestions
+                  </button>
+                </div>
               </div>
+              
+              {aiTestResult && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  {aiTestResult}
+                </div>
+              )}
               
               <div className="space-y-6">
                 {Object.keys(mealPlan).map((day) => (
