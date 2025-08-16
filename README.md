@@ -1,70 +1,100 @@
-# Getting Started with Create React App
+# Marathon Nutrition Planner
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A personalized meal planning web app designed for marathon runners and athletes. Input your weekly training schedule and get AI-powered meal suggestions tailored to your workouts and food preferences.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Training Plan Input**: Set up your weekly workout schedule with exercise type, distance/duration, and intensity
+- **Food Preferences**: Mark foods you like and dislike to personalize recommendations
+- **Meal Planning**: Generate AI-suggested meals for each day based on your training and preferences
+- **Editable Plans**: Modify any suggested meals to fit your needs
+- **Clean UI**: Modern, responsive design that works on desktop and mobile
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Frontend**: React 18 with Hooks
+- **Styling**: Tailwind CSS for modern, responsive design
+- **Icons**: Lucide React for clean iconography
+- **State Management**: React useState for local data storage
+- **Deployment**: Vercel (static hosting)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## File Structure
 
-### `npm test`
+```
+src/
+├── App.js          # Main application component with all functionality
+├── index.js        # React app entry point
+├── index.css       # Tailwind CSS imports
+└── App.css         # (unused, can be deleted)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+public/
+├── index.html      # HTML template
+└── favicon.ico     # App icon
 
-### `npm run build`
+Config files:
+├── package.json           # Dependencies and scripts
+├── tailwind.config.js     # Tailwind CSS configuration
+├── postcss.config.js      # PostCSS configuration for Tailwind
+└── README.md             # This file
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Getting Started
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Prerequisites
+- Node.js (v16 or higher)
+- npm
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Installation
 
-### `npm run eject`
+1. Clone the repository:
+```bash
+git clone https://github.com/YOUR_USERNAME/marathon-nutrition-app.git
+cd marathon-nutrition-app
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. Install dependencies:
+```bash
+npm install
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+3. Start the development server:
+```bash
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The app will open at `http://localhost:3000`
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Current Status
 
-## Learn More
+- ✅ Complete UI/UX with training plan input
+- ✅ Food preference selection system
+- ✅ Mock meal suggestions (hardcoded)
+- ✅ Fully editable meal plans
+- ✅ Responsive design
+- 🔄 **Next**: AI API integration for real meal suggestions
+- 🔄 **Next**: Macro calculations (calories, protein, fat)
+- 🔄 **Next**: Training-specific meal explanations
+- 🔄 **Next**: User profile (height, weight, goals)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Usage
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. **Login**: Enter any username to get started
+2. **Training Plan**: Fill out your weekly workout schedule
+3. **Food Preferences**: Mark foods you like/dislike
+4. **Meal Plan**: Click "Generate AI Suggestions" to populate meals
+5. **Edit**: Modify any meals as needed
 
-### Code Splitting
+## Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+This is a personal project built for marathon training nutrition planning. Feel free to fork and adapt for your own needs!
 
-### Analyzing the Bundle Size
+## Future Enhancements
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Real AI integration (OpenAI/Claude API)
+- Macro nutrient tracking and goals
+- Training-day specific nutrition explanations
+- User profiles with body metrics and goals
+- Meal prep shopping lists
+- Integration with fitness tracking apps
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
