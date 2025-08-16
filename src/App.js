@@ -123,6 +123,24 @@ const MarathonNutritionApp = () => {
   };
 
   const generateMealSuggestions = async () => {
+    // Check if API key exists (only works locally)
+    if (!process.env.REACT_APP_OPENAI_API_KEY) {
+      setAiTestResult('⚠️ AI features only work in development. Using mock data for live site.');
+      
+      // Use the old mock data for the live site
+      const mockSuggestions = {
+        monday: {
+          breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
+          lunch: 'Quinoa bowl with grilled chicken (Cal: 450, P: 30g, C: 40g, F: 12g)',
+          dinner: 'Salmon with sweet potato (Cal: 500, P: 35g, C: 35g, F: 18g)',
+          snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
+        },
+        // Add other days...
+      };
+      setMealPlan(mockSuggestions);
+      return;
+    }
+    
     setIsTestingAI(true);
     setAiTestResult('Generating personalized meal plan...');
     
