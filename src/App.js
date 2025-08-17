@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Utensils, CheckCircle, Edit3, Plus, User, Save } from 'lucide-react';
-import OpenAI from 'openai';
+import { Calendar, Utensils, CheckCircle, Plus, User } from 'lucide-react';
 
 const MarathonNutritionApp = () => {
   const [currentView, setCurrentView] = useState('training');
@@ -15,6 +14,50 @@ const MarathonNutritionApp = () => {
     saturday: { type: '', distance: '', intensity: '', notes: '' },
     sunday: { type: '', distance: '', intensity: '', notes: '' }
   });
+  const mockSuggestions = {
+    monday: {
+      breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
+      lunch: 'Quinoa bowl with grilled chicken and avocado (Cal: 450, P: 30g, C: 40g, F: 12g)',
+      dinner: 'Salmon with sweet potato and broccoli (Cal: 500, P: 35g, C: 35g, F: 18g)',
+      snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
+    },
+    tuesday: {
+      breakfast: 'Scrambled eggs with spinach and whole grain toast (Cal: 320, P: 18g, C: 25g, F: 14g)',
+      lunch: 'Turkey and avocado wrap with mixed greens (Cal: 420, P: 25g, C: 35g, F: 16g)',
+      dinner: 'Pasta with lean ground turkey and vegetables (Cal: 550, P: 32g, C: 58g, F: 15g)',
+      snacks: 'Greek yogurt with mixed nuts (Cal: 180, P: 12g, C: 15g, F: 8g)'
+    },
+    wednesday: {
+      breakfast: 'Greek yogurt parfait with granola and berries (Cal: 340, P: 16g, C: 42g, F: 10g)',
+      lunch: 'Chicken and vegetable stir-fry with brown rice (Cal: 460, P: 28g, C: 45g, F: 14g)',
+      dinner: 'Grilled fish with quinoa and steamed vegetables (Cal: 480, P: 33g, C: 38g, F: 16g)',
+      snacks: 'Apple slices with peanut butter (Cal: 190, P: 7g, C: 20g, F: 9g)'
+    },
+    thursday: {
+      breakfast: 'Smoothie bowl with protein powder, banana, and berries (Cal: 380, P: 22g, C: 48g, F: 8g)',
+      lunch: 'Lentil soup with whole grain bread and side salad (Cal: 430, P: 18g, C: 58g, F: 12g)',
+      dinner: 'Lean beef with roasted vegetables and sweet potato (Cal: 520, P: 36g, C: 34g, F: 20g)',
+      snacks: 'Trail mix with dried fruit and nuts (Cal: 210, P: 8g, C: 18g, F: 12g)'
+    },
+    friday: {
+      breakfast: 'Whole grain cereal with milk and sliced banana (Cal: 310, P: 12g, C: 52g, F: 6g)',
+      lunch: 'Tuna salad with mixed greens and chickpeas (Cal: 440, P: 26g, C: 32g, F: 18g)',
+      dinner: 'Chicken breast with brown rice and asparagus (Cal: 490, P: 34g, C: 42g, F: 14g)',
+      snacks: 'Cottage cheese with fresh berries (Cal: 160, P: 14g, C: 18g, F: 4g)'
+    },
+    saturday: {
+      breakfast: 'Whole grain pancakes with Greek yogurt and fresh fruit (Cal: 420, P: 18g, C: 58g, F: 12g)',
+      lunch: 'Chicken Caesar salad wrap with whole wheat tortilla (Cal: 480, P: 28g, C: 38g, F: 20g)',
+      dinner: 'Pasta with marinara sauce and lean turkey meatballs (Cal: 580, P: 30g, C: 65g, F: 18g)',
+      snacks: 'Energy balls made with oats, dates, and nuts (Cal: 220, P: 6g, C: 28g, F: 10g)'
+    },
+    sunday: {
+      breakfast: 'Avocado toast with poached eggs and tomatoes (Cal: 390, P: 16g, C: 32g, F: 22g)',
+      lunch: 'Quinoa salad with chickpeas, vegetables, and feta (Cal: 450, P: 20g, C: 48g, F: 16g)',
+      dinner: 'Grilled chicken with roasted sweet potatoes and green beans (Cal: 510, P: 35g, C: 40g, F: 16g)',
+      snacks: 'Hummus with carrot and cucumber sticks (Cal: 140, P: 6g, C: 16g, F: 6g)'
+    }
+  };
 
   const [userProfile, setUserProfile] = useState({
     height: '',
@@ -41,15 +84,6 @@ const MarathonNutritionApp = () => {
 
   const [aiTestResult, setAiTestResult] = useState('');
   const [isTestingAI, setIsTestingAI] = useState(false);
-
-  // Initialize OpenAI only if API key exists
-  let openai = null;
-  if (process.env.REACT_APP_OPENAI_API_KEY) {
-    openai = new OpenAI({
-      apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-      dangerouslyAllowBrowser: true
-    });
-  }
 
   const foodOptions = [
     'Chicken', 'Fish', 'Eggs', 'Greek Yogurt', 'Quinoa', 'Brown Rice', 'Oats', 'Sweet Potato',
@@ -101,172 +135,50 @@ const MarathonNutritionApp = () => {
     });
   };
 
-  const testAI = async () => {
-    setIsTestingAI(true);
-    setAiTestResult('Testing AI connection...');
-    
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "user",
-            content: "Reply with exactly: 'AI connection working!'"
-          }
-        ],
-        max_tokens: 10
-      });
-      
-      setAiTestResult(response.choices[0].message.content);
-    } catch (error) {
-      setAiTestResult(`Error: ${error.message}`);
-    } finally {
-      setIsTestingAI(false);
-    }
-  };
-
   const generateMealSuggestions = async () => {
-    // Check if API key exists (only works locally)
-    if (!openai || !process.env.REACT_APP_OPENAI_API_KEY) {
-      setAiTestResult('⚠️ AI features only work in development. Using mock data for live site.');
-      
-      const mockSuggestions = {
-        monday: {
-          breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
-          lunch: 'Quinoa bowl with grilled chicken and avocado (Cal: 450, P: 30g, C: 40g, F: 12g)',
-          dinner: 'Salmon with sweet potato and broccoli (Cal: 500, P: 35g, C: 35g, F: 18g)',
-          snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
-        },
-        tuesday: {
-          breakfast: 'Scrambled eggs with spinach and whole grain toast (Cal: 320, P: 18g, C: 25g, F: 14g)',
-          lunch: 'Turkey and avocado wrap with mixed greens (Cal: 420, P: 25g, C: 35g, F: 16g)',
-          dinner: 'Pasta with lean ground turkey and vegetables (Cal: 550, P: 32g, C: 58g, F: 15g)',
-          snacks: 'Greek yogurt with mixed nuts (Cal: 180, P: 12g, C: 15g, F: 8g)'
-        },
-        wednesday: {
-          breakfast: 'Greek yogurt parfait with granola and berries (Cal: 340, P: 16g, C: 42g, F: 10g)',
-          lunch: 'Chicken and vegetable stir-fry with brown rice (Cal: 460, P: 28g, C: 45g, F: 14g)',
-          dinner: 'Grilled fish with quinoa and steamed vegetables (Cal: 480, P: 33g, C: 38g, F: 16g)',
-          snacks: 'Apple slices with peanut butter (Cal: 190, P: 7g, C: 20g, F: 9g)'
-        },
-        thursday: {
-          breakfast: 'Smoothie bowl with protein powder, banana, and berries (Cal: 380, P: 22g, C: 48g, F: 8g)',
-          lunch: 'Lentil soup with whole grain bread and side salad (Cal: 430, P: 18g, C: 58g, F: 12g)',
-          dinner: 'Lean beef with roasted vegetables and sweet potato (Cal: 520, P: 36g, C: 34g, F: 20g)',
-          snacks: 'Trail mix with dried fruit and nuts (Cal: 210, P: 8g, C: 18g, F: 12g)'
-        },
-        friday: {
-          breakfast: 'Whole grain cereal with milk and sliced banana (Cal: 310, P: 12g, C: 52g, F: 6g)',
-          lunch: 'Tuna salad with mixed greens and chickpeas (Cal: 440, P: 26g, C: 32g, F: 18g)',
-          dinner: 'Chicken breast with brown rice and asparagus (Cal: 490, P: 34g, C: 42g, F: 14g)',
-          snacks: 'Cottage cheese with fresh berries (Cal: 160, P: 14g, C: 18g, F: 4g)'
-        },
-        saturday: {
-          breakfast: 'Whole grain pancakes with Greek yogurt and fresh fruit (Cal: 420, P: 18g, C: 58g, F: 12g)',
-          lunch: 'Chicken Caesar salad wrap with whole wheat tortilla (Cal: 480, P: 28g, C: 38g, F: 20g)',
-          dinner: 'Pasta with marinara sauce and lean turkey meatballs (Cal: 580, P: 30g, C: 65g, F: 18g)',
-          snacks: 'Energy balls made with oats, dates, and nuts (Cal: 220, P: 6g, C: 28g, F: 10g)'
-        },
-        sunday: {
-          breakfast: 'Avocado toast with poached eggs and tomatoes (Cal: 390, P: 16g, C: 32g, F: 22g)',
-          lunch: 'Quinoa salad with chickpeas, vegetables, and feta (Cal: 450, P: 20g, C: 48g, F: 16g)',
-          dinner: 'Grilled chicken with roasted sweet potatoes and green beans (Cal: 510, P: 35g, C: 40g, F: 16g)',
-          snacks: 'Hummus with carrot and cucumber sticks (Cal: 140, P: 6g, C: 16g, F: 6g)'
-        }
-      };
-      setMealPlan(mockSuggestions);
-      return;
-    }
-
     setIsTestingAI(true);
     setAiTestResult('Generating personalized meal plan...');
     
     try {
-      // Build the prompt with all user data
-      const likedFoods = Array.from(foodPreferences.likes).join(', ');
-      const dislikedFoods = Array.from(foodPreferences.dislikes).join(', ');
-      
-      // Get training schedule summary
-      const trainingSchedule = Object.entries(trainingPlan)
-        .map(([day, workout]) => `${day}: ${workout.type} ${workout.distance} (${workout.intensity} intensity)`)
-        .filter(item => !item.includes('undefined') && !item.includes(' (intensity)'))
-        .join('\n');
-      
-      const prompt = `You are a sports nutritionist creating a weekly meal plan for a marathon runner.
-
-  USER PROFILE:
-  - Height: ${userProfile.height || 'Not specified'}
-  - Weight: ${userProfile.weight || 'Not specified'}  
-  - Goal: ${userProfile.goal || 'maintain weight'}
-  - Activity Level: ${userProfile.activityLevel || 'moderate'}
-  - Dietary Restrictions: ${userProfile.dietaryRestrictions || 'None'}
-
-  FOOD PREFERENCES:
-  - Likes: ${likedFoods || 'No preferences specified'}
-  - Dislikes: ${dislikedFoods || 'No dislikes specified'}
-
-  TRAINING SCHEDULE:
-  ${trainingSchedule || 'No training plan specified'}
-
-  Create a weekly meal plan with breakfast, lunch, dinner, and snacks for each day. 
-
-  CRITICAL REQUIREMENTS:
-  - NEVER include these disliked foods: ${dislikedFoods || 'None'}
-  - PRIORITIZE these liked foods: ${likedFoods || 'None'}
-  - If no dislikes are specified, use variety
-  - Tailor nutrition to support each day's training  
-  - Support their weight goal (${userProfile.goal || 'maintain'})
-  - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
-
-  FORBIDDEN INGREDIENTS: ${dislikedFoods || 'None'} - Do not include these in ANY meal.
-
-  Format each meal like this:
-  "Meal name - Brief description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
-
-  Respond with ONLY a JSON object in this exact format:
-  {
-    "monday": {
-      "breakfast": "meal with macros",
-      "lunch": "meal with macros", 
-      "dinner": "meal with macros",
-      "snacks": "snack with macros"
-    },
-    "tuesday": { ... },
-    ... (all 7 days)
-  }`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.7
-      });
-      
-      const aiResponse = response.choices[0].message.content;
-      const mealData = JSON.parse(aiResponse);
-      
-      setMealPlan(mealData);
-      setAiTestResult('✅ Personalized meal plan generated successfully!');
-      
-    } catch (error) {
-      console.error('AI Error:', error);
-      setAiTestResult(`❌ Error generating meals: ${error.message}`);
-      
-      // Fallback to mock data if AI fails
-      const fallbackMeals = {
-        monday: {
-          breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
-          lunch: 'Quinoa bowl with grilled chicken (Cal: 450, P: 30g, C: 40g, F: 12g)',
-          dinner: 'Salmon with sweet potato (Cal: 500, P: 35g, C: 35g, F: 18g)',
-          snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
-        }
-        // Add other days as needed...
+      // Prepare data to send to API
+      const requestData = {
+        userProfile,
+        foodPreferences: {
+          likes: Array.from(foodPreferences.likes),
+          dislikes: Array.from(foodPreferences.dislikes)
+        },
+        trainingPlan
       };
-      setMealPlan(fallbackMeals);
+
+      // Call our API endpoint
+      const response = await fetch('/api/generate-meals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMealPlan(result.meals);
+        setAiTestResult('✅ Personalized meal plan generated successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to generate meals');
+      }
+
+    } catch (error) {
+      console.error('Error generating meals:', error);
+      setAiTestResult(`❌ Error: ${error.message}`);
+      
+      // Fallback to mock data
+      setMealPlan(mockSuggestions);
     } finally {
       setIsTestingAI(false);
     }
   };
+
   const handleMealEdit = (day, meal, value) => {
     setMealPlan(prev => ({
       ...prev,
