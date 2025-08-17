@@ -62,7 +62,9 @@ Respond with ONLY a JSON object in this exact format:
   },
   "tuesday": { ... },
   ... (all 7 days)
-}`;
+}
+  
+BEFORE RETURNING, check again to make sure EVERY MEAL doesn't include any disliked foods and support the dietary restrictions.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",

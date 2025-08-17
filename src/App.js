@@ -89,7 +89,7 @@ const MarathonNutritionApp = () => {
   const [isTestingAI, setIsTestingAI] = useState(false);
 
   const foodOptions = [
-    'Chicken', 'Fish', 'Eggs', 'Greek Yogurt', 'Quinoa', 'Brown Rice', 'Oats', 'Sweet Potato',
+    'Chicken', 'Fish', 'Eggs', 'Greek Yogurt', 'Quinoa', 'Brown Rice', 'Oats', 'Tuna',
     'Banana', 'Berries', 'Spinach', 'Broccoli', 'Avocado', 'Nuts', 'Seeds', 'Beans',
     'Pasta', 'Bread', 'Cheese', 'Milk', 'Tofu', 'Salmon', 'Turkey', 'Beef'
   ];
@@ -286,7 +286,7 @@ const MarathonNutritionApp = () => {
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+                Name
               </label>
               <input
                 type="text"
@@ -294,7 +294,7 @@ const MarathonNutritionApp = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Enter your username"
+                placeholder="Enter your name"
                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
               />
             </div>
