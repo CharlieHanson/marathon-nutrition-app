@@ -18,7 +18,7 @@ Include:
 - Ingredients list with amounts
 - Step-by-step instructions
 - Prep/cook time
-- Servings
+- Servings (try to keep it to 1 or 2)
 
 Keep it concise and practical for everyday cooking. Do not include anything in the response that gives away
 that an AI responded, such as like "Sure, here's a recipe!" just state the recipe as if it was in a cookbook.`;

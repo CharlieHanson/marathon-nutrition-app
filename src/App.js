@@ -5,6 +5,9 @@ const MarathonNutritionApp = () => {
   const [currentView, setCurrentView] = useState('training');
   const [user, setUser] = useState({ name: '', loggedIn: false });
   const [username, setUsername] = useState('');
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [currentRecipe, setCurrentRecipe] = useState('');
+  const [recipeTitle, setRecipeTitle] = useState('');
   const [trainingPlan, setTrainingPlan] = useState({
     monday: { type: '', distance: '', intensity: '', notes: '' },
     tuesday: { type: '', distance: '', intensity: '', notes: '' },
@@ -245,8 +248,9 @@ const MarathonNutritionApp = () => {
       const result = await response.json();
 
       if (result.success) {
-        // Display recipe in a simple alert for now
-        alert(`Recipe for ${mealPlan[day][mealType]}:\n\n${result.recipe}`);
+        setRecipeTitle(mealPlan[day][mealType]);
+        setCurrentRecipe(result.recipe);
+        setShowRecipeModal(true);
         setAiTestResult(`✅ Recipe generated!`);
       } else {
         throw new Error(result.error);
@@ -601,6 +605,36 @@ const MarathonNutritionApp = () => {
           </div>
         )}
       </main>
+
+      {/* Recipe Modal */}
+      {showRecipeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Recipe: {recipeTitle}</h3>
+              <button
+                onClick={() => setShowRecipeModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                {currentRecipe}
+              </pre>
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+              <button
+                onClick={() => setShowRecipeModal(false)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
