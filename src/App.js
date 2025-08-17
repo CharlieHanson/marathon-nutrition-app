@@ -91,7 +91,10 @@ const MarathonNutritionApp = () => {
     'Pasta', 'Bread', 'Cheese', 'Milk', 'Tofu', 'Salmon', 'Turkey', 'Beef'
   ];
 
-  const workoutTypes = ['Rest', 'Easy Run', 'Speed Work', 'Long Run', 'Strength Training', 'Cross Training', 'Recovery Run'];
+  const workoutTypes = [
+    'Rest', 'Run', 'Speed or Agility Training', 'Bike Ride', 'Strength Training', 'Sport Practice', 'Recovery'
+  ];
+  
   const intensityLevels = ['Low', 'Moderate', 'High', 'Peak'];
 
   const handleLogin = () => {
@@ -163,7 +166,7 @@ const MarathonNutritionApp = () => {
 
       if (result.success) {
         setMealPlan(result.meals);
-        setAiTestResult('✅ Personalized meal plan generated successfully!');
+        setAiTestResult(`✅ Personalized meal plan generated successfully!\n\n${result.explanation}`);
       } else {
         throw new Error(result.error || 'Failed to generate meals');
       }
@@ -199,7 +202,7 @@ const MarathonNutritionApp = () => {
         <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-6">
             <Utensils className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Marathon Nutrition Planner</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Nutrition Training Planner</h1>
             <p className="text-gray-600 mt-2">Personalized meal planning for your training</p>
           </div>
           <div className="space-y-4">
