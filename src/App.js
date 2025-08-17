@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Utensils, CheckCircle, Plus, User } from 'lucide-react';
+import { Calendar, Utensils, CheckCircle, Plus, User, RotateCcw } from 'lucide-react';
 
 const MarathonNutritionApp = () => {
   const [currentView, setCurrentView] = useState('training');
@@ -182,6 +182,52 @@ const MarathonNutritionApp = () => {
     }
   };
 
+  const regenerateMeal = async (day, mealType) => {
+    const reason = prompt("Why would you like to regenerate this meal? (e.g., 'don't like salmon', 'too many carbs', 'prefer vegetarian option')");
+    
+    if (!reason) return;
+    
+    setAiTestResult(`Regenerating ${mealType} for ${day}...`);
+    
+    try {
+      const requestData = {
+        userProfile,
+        foodPreferences: {
+          likes: Array.from(foodPreferences.likes),
+          dislikes: Array.from(foodPreferences.dislikes)
+        },
+        trainingPlan,
+        day,
+        mealType,
+        reason,
+        currentMeal: mealPlan[day][mealType]
+      };
+
+      const response = await fetch('/api/regenerate-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMealPlan(prev => ({
+          ...prev,
+          [day]: {
+            ...prev[day],
+            [mealType]: result.meal
+          }
+        }));
+        setAiTestResult(`✅ ${mealType} for ${day} regenerated!`);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setAiTestResult(`❌ Error regenerating meal: ${error.message}`);
+    }
+  };
+
   const handleMealEdit = (day, meal, value) => {
     setMealPlan(prev => ({
       ...prev,
@@ -202,8 +248,8 @@ const MarathonNutritionApp = () => {
         <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
           <div className="text-center mb-6">
             <Utensils className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Nutrition Training Planner</h1>
-            <p className="text-gray-600 mt-2">Personalized meal planning for your training</p>
+            <h1 className="text-2xl font-bold text-gray-900">Nutrition Training Coach</h1>
+            <p className="text-gray-600 mt-2">Personalized nutrition for any training goal</p>
           </div>
           <div className="space-y-4">
             <div>
@@ -241,7 +287,7 @@ const MarathonNutritionApp = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-2">
               <Utensils className="w-8 h-8 text-indigo-600" />
-              <h1 className="text-xl font-bold text-gray-900">Nutrition Planner</h1>
+              <h1 className="text-xl font-bold text-gray-900">Nutrition Coach</h1>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-gray-600">Welcome, {user.name}!</span>
@@ -462,16 +508,17 @@ const MarathonNutritionApp = () => {
                 <div className="space-x-2">
                   <button
                     onClick={generateMealSuggestions}
-                    className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                    disabled={isTestingAI}
+                    className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:bg-gray-400"
                   >
                     <Plus className="w-4 h-4" />
-                    Generate AI Suggestions
+                    {isTestingAI ? 'Generating...' : 'Generate AI Suggestions'}
                   </button>
                 </div>
               </div>
               
               {aiTestResult && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md whitespace-pre-line">
                   {aiTestResult}
                 </div>
               )}
@@ -486,9 +533,21 @@ const MarathonNutritionApp = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => (
                         <div key={meal} className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700 capitalize">
-                            {meal}
-                          </label>
+                          <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium text-gray-700 capitalize">
+                              {meal}
+                            </label>
+                            {mealPlan[day][meal] && (
+                              <button
+                                onClick={() => regenerateMeal(day, meal)}
+                                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1"
+                                title="Regenerate this meal"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Regenerate
+                              </button>
+                            )}
+                          </div>
                           <textarea
                             value={mealPlan[day][meal]}
                             onChange={(e) => handleMealEdit(day, meal, e.target.value)}
