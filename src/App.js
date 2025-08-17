@@ -228,6 +228,34 @@ const MarathonNutritionApp = () => {
     }
   };
 
+  const getRecipe = async (day, mealType) => {
+    setAiTestResult(`Getting recipe for ${mealPlan[day][mealType]}...`);
+    
+    try {
+      const response = await fetch('/api/get-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          meal: mealPlan[day][mealType],
+          day,
+          mealType 
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Display recipe in a simple alert for now
+        alert(`Recipe for ${mealPlan[day][mealType]}:\n\n${result.recipe}`);
+        setAiTestResult(`✅ Recipe generated!`);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setAiTestResult(`❌ Error getting recipe: ${error.message}`);
+    }
+  };
+
   const handleMealEdit = (day, meal, value) => {
     setMealPlan(prev => ({
       ...prev,
@@ -555,6 +583,14 @@ const MarathonNutritionApp = () => {
                             rows="3"
                             placeholder={`Enter ${meal}...`}
                           />
+                          {mealPlan[day][meal] && (
+                            <button
+                              onClick={() => getRecipe(day, meal)}
+                              className="w-full text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-green-700 mt-1"
+                            >
+                              Get Recipe
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
