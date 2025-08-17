@@ -166,7 +166,7 @@ const MarathonNutritionApp = () => {
 
       if (result.success) {
         setMealPlan(result.meals);
-        setAiTestResult(`✅ Personalized meal plan generated successfully!\n\n${result.explanation}`);
+        setAiTestResult('✅ Personalized meal plan generated successfully!');
       } else {
         throw new Error(result.error || 'Failed to generate meals');
       }

@@ -74,29 +74,7 @@ Respond with ONLY a JSON object in this exact format:
     const aiResponse = response.choices[0].message.content;
     const mealData = JSON.parse(aiResponse);
 
-    // Generate explanation
-    const explanationResponse = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{
-        role: "user",
-        content: `Based on this training schedule and user profile, explain in 2-3 sentences why this meal plan works well for their goals:
-
-        Training: ${trainingSchedule}
-        Goal: ${userProfile.goal || 'maintain weight'}
-        Activity Level: ${userProfile.activityLevel || 'moderate'}
-
-        Keep it concise and focus on how the nutrition supports their training and goals.`
-      }],
-      max_tokens: 150
-    });
-
-    const explanation = explanationResponse.choices[0].message.content;
-
-    res.status(200).json({ 
-      success: true, 
-      meals: mealData,
-      explanation: explanation 
-    });
+    res.status(200).json({ success: true, meals: mealData });
 
   } catch (error) {
     console.error('API Error:', error);
