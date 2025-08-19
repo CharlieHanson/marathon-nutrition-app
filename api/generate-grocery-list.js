@@ -27,15 +27,15 @@ Create a grocery list with ingredients needed for all meals. Organize by categor
 
 Estimate reasonable quantities for one person for the week. Don't include very basic items like salt, pepper, cooking oil unless specifically mentioned.
 
-Respond with a JSON array in this format:
+Respond with ONLY a JSON array, no markdown formatting:
 [
   {
     "category": "Proteins",
-    "items": ["2 lbs chicken breast", "1 lb salmon fillets", "etc"]
+    "items": ["2 lbs chicken breast", "1 lb salmon fillets"]
   },
   {
     "category": "Vegetables & Fruits", 
-    "items": ["2 cups berries", "1 large sweet potato", "etc"]
+    "items": ["2 cups berries", "1 large sweet potato"]
   }
 ]`;
 
@@ -46,10 +46,20 @@ Respond with a JSON array in this format:
       temperature: 0.7
     });
 
-    const groceryList = JSON.parse(response.choices[0].message.content);
+    let groceryListText = response.choices[0].message.content.trim();
+    
+    // Remove markdown code blocks if present
+    if (groceryListText.startsWith('```json')) {
+      groceryListText = groceryListText.replace(/```json\s*/, '').replace(/\s*```$/, '');
+    } else if (groceryListText.startsWith('```')) {
+      groceryListText = groceryListText.replace(/```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    const groceryList = JSON.parse(groceryListText);
     res.status(200).json({ success: true, groceryList });
 
   } catch (error) {
+    console.error('Grocery list error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }
