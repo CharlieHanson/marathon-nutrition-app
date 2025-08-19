@@ -95,7 +95,7 @@ const MarathonNutritionApp = () => {
   ];
 
   const workoutTypes = [
-    'Rest', 'Run', 'Speed or Agility Training', 'Bike Ride', 'Strength Training', 'Sport Practice', 'Recovery'
+    'Rest', 'Long Run', , 'Short Run', 'Intervals', 'Speed or Agility Training', 'Bike Ride', 'Strength Training', 'Sport Practice'
   ];
   
   const intensityLevels = ['Low', 'Moderate', 'High', 'Peak'];
