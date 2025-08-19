@@ -28,7 +28,7 @@ STRICT RULES:
 
 Only include ingredients that are actually mentioned in the meals above.
 
-Respond with ONLY a JSON array, no markdown.`;
+Respond with ONLY the text, no extra formatting.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -38,13 +38,6 @@ Respond with ONLY a JSON array, no markdown.`;
     });
 
     let groceryListText = response.choices[0].message.content.trim();
-    
-    // Remove markdown code blocks if present
-    if (groceryListText.startsWith('```json')) {
-      groceryListText = groceryListText.replace(/```json\s*/, '').replace(/\s*```$/, '');
-    } else if (groceryListText.startsWith('```')) {
-      groceryListText = groceryListText.replace(/```\s*/, '').replace(/\s*```$/, '');
-    }
 
     const groceryList = JSON.parse(groceryListText);
     res.status(200).json({ success: true, groceryList });
