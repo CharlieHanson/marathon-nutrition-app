@@ -12,32 +12,28 @@ export default async function handler(req, res) {
   try {
     const { meals } = req.body;
 
-    const prompt = `Based on these weekly meals, create a comprehensive grocery list organized by category:
+    const prompt = `Based on these weekly meals, create a realistic grocery list for ONE PERSON for ONE WEEK:
 
 MEALS:
 ${meals.join('\n')}
 
-Create a grocery list with ingredients needed for all meals. Organize by categories like:
-- Proteins
-- Vegetables & Fruits
-- Grains & Starches
-- Dairy & Eggs
-- Pantry Items
-- Other
+Rules:
+- Only include ingredients that appear in the meals above
+- Consolidate duplicate ingredients across meals
+- Use realistic quantities for 1 person/1 week
+- Group similar items to avoid redundancy
+- Use proper units (dozen eggs, not "1 lb eggs")
+- Skip basic seasonings (salt, pepper, oil) unless specifically mentioned
+- If multiple proteins appear, prioritize the most frequent ones
 
-Estimate reasonable quantities for one person for the week. Don't include very basic items like salt, pepper, cooking oil unless specifically mentioned.
+Categories: Proteins, Produce, Grains & Starches, Dairy, Pantry Items
 
-Respond with ONLY a JSON array, no markdown formatting:
-[
-  {
-    "category": "Proteins",
-    "items": ["2 lbs chicken breast", "1 lb salmon fillets"]
-  },
-  {
-    "category": "Vegetables & Fruits", 
-    "items": ["2 cups berries", "1 large sweet potato"]
-  }
-]`;
+Example format:
+"2 lbs chicken breast" not "4 lbs chicken breast"
+"1 dozen eggs" not "1 lb eggs"
+"2 bananas" not "1 lb bananas"
+
+Respond with ONLY a JSON array, no markdown formatting.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
