@@ -30,6 +30,8 @@ Example format:
   {"category": "Produce", "items": ["1 bunch spinach", "3 avocados"]}
 ]
 
+Ensure that there are NO DUPLICATES before returning.
+
 Response:`;
 
     const response = await openai.chat.completions.create({
