@@ -17,6 +17,8 @@ const MarathonNutritionApp = () => {
     saturday: { type: '', distance: '', intensity: '', notes: '' },
     sunday: { type: '', distance: '', intensity: '', notes: '' }
   });
+  const [showGroceryModal, setShowGroceryModal] = useState(false);
+  const [groceryList, setGroceryList] = useState([]);
   const mockSuggestions = {
     monday: {
       breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
@@ -272,6 +274,43 @@ const MarathonNutritionApp = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const generateGroceryList = async () => {
+    setAiTestResult('Generating grocery list...');
+    
+    try {
+      // Collect all meals from the week
+      const allMeals = [];
+      Object.entries(mealPlan).forEach(([day, meals]) => {
+        Object.entries(meals).forEach(([mealType, meal]) => {
+          if (meal.trim()) {
+            allMeals.push(meal);
+          }
+        });
+      });
+
+      const response = await fetch('/api/generate-grocery-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          meals: allMeals,
+          userProfile
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setGroceryList(result.groceryList);
+        setShowGroceryModal(true);
+        setAiTestResult('✅ Grocery list generated!');
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setAiTestResult(`❌ Error generating grocery list: ${error.message}`);
+    }
   };
 
   if (!user.loggedIn) {
@@ -546,6 +585,14 @@ const MarathonNutritionApp = () => {
                     <Plus className="w-4 h-4" />
                     {isTestingAI ? 'Generating...' : 'Generate AI Suggestions'}
                   </button>
+                  {Object.values(mealPlan).some(day => Object.values(day).some(meal => meal.trim())) && (
+                    <button
+                      onClick={generateGroceryList}
+                      className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      Generate Grocery List
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -627,6 +674,45 @@ const MarathonNutritionApp = () => {
             <div className="p-4 border-t bg-gray-50">
               <button
                 onClick={() => setShowRecipeModal(false)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grocery List Modal */}
+      {showGroceryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Weekly Grocery List</h3>
+              <button
+                onClick={() => setShowGroceryModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-4">
+                {groceryList.map((category, index) => (
+                  <div key={index}>
+                    <h4 className="font-semibold text-gray-800 mb-2">{category.category}</h4>
+                    <ul className="list-disc list-inside space-y-1 ml-4">
+                      {category.items.map((item, itemIndex) => (
+                        <li key={itemIndex} className="text-gray-700">{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t bg-gray-50">
+              <button
+                onClick={() => setShowGroceryModal(false)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
               >
                 Close
