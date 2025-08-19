@@ -28,7 +28,7 @@ STRICT RULES:
 
 Only include ingredients that are actually mentioned in the meals above.
 
-Respond with ONLY the text, no extra formatting.`;
+Respond with ONLY the JSON text, no extra formatting.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
