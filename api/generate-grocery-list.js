@@ -12,28 +12,23 @@ export default async function handler(req, res) {
   try {
     const { meals } = req.body;
 
-    const prompt = `Based on these weekly meals, create a realistic grocery list for ONE PERSON for ONE WEEK:
+    const prompt = `Create a realistic grocery list for ONE PERSON for ONE WEEK based only on these meals:
 
 MEALS:
 ${meals.join('\n')}
 
-Rules:
-- Only include ingredients that appear in the meals above
-- Consolidate duplicate ingredients across meals
-- Use realistic quantities for 1 person/1 week
-- Group similar items to avoid redundancy
-- Use proper units (dozen eggs, not "1 lb eggs")
-- Skip basic seasonings (salt, pepper, oil) unless specifically mentioned
-- If multiple proteins appear, prioritize the most frequent ones
+STRICT RULES:
+- Calculate realistic portions (if chicken appears in 3 meals, estimate total amount needed)
+- No duplicate ingredients 
+- Realistic quantities for one person (example: 6 bananas, not "1 lb bananas")
+- Proper categories (nuts go in Pantry, not Produce)
+- Use standard grocery units (dozen eggs, 1 container yogurt, etc.)
+- If a protein appears once, include smaller quantity (8oz-1lb)
+- If a protein appears multiple times, include larger quantity (2-3lbs)
 
-Categories: Proteins, Produce, Grains & Starches, Dairy, Pantry Items
+Only include ingredients that are actually mentioned in the meals above.
 
-Example format:
-"2 lbs chicken breast" not "4 lbs chicken breast"
-"1 dozen eggs" not "1 lb eggs"
-"2 bananas" not "1 lb bananas"
-
-Respond with ONLY a JSON array, no markdown formatting.`;
+Respond with ONLY a JSON array, no markdown.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",

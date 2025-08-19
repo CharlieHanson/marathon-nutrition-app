@@ -301,12 +301,12 @@ const MarathonNutritionApp = () => {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (result.success && result.groceryList) {
         setGroceryList(result.groceryList);
         setShowGroceryModal(true);
         setAiTestResult('✅ Grocery list generated!');
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Failed to generate grocery list');
       }
     } catch (error) {
       setAiTestResult(`❌ Error generating grocery list: ${error.message}`);
