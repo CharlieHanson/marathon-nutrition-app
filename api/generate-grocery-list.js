@@ -24,7 +24,7 @@ Rules:
 
 Format as JSON array with categories and items only. No explanations.
 
-Example format:
+Example format (FOLLOW THIS):
 [
   {"category": "Meat", "items": ["2 lbs chicken breast", "1 lb ground turkey"]},
   {"category": "Produce", "items": ["1 bunch spinach", "3 avocados"]}
