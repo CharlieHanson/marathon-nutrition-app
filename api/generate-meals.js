@@ -48,8 +48,8 @@ CRITICAL REQUIREMENTS:
 - PRIORITIZE these liked foods: ${likedFoods}
 - Tailor nutrition to support each day's training  
 - Support their weight goal (${userProfile.goal || 'maintain'})
-- INCLUDE ENOUGH CALORIES AND MACROS FOR THE PERSON, YOU USUALLY DON'T DO ENOUGH
 - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
+- Include ACCURATE macro estimates for each meal, usually calories is a couple hundred lower than it should be my guy
 
 Format each meal like this:
 "Meal name - Brief description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
