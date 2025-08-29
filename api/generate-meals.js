@@ -42,13 +42,13 @@ that they are getting enough macros for their weight, weight goals, and physical
 For example, high intensity athletes should have about:
     -6g carbs times kg of weight
     -1g protein times kg of weight
-    -enough protein to support everything, too
 
 CRITICAL REQUIREMENTS:
 - NEVER include these disliked foods: ${dislikedFoods}
 - PRIORITIZE these liked foods: ${likedFoods}
 - Tailor nutrition to support each day's training  
 - Support their weight goal (${userProfile.goal || 'maintain'})
+- INCLUDE ENOUGH CALORIES AND MACROS FOR THE PERSON, YOU USUALLY DON'T DO ENOUGH
 - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
 
 Format each meal like this:
