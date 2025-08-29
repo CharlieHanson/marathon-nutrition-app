@@ -73,8 +73,8 @@ const MarathonNutritionApp = () => {
   });
 
   const [foodPreferences, setFoodPreferences] = useState({
-    likes: new Set(),
-    dislikes: new Set()
+    likes: '',
+    dislikes: ''
   });
 
   const [mealPlan, setMealPlan] = useState({
@@ -90,17 +90,11 @@ const MarathonNutritionApp = () => {
   const [aiTestResult, setAiTestResult] = useState('');
   const [isTestingAI, setIsTestingAI] = useState(false);
 
-  const foodOptions = [
-    'Chicken', 'Fish', 'Eggs', 'Greek Yogurt', 'Quinoa', 'Brown Rice', 'Oats', 'Tuna',
-    'Banana', 'Berries', 'Spinach', 'Broccoli', 'Avocado', 'Nuts', 'Seeds', 'Beans',
-    'Pasta', 'Bread', 'Cheese', 'Milk', 'Tofu', 'Salmon', 'Turkey', 'Beef'
-  ];
-
   const workoutTypes = [
-    'Rest', 'Long Run', , 'Short Run', 'Intervals', 'Speed or Agility Training', 'Bike Ride', 'Strength Training', 'Sport Practice'
+    'Rest', 'Distance Run', 'Speed or Agility Training', 'Bike Ride', 'Swim', 'Strength Training', 'Sport Practice'
   ];
   
-  const intensityLevels = ['Low', 'Moderate', 'High', 'Peak'];
+  const intensityLevels = ['Low', 'Moderate', 'High'];
 
   const handleLogin = () => {
     if (username.trim()) {
@@ -113,34 +107,6 @@ const MarathonNutritionApp = () => {
       ...prev,
       [day]: { ...prev[day], [field]: value }
     }));
-  };
-
-  const handleFoodPreferenceToggle = (food, type) => {
-    setFoodPreferences(prev => {
-      const newPrefs = { ...prev };
-      if (type === 'like') {
-        if (prev.likes.has(food)) {
-          newPrefs.likes = new Set(prev.likes);
-          newPrefs.likes.delete(food);
-        } else {
-          newPrefs.likes = new Set(prev.likes);
-          newPrefs.likes.add(food);
-          newPrefs.dislikes = new Set(prev.dislikes);
-          newPrefs.dislikes.delete(food);
-        }
-      } else {
-        if (prev.dislikes.has(food)) {
-          newPrefs.dislikes = new Set(prev.dislikes);
-          newPrefs.dislikes.delete(food);
-        } else {
-          newPrefs.dislikes = new Set(prev.dislikes);
-          newPrefs.dislikes.add(food);
-          newPrefs.likes = new Set(prev.likes);
-          newPrefs.likes.delete(food);
-        }
-      }
-      return newPrefs;
-    });
   };
 
   const generateMealSuggestions = async () => {
@@ -537,35 +503,34 @@ const MarathonNutritionApp = () => {
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Food Preferences</h2>
-              <p className="text-gray-600 mb-6">Select foods you like and dislike to personalize your meal suggestions.</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {foodOptions.map((food) => (
-                  <div key={food} className="border rounded-lg p-3">
-                    <div className="text-center mb-2 font-medium text-gray-900">{food}</div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleFoodPreferenceToggle(food, 'like')}
-                        className={`flex-1 py-1 px-2 rounded text-xs transition-colors ${
-                          foodPreferences.likes.has(food)
-                            ? 'bg-green-500 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-green-100'
-                        }`}
-                      >
-                        Like
-                      </button>
-                      <button
-                        onClick={() => handleFoodPreferenceToggle(food, 'dislike')}
-                        className={`flex-1 py-1 px-2 rounded text-xs transition-colors ${
-                          foodPreferences.dislikes.has(food)
-                            ? 'bg-red-500 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-red-100'
-                        }`}
-                      >
-                        Dislike
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <p className="text-gray-600 mb-6">Describe the foods you like and dislike to personalize your meal suggestions.</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Foods I Like
+                  </label>
+                  <textarea
+                    placeholder="e.g., chicken, salmon, quinoa, berries, Greek yogurt, avocado..."
+                    value={foodPreferences.likes}
+                    onChange={(e) => setFoodPreferences(prev => ({ ...prev, likes: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="4"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Foods I Dislike
+                  </label>
+                  <textarea
+                    placeholder="e.g., seafood, mushrooms, spicy food, dairy..."
+                    value={foodPreferences.dislikes}
+                    onChange={(e) => setFoodPreferences(prev => ({ ...prev, dislikes: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="4"
+                  />
+                </div>
               </div>
             </div>
           </div>

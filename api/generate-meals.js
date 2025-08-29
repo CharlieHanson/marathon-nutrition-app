@@ -1,11 +1,10 @@
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Note: no REACT_APP_ prefix!
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -13,9 +12,9 @@ export default async function handler(req, res) {
   try {
     const { userProfile, foodPreferences, trainingPlan } = req.body;
 
-    // Build the prompt (same logic as before)
-    const likedFoods = foodPreferences.likes?.join(', ') || 'No preferences specified';
-    const dislikedFoods = foodPreferences.dislikes?.join(', ') || 'No dislikes specified';
+    // Extract the food preferences (now strings instead of arrays)
+    const likedFoods = foodPreferences.likes || 'No preferences specified';
+    const dislikedFoods = foodPreferences.dislikes || 'No dislikes specified';
     
     const trainingSchedule = Object.entries(trainingPlan)
       .map(([day, workout]) => `${day}: ${workout.type} ${workout.distance} (${workout.intensity} intensity)`)
@@ -47,8 +46,6 @@ CRITICAL REQUIREMENTS:
 - Support their weight goal (${userProfile.goal || 'maintain'})
 - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
 
-FORBIDDEN INGREDIENTS: ${dislikedFoods} - Do not include these in ANY meal.
-
 Format each meal like this:
 "Meal name - Brief description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
 
@@ -62,9 +59,7 @@ Respond with ONLY a JSON object in this exact format:
   },
   "tuesday": { ... },
   ... (all 7 days)
-}
-  
-BEFORE RETURNING, check again to make sure EVERY MEAL doesn't include any disliked foods and support the dietary restrictions.`;
+}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",

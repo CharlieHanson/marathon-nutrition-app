@@ -19,8 +19,6 @@ Current meal that needs improvement: ${currentMeal}
 User profile:
 - Goal: ${userProfile.goal || 'maintain weight'}
 - Dietary restrictions: ${userProfile.dietaryRestrictions || 'None'}
-- Likes: ${foodPreferences.likes?.join(', ') || 'None specified'}
-- Dislikes: ${foodPreferences.dislikes?.join(', ') || 'None specified'}
 
 Generate ONE meal that fixes the user's concern while maintaining proper nutrition.
 Format: "Meal name - description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
