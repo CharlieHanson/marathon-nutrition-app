@@ -37,7 +37,12 @@ FOOD PREFERENCES:
 TRAINING SCHEDULE:
 ${trainingSchedule || 'No training plan specified'}
 
-Create a weekly meal plan with breakfast, lunch, dinner, and snacks for each day.
+Create a weekly meal plan with breakfast, lunch, dinner, and snacks for each day. Make sure 
+that they are getting enough macros for their weight, weight goals, and physical activity.
+For example, high intensity athletes should have about:
+    -6g carbs times kg of weight
+    -1g protein times kg of weight
+    -enough protein to support everything, too
 
 CRITICAL REQUIREMENTS:
 - NEVER include these disliked foods: ${dislikedFoods}
