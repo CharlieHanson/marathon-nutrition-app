@@ -91,7 +91,7 @@ const MarathonNutritionApp = () => {
   const [isTestingAI, setIsTestingAI] = useState(false);
 
   const workoutTypes = [
-    'Rest', 'Distance Run', 'Speed or Agility Training', 'Bike Ride', 'Swim', 'Strength Training', 'Sport Practice'
+    'Rest', 'Distance Run', 'Speed or Agility Training', 'Bike Ride', 'Walk/Hike', 'Swim', 'Strength Training', 'Sport Practice'
   ];
   
   const intensityLevels = ['Low', 'Moderate', 'High'];
