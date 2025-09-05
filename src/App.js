@@ -78,13 +78,13 @@ const MarathonNutritionApp = () => {
   });
 
   const [mealPlan, setMealPlan] = useState({
-    monday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    tuesday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    wednesday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    thursday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    friday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    saturday: { breakfast: '', lunch: '', dinner: '', snacks: '' },
-    sunday: { breakfast: '', lunch: '', dinner: '', snacks: '' }
+    monday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    tuesday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    wednesday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    thursday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    friday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    saturday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
+    sunday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' }
   });
 
   const [aiTestResult, setAiTestResult] = useState('');
@@ -575,7 +575,7 @@ const MarathonNutritionApp = () => {
                       {day}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {['breakfast', 'lunch', 'dinner', 'snacks'].map((meal) => (
+                      {['breakfast', 'lunch', 'dinner', 'dessert', 'snacks'].map((meal) => (
                         <div key={meal} className="space-y-2">
                           <div className="flex justify-between items-center">
                             <label className="block text-sm font-medium text-gray-700 capitalize">
