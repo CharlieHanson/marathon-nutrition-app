@@ -37,7 +37,7 @@ FOOD PREFERENCES:
 TRAINING SCHEDULE:
 ${trainingSchedule || 'No training plan specified'}
 
-Create a weekly meal plan with breakfast, lunch, dinner, and snacks for each day. Make sure 
+Create a weekly meal plan with breakfast, lunch, dinner, dessert, and snacks for each day. Make sure 
 that they are getting enough macros for their weight, weight goals, and physical activity.
 For example, high intensity athletes should have about:
     -6g carbs times kg of weight
@@ -49,7 +49,7 @@ CRITICAL REQUIREMENTS:
 - Tailor nutrition to support each day's training  
 - Support their weight goal (${userProfile.goal || 'maintain'})
 - Include estimated macros for each meal: (Calories, Protein, Carbs, Fat)
-- Include ACCURATE macro estimates for each meal, usually calories is a couple hundred lower than it should be my guy
+- Include ACCURATE macro estimates for each meal, usually calories is a couple hundred lower than it should be
 
 Format each meal like this:
 "Meal name - Brief description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
@@ -60,6 +60,7 @@ Respond with ONLY a JSON object in this exact format:
     "breakfast": "meal with macros",
     "lunch": "meal with macros", 
     "dinner": "meal with macros",
+    "dessert": "meal with macros",
     "snacks": "snack with macros"
   },
   "tuesday": { ... },
