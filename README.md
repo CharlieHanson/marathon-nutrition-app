@@ -5,9 +5,12 @@ A personalized meal planning web app designed for marathon runners and athletes.
 ## Features
 
 - **Training Plan Input**: Set up your weekly workout schedule with exercise type, distance/duration, and intensity
-- **Food Preferences**: Mark foods you like and dislike to personalize recommendations
+- **User Profile Info**: Include your height, weight, allergies, goals, dietary restrictions, etc.
+- **Food Preferences**: Enter foods you like and dislike to personalize recommendations
 - **Meal Planning**: Generate AI-suggested meals for each day based on your training and preferences
-- **Editable Plans**: Modify any suggested meals to fit your needs
+- **Editable Plans**: Regenerate any meal with custom reasoning
+- **Grocery List**: Create an organized shopping list based on all your weekly meals
+- **Get Recipe**: Get a detailed recipe with ingredients and instructions for any meal
 - **Clean UI**: Modern, responsive design that works on desktop and mobile
 
 ## Tech Stack
@@ -21,21 +24,35 @@ A personalized meal planning web app designed for marathon runners and athletes.
 ## File Structure
 
 ```
-src/
-├── App.js          # Main application component with all functionality
-├── index.js        # React app entry point
-├── index.css       # Tailwind CSS imports
-└── App.css         # (unused, can be deleted)
-
-public/
-├── index.html      # HTML template
-└── favicon.ico     # App icon
-
-Config files:
-├── package.json           # Dependencies and scripts
-├── tailwind.config.js     # Tailwind CSS configuration
-├── postcss.config.js      # PostCSS configuration for Tailwind
-└── README.md             # This file
+nutrition-training-coach/
+├── api/
+│   ├── generate-grocery-list.js   # AI-generated shopping lists
+│   ├── generate-meals.js          # Main meal plan generation endpoint
+│   ├── get-recipe.js              # Recipe generation for specific meals
+│   └── regenerate-meal.js         # Individual meal regeneration
+├── public/
+│   ├── favicon.ico               # App icon
+│   ├── index.html               # HTML template
+│   ├── logo192.png              # App logo (192px)
+│   ├── logo512.png              # App logo (512px)
+│   ├── manifest.json            # PWA manifest
+│   └── robots.txt               # SEO robots file
+├── src/
+│   ├── App.css                  # (unused, can be deleted)
+│   ├── App.js                   # Main application component
+│   ├── App.test.js              # Test file
+│   ├── index.css                # Tailwind CSS imports
+│   ├── index.js                 # React app entry point
+│   ├── logo.svg                 # React logo
+│   ├── reportWebVitals.js       # Performance monitoring
+│   └── setupTests.js            # Test configuration
+├── .env.local                   # Environment variables (OpenAI API key)
+├── .gitignore                   # Git ignore rules
+├── package-lock.json            # Dependency lock file
+├── package.json                 # Dependencies and scripts
+├── postcss.config.js            # PostCSS configuration for Tailwind
+├── README.md                    # Project documentation
+└── tailwind.config.js           # Tailwind CSS configuration
 ```
 
 ## Getting Started
@@ -62,39 +79,10 @@ npm install
 npm start
 ```
 
-The app will open at `http://localhost:3000`
-
-## Current Status
-
-- ✅ Complete UI/UX with training plan input
-- ✅ Food preference selection system
-- ✅ Mock meal suggestions (hardcoded)
-- ✅ Fully editable meal plans
-- ✅ Responsive design
-- 🔄 **Next**: AI API integration for real meal suggestions
-- 🔄 **Next**: Macro calculations (calories, protein, fat)
-- 🔄 **Next**: Training-specific meal explanations
-- 🔄 **Next**: User profile (height, weight, goals)
-
-## Usage
-
-1. **Login**: Enter any username to get started
-2. **Training Plan**: Fill out your weekly workout schedule
-3. **Food Preferences**: Mark foods you like/dislike
-4. **Meal Plan**: Click "Generate AI Suggestions" to populate meals
-5. **Edit**: Modify any meals as needed
+The app will open at `http://localhost:3000` 
 
 ## Contributing
 
 This is a personal project built for marathon training nutrition planning. Feel free to fork and adapt for your own needs!
-
-## Future Enhancements
-
-- Real AI integration (OpenAI/Claude API)
-- Macro nutrient tracking and goals
-- Training-day specific nutrition explanations
-- User profiles with body metrics and goals
-- Meal prep shopping lists
-- Integration with fitness tracking apps
 
 ---
