@@ -2,6 +2,8 @@
 
 A personalized meal planning web app designed for marathon runners and athletes. Input your weekly training schedule and get AI-powered meal suggestions tailored to your workouts and food preferences.
 
+[Link to Website](https://marathon-nutrition-app.vercel.app/)
+
 ## Features
 
 - **Training Plan Input**: Set up your weekly workout schedule with exercise type, distance/duration, and intensity
