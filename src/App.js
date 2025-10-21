@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Calendar, Utensils, CheckCircle, Plus, User, RotateCcw } from 'lucide-react';
+import { useAuth } from './context/AuthContext';
+import Auth from './components/Auth';
 
 const MarathonNutritionApp = () => {
+  const { user, signOut, loading } = useAuth();
   const [currentView, setCurrentView] = useState('training');
-  const [user, setUser] = useState({ name: '', loggedIn: false });
-  const [username, setUsername] = useState('');
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState('');
   const [recipeTitle, setRecipeTitle] = useState('');
@@ -95,12 +96,6 @@ const MarathonNutritionApp = () => {
   ];
   
   const intensityLevels = ['Low', 'Moderate', 'High'];
-
-  const handleLogin = () => {
-    if (username.trim()) {
-      setUser({ name: username.trim(), loggedIn: true });
-    }
-  };
 
   const handleTrainingPlanChange = (day, field, value) => {
     setTrainingPlan(prev => ({
@@ -279,41 +274,16 @@ const MarathonNutritionApp = () => {
     }
   };
 
-  if (!user.loggedIn) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-          <div className="text-center mb-6">
-            <Utensils className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Nutrition Training Coach</h1>
-            <p className="text-gray-600 mt-2">Personalized nutrition for any training goal</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Enter your name"
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              />
-            </div>
-            <button
-              onClick={handleLogin}
-              className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <User className="w-4 h-4" />
-              Get Started
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-indigo-600">Loading...</div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <Auth />;
   }
 
   return (
@@ -327,9 +297,9 @@ const MarathonNutritionApp = () => {
               <h1 className="text-xl font-bold text-gray-900">Nutrition Coach</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">Welcome, {user.name}!</span>
+              <span className="text-gray-600">Welcome, {user.email}!</span>
               <button
-                onClick={() => setUser({ name: '', loggedIn: false })}
+                onClick={signOut}
                 className="text-gray-500 hover:text-gray-700"
               >
                 Logout
@@ -574,8 +544,47 @@ const MarathonNutritionApp = () => {
                       <Calendar className="w-4 h-4" />
                       {day}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {['breakfast', 'lunch', 'dinner', 'dessert', 'snacks'].map((meal) => (
+                    {/* Main meals - 3 columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      {['breakfast', 'lunch', 'dinner'].map((meal) => (
+                        <div key={meal} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium text-gray-700 capitalize">
+                              {meal}
+                            </label>
+                            {mealPlan[day][meal] && (
+                              <button
+                                onClick={() => regenerateMeal(day, meal)}
+                                className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1"
+                                title="Regenerate this meal"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Regenerate
+                              </button>
+                            )}
+                          </div>
+                          <textarea
+                            value={mealPlan[day][meal]}
+                            onChange={(e) => handleMealEdit(day, meal, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            rows="3"
+                            placeholder={`Enter ${meal}...`}
+                          />
+                          {mealPlan[day][meal] && (
+                            <button
+                              onClick={() => getRecipe(day, meal)}
+                              className="w-full text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-green-700 mt-1"
+                            >
+                              Get Recipe
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Snacks and Dessert - 2 columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {['snacks', 'dessert'].map((meal) => (
                         <div key={meal} className="space-y-2">
                           <div className="flex justify-between items-center">
                             <label className="block text-sm font-medium text-gray-700 capitalize">
