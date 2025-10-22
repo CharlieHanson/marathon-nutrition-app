@@ -21,22 +21,48 @@ SEARCH_TERMS = [
     # Proteins
     "chicken breast", "salmon", "tuna", "turkey", "lean beef", "eggs",
     "greek yogurt", "cottage cheese", "protein powder", "tofu",
+    "shrimp", "cod", "tilapia", "pork loin", "lamb",
+    "chicken thighs", "ground turkey", "protein bar", "tempeh", "edamame",
     
     # Carbs
     "brown rice", "quinoa", "oatmeal", "sweet potato", "pasta",
     "whole wheat bread", "banana", "apple", "berries", "orange",
+    "white rice", "couscous", "bagel", "tortilla", "pita bread",
+    "rice cakes", "crackers", "cereal", "mango", "grapes", "toast",
+    "rice noodles", "whole grain", "buckwheat", "farro", "barley",
+    "dates", "raisins", "peach", "pear", "pineapple", "watermelon",
     
     # Vegetables
     "broccoli", "spinach", "kale", "carrots", "bell peppers",
     "asparagus", "green beans", "tomatoes", "cucumber", "avocado",
+    "zucchini", "cauliflower", "brussels sprouts", "lettuce", "mushrooms",
+    "onion", "celery", "eggplant",
+    "sweet corn", "peas", "beets", "squash", "arugula", "bok choy",
     
     # Fats
     "almonds", "peanut butter", "olive oil", "walnuts", "chia seeds",
-    "flax seeds", "cashews",
+    "flax seeds", "cashews", "pecans", "coconut oil", "butter",
+    "cream cheese", "sour cream", "cheese",
+    "almond butter", "sunflower seeds", "pumpkin seeds", "tahini",
+    "hemp seeds", "macadamia nuts", "pistachios",
     
-    # Common meals
+    # Dairy/Alternatives
+    "yogurt", "milk", "almond milk", "oat milk", "coconut milk",
+    "mozzarella", "cheddar cheese", "parmesan", "feta cheese",
+    
+    # Common meals/ingredients
     "pizza", "burger", "salad", "soup", "sandwich", "burrito",
-    "stir fry", "pasta sauce", "hummus", "granola"
+    "stir fry", "pasta sauce", "hummus", "granola",
+    "honey", "maple syrup", "salad dressing",
+    "soy sauce", "marinara sauce", "pesto", "guacamole", "salsa",
+    "rice bowl", "wrap", "taco", "quesadilla",
+    
+    # Desserts
+    "dark chocolate", "chocolate", "whipped cream", "ice cream",
+    "frozen yogurt", "protein shake", "smoothie", "fruit salad",
+    "energy balls", "protein balls", "greek yogurt parfait",
+    "chia pudding", "sorbet", "gelato", "pudding",
+    "brownie", "cookie", "muffin", "cake"
 ]
 
 def search_food(term, api_key):
@@ -80,12 +106,31 @@ def extract_nutrition(food_item):
     
     # Only return if we have all 4 macros
     if len(nutrients) == 4:
+        cal = nutrients['calories']
+        prot = nutrients['protein']
+        carbs = nutrients['carbs']
+        fat = nutrients['fat']
+        
+        # DATA QUALITY FILTERS:
+        # Skip pure oils (>800 cal with essentially 0 protein/carbs)
+        if cal > 800 and prot < 1 and carbs < 1:
+            return None
+        
+        # Skip extreme outliers (unrealistic per 100g serving)
+        if cal > 1000 or prot > 80 or carbs > 150 or fat > 80:
+            return None
+        
+        # Skip if description contains "oil" (catches olive oil, fish oil, etc.)
+        desc = food_item.get('description', '').lower()
+        if 'oil' in desc and cal > 500:
+            return None
+        
         return {
             'description': food_item.get('description', ''),
-            'calories': nutrients['calories'],
-            'protein': nutrients['protein'],
-            'carbs': nutrients['carbs'],
-            'fat': nutrients['fat']
+            'calories': cal,
+            'protein': prot,
+            'carbs': carbs,
+            'fat': fat
         }
     
     return None

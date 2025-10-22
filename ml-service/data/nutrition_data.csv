@@ -1,12 +1,10 @@
 description,calories,protein,carbs,fat
 "Chicken breast, rotisserie, skin not eaten",144.0,28.04,0.0,3.57
-"Chicken breast tenders, breaded, uncooked",1100.0,14.7,15.0,15.8
 "Chicken breast, roll, oven-roasted",562.0,14.6,1.79,7.65
 "Chicken breast, rotisserie, skin eaten",175.0,26.37,0.09,7.67
 "Chicken breast, sauteed, skin eaten",206.0,25.72,0.0,10.62
 Lomi salmon,60.0,7.55,3.31,1.86
 Salmon salad,213.0,10.82,2.73,17.36
-"Fish oil, salmon",902.0,0.0,0.0,100.0
 "Fish, salmon, canned",136.0,24.62,0.0,4.21
 "Fish, salmon, fried",307.0,17.45,11.72,20.68
 "Fish, tuna salad",187.0,16.0,9.41,9.26
@@ -15,7 +13,6 @@ Salmon salad,213.0,10.82,2.73,17.36
 "Fish, tuna, NFS",85.0,19.0,0.08,0.94
 "Fish, tuna, raw",109.0,24.4,0.0,0.49
 "Bologna, turkey",209.0,11.4,4.68,16.0
-"Fat, turkey",900.0,0.0,0.0,99.8
 "Frankfurter, turkey",933.0,12.2,3.81,17.3
 "Pastrami, turkey",139.0,16.3,3.34,6.21
 Turkey with gravy,125.0,20.46,1.58,3.46
@@ -26,7 +23,6 @@ Turkey with gravy,125.0,20.46,1.58,3.46
 "Beef, steak, strip, lean and fat eaten",262.0,26.23,0.0,16.65
 "Eggs, Grade A, Large, egg white",55.0,10.7,2.36,0.0
 "Eggs, Grade A, Large, egg whole",617.0,12.4,0.96,9.96
-"Eggs, Grade A, Large, egg yolk",1400.0,16.2,1.02,28.8
 "Egg, Benedict",288.0,13.81,8.48,22.1
 "Egg, creamed",148.0,7.79,5.52,10.35
 "Yogurt, Greek, with oats",149.0,9.22,20.02,3.67
@@ -41,20 +37,55 @@ Turkey with gravy,125.0,20.46,1.58,3.46
 Nutritional powder mix (EAS Soy Protein Powder),405.0,47.62,43.94,3.57
 Nutritional powder mix (EAS Whey Protein Powder),385.0,66.67,17.95,5.13
 "Nutritional powder mix, protein, NFS",352.0,78.13,6.25,1.56
-"Beverages, Protein powder soy based",1620.0,55.6,28.9,5.56
 "Beverages, Protein powder whey based",352.0,78.1,6.25,1.56
 Tofu yogurt,394.0,3.5,16.0,1.8
-"Tofu, fried",1130.0,18.8,8.86,20.2
-"Mayonnaise, made with tofu",1350.0,5.95,3.06,31.8
 "Soup, miso or tofu",24.0,2.21,2.3,0.85
 "Fish, tofu, and vegetables, tempura",177.0,4.01,4.53,16.0
+Shrimp cocktail,99.0,13.24,7.92,1.22
+Shrimp scampi,192.0,15.41,2.27,12.98
+"Shrimp, fried",218.0,12.26,12.41,12.94
+Shrimp chips,426.0,7.14,59.09,17.86
+"Fajita, shrimp",189.0,8.33,18.35,8.92
+Cape Cod,98.0,0.0,10.18,0.08
+"Fish, cod, fried",217.0,13.52,11.72,12.48
+"Fish, cod, grilled",108.0,19.36,0.0,2.79
+"Fish, cod, NFS",217.0,13.52,11.72,12.48
+"Fish, cod, steamed",87.0,19.29,0.0,0.52
+"Fish, tilapia, fried",237.0,17.18,11.72,13.46
+"Fish, tilapia, grilled",142.0,25.46,0.0,4.42
+"Fish, tilapia, NFS",160.0,24.95,0.01,6.65
+"Fish, tilapia, raw",400.0,20.1,0.0,1.7
+"Fish, tilapia, steamed",121.0,25.37,0.0,2.15
+"HORMEL ALWAYS TENDER, Boneless Pork Loin, Fresh Pork",145.0,19.0,0.76,7.18
+"Pork, fresh, loin, top loin (roasts), boneless, separable lean and fat, raw",696.0,21.3,0.0,8.33
+"Pork, fresh, loin, top loin (roasts), boneless, separable lean only, raw",132.0,22.4,0.0,4.06
+"Lamb, chop",264.0,27.36,0.0,16.27
+"Lamb, ground",281.0,24.55,0.0,19.49
+"Stew, lamb",117.0,8.19,6.29,6.39
+"Lamb, New Zealand, imported, ground lamb, raw",807.0,20.3,0.0,12.4
+Lamb or mutton loaf,192.0,14.05,7.44,11.58
+"Chicken thigh, rotisserie, skin eaten",226.0,22.51,0.12,15.08
+"Chicken thigh, rotisserie, skin not eaten",193.0,24.09,0.0,10.74
+"Chicken thigh, sauteed, skin eaten",243.0,22.61,0.0,16.29
+"Chicken thigh, sauteed, skin not eaten",192.0,24.07,0.0,9.91
+"Chicken thigh, stewed, skin eaten",227.0,22.39,0.0,15.31
+"Turkey, ground",211.0,26.87,0.0,11.5
+"Turkey, Ground, cooked",203.0,27.4,0.0,10.4
+"Turkey, Ground, raw",148.0,19.7,0.0,7.66
+"Turkey, ground, fat free, raw",468.0,23.6,0.0,1.95
+Nutrition bar (Snickers Marathon Protein Bar),415.0,25.0,50.5,12.5
+Nutrition bar (South Beach Living High Protein Bar),412.0,30.34,38.4,15.17
+Tempeh,192.0,20.3,7.64,10.8
+"Tempeh, cooked",195.0,19.9,7.62,11.4
+"Edamame, cooked",140.0,11.54,8.63,7.58
+"Edamame, frozen, prepared",507.0,11.9,8.91,5.2
+"Edamame, frozen, unprepared",109.0,11.2,7.61,4.73
 Beans and brown rice,162.0,6.4,24.29,4.54
 "Flour, rice, brown",365.0,7.19,75.5,3.85
 "Rice flour, brown",363.0,7.23,76.5,2.78
 "Flavored rice, brown and wild",106.0,2.72,19.34,2.15
 "Snacks, rice cakes, brown rice, buckwheat",380.0,9.0,80.1,3.5
 "Quinoa, cooked",120.0,4.4,21.3,1.92
-"Quinoa, uncooked",1540.0,14.1,64.2,6.07
 "Quinoa, fat added",146.0,4.2,20.22,5.42
 "Quinoa, no added fat",120.0,4.38,21.21,1.91
 "Oatmeal, multigrain",56.0,2.12,12.19,0.46
@@ -75,7 +106,6 @@ Flavored pasta,87.0,2.47,14.45,2.21
 "Bread, pita, whole wheat",262.0,9.8,55.89,1.71
 "Bread, whole wheat, with raisins",290.0,8.63,56.35,4.14
 "Bread, whole wheat, toasted",279.0,13.52,47.36,3.9
-"Bread, pita, whole-wheat",1100.0,9.8,55.9,1.71
 "Bananas, dehydrated, or banana powder",346.0,3.89,88.3,1.81
 "Banana, baked",161.0,0.82,32.43,3.21
 "Banana, raw",97.0,0.74,22.71,0.28
@@ -92,10 +122,94 @@ Banana nectar,74.0,0.26,18.01,0.13
 "Cobbler, berry",231.0,2.66,36.2,8.86
 "Crisp, berry",228.0,3.41,32.81,9.78
 "Orange, raw",50.0,0.92,11.78,0.14
-"Marmalade, orange",1030.0,0.3,66.3,0.0
 Orange Blossom,98.0,0.57,9.32,0.26
 Orange chicken,262.0,14.46,22.46,12.68
 "Sherbet, orange",602.0,1.1,30.4,2.0
+Beans and white rice,164.0,6.5,25.19,4.21
+"Rice, white, cooked, glutinous",96.0,2.01,20.97,0.19
+Black beans and white rice,160.0,6.01,24.42,4.32
+Kidney beans and white rice,158.0,5.9,23.91,4.29
+Pinto beans and white rice,167.0,6.09,25.82,4.38
+"Couscous, cooked",112.0,3.79,23.2,0.16
+"Couscous, dry",376.0,12.8,77.4,0.64
+"Couscous, plain, cooked",111.0,3.77,23.11,0.16
+Bagel,264.0,10.56,52.38,1.32
+"Bagel, multigrain",250.0,10.2,48.89,1.53
+"Bagel, wheat",250.0,10.2,48.89,1.53
+"Bagel, with raisins",268.0,9.83,55.07,1.21
+"Bagel, pumpernickel",250.0,10.2,48.89,1.53
+"Tortilla, corn",218.0,5.7,44.64,2.85
+"Tortilla, flour",306.0,8.2,49.38,7.99
+"Tortilla, NFS",262.0,6.95,47.01,5.42
+"Soup, tortilla",102.0,4.22,12.56,4.17
+"Tortilla chips, flavored",519.0,7.36,60.81,27.42
+"Bread, pita",275.0,9.1,55.7,1.2
+"Bread, pita with fruit",279.0,8.16,59.51,1.05
+"Bread, pita, white, enriched",275.0,9.1,55.7,1.2
+"Bread, pita, white, unenriched",275.0,9.1,55.7,1.2
+Rice cake,392.0,7.1,81.1,4.3
+Cake made with glutinous rice,279.0,2.49,53.57,6.51
+"Snacks, rice cakes, brown rice, corn",385.0,8.4,81.2,3.2
+"Crackers, snack, Goya Crackers",433.0,14.2,64.4,13.4
+"Crackers, oatmeal",455.0,7.3,70.73,16.4
+"Crackers, oyster",418.0,9.46,74.05,8.64
+"Crackers, wonton",521.0,10.33,51.9,31.72
+Graham crackers,430.0,6.69,77.66,10.6
+"Cereal or granola bar, with rice cereal",417.0,3.4,80.5,9.0
+"Cereal, crunch",398.0,4.31,82.08,5.53
+"Cereal, granola",420.0,9.82,67.35,13.01
+"Cereal, multigrain",373.0,11.64,73.96,3.59
+"Cereals ready-to-eat, POST, Honeycomb Cereal",394.0,6.01,86.6,2.93
+"Mango, raw",60.0,0.82,14.98,0.38
+"Mango, canned",65.0,0.62,16.22,0.3
+"Mango, frozen",60.0,0.82,14.98,0.38
+Mango nectar,51.0,0.11,13.12,0.06
+"Mango, dried",319.0,2.45,78.58,1.18
+"Grapes, raw",83.0,0.9,19.4,0.2
+"Grape juice, 100%",66.0,0.18,15.73,0.28
+"Grape leaves, canned",287.0,4.27,11.7,1.97
+"Grape leaves, raw",93.0,5.6,17.3,2.12
+"Grapes, muscadine, raw",57.0,0.81,13.9,0.47
+Melba toast,390.0,12.1,76.6,3.2
+Anisette toast,373.0,7.63,66.99,8.38
+Shrimp toast,222.0,8.46,12.01,15.42
+Zwieback toast,426.0,10.1,74.2,9.7
+"Cereal, cinnamon toast",414.0,5.88,75.23,9.92
+"Rice noodles, cooked",107.0,1.78,23.87,0.2
+"Long rice noodles, made from mung beans, cooked",84.0,0.04,20.66,0.01
+"Waffle, whole grain",364.0,9.23,38.61,19.21
+"Pancakes, whole grain",273.0,7.86,32.9,12.29
+"Muffin, whole grain",372.0,6.92,45.7,18.03
+Buckwheat,343.0,13.2,71.5,3.4
+Buckwheat groats,118.0,3.24,18.99,3.97
+Barley,139.0,2.2,27.23,2.74
+"Soup, barley",58.0,3.34,6.66,2.07
+"Barley, hulled",354.0,12.5,73.5,2.3
+"Bread, barley",274.0,10.67,47.54,4.53
+Date,282.0,2.45,75.03,0.39
+"Dates, medjool",277.0,1.81,75.0,0.15
+"Breakfast bar, date, with yogurt coating",348.0,3.7,70.9,7.3
+Raisins,299.0,3.3,79.32,0.25
+"Cookie, raisin",401.0,4.1,68.0,13.6
+"Bread, raisin",270.0,8.82,52.21,3.26
+"Raisins, seeded",296.0,2.52,78.5,0.54
+"Peach, raw",46.0,0.91,10.1,0.27
+"Peach, frozen",46.0,0.91,10.1,0.27
+"Cobbler, peach",217.0,2.22,32.98,8.66
+"Crisp, peach",214.0,2.98,29.6,9.59
+Peach nectar,49.0,0.1,11.61,0.57
+"Pear, raw",59.0,0.37,15.18,0.15
+Pear nectar,60.0,0.11,15.76,0.01
+"Pear, dried",262.0,1.87,69.7,0.63
+"Pears, raw",239.0,0.36,15.2,0.14
+"Pear, Asian, raw",42.0,0.5,10.65,0.23
+"Pineapple, raw",60.0,0.46,14.09,0.21
+"Pineapple, frozen",60.0,0.46,14.09,0.21
+"Pineapple, dried",347.0,1.22,84.11,0.71
+"Toppings, pineapple",253.0,0.1,66.4,0.1
+"Watermelon, raw",30.0,0.61,7.55,0.15
+"Watermelon juice, 100%",30.0,0.61,7.55,0.15
+"Seeds, watermelon seed kernels, dried",557.0,28.3,15.3,47.4
 Fried broccoli,223.0,4.28,22.41,12.88
 "Broccoli, raw",39.0,2.57,6.27,0.34
 Beef and broccoli,160.0,10.43,5.09,10.63
@@ -109,7 +223,6 @@ Spinach souffle,128.0,5.72,7.13,8.64
 "Carrot, dehydrated",341.0,8.1,79.6,1.49
 "Muffin, carrot",314.0,5.01,44.42,13.21
 "Carrots, raw, salad",212.0,1.25,17.62,15.74
-"TACO BELL, Nachos",1470.0,4.32,34.9,21.5
 "Asparagus, raw",85.0,2.2,3.88,0.12
 "Asparagus, frozen, unprepared",24.0,3.23,4.1,0.23
 "Asparagus, canned, cooked with oil",45.0,2.08,2.39,3.54
@@ -129,12 +242,60 @@ Cucumber and vegetable namasu,56.0,0.47,12.22,0.18
 "Cucumber, for use on a sandwich",16.0,0.62,2.95,0.18
 Avocado dressing,427.0,1.9,7.36,43.33
 "Avocado, raw",160.0,2.0,8.53,14.66
-"Oil, avocado",884.0,0.0,0.0,100.0
 "Avocado, for use on a sandwich",160.0,2.0,8.53,14.66
 "Avocados, raw, California",697.0,1.96,8.64,15.4
+"Bread, zucchini",306.0,5.05,42.64,13.14
+"Muffin, zucchini",306.0,5.05,42.64,13.14
+"Zucchini, pickled",35.0,1.0,7.44,0.28
+"Cake or cupcake, zucchini",371.0,2.52,51.08,17.52
+"Squash, zucchini, baby, raw",21.0,2.71,3.11,0.4
+Fried cauliflower,218.0,4.02,21.9,12.86
+"Cauliflower, pickled",41.0,1.59,8.98,0.25
+"Cauliflower, raw",25.0,1.92,4.97,0.28
+"Brussels sprouts, raw",43.0,3.38,8.95,0.3
+"Brussels sprouts, frozen, unprepared",41.0,3.78,7.86,0.41
+"Brussels sprouts, NS as to form, cooked",67.0,3.42,9.03,2.96
+"Lettuce, raw",20.0,0.92,3.69,0.1
+"Lettuce, cooked",49.0,1.06,4.21,3.11
+"Lettuce, Boston, raw",18.0,0.88,3.26,0.11
+"Lettuce, arugula, raw",25.0,2.58,3.65,0.66
+"Romaine lettuce, raw",21.0,0.98,4.06,0.07
+Fried mushrooms,222.0,4.63,21.9,12.91
+"Onions, raw",38.0,0.86,8.46,0.08
+"Bread, onion",238.0,8.81,44.32,2.95
+"Onions, green, raw",32.0,1.83,7.34,0.19
+"Onions, green, cooked",63.0,2.09,8.37,3.21
+"Celery, raw",17.0,0.49,3.32,0.16
+Celery juice,17.0,0.49,3.32,0.16
+"Celery, cooked",42.0,0.52,3.46,2.9
+"Celery, pickled",35.0,0.41,7.61,0.15
+Eggplant dip,183.0,4.8,8.15,14.98
+"Eggplant, pickled",205.0,0.9,9.77,0.7
+"Eggplant, raw",25.0,0.98,5.88,0.18
+"Corn, sweet, white, raw",86.0,3.22,19.0,1.18
+"Corn, sweet, yellow, raw",86.0,3.27,18.7,1.35
+"Babyfood, corn and sweet potatoes, strained",287.0,1.26,15.2,0.28
+"Corn, sweet, white, cooked, boiled, drained, with salt",97.0,3.34,21.7,1.41
+"Corn, sweet, white, frozen, kernels on cob, unprepared",98.0,3.28,23.5,0.78
+Wasabi peas,432.0,14.11,62.2,14.11
+Pea salad,180.0,2.98,10.64,14.02
+"Soup, split pea",61.0,3.55,10.59,0.7
+"Blackeyed peas, NFS",166.0,7.18,19.29,7.0
+"Beets, pickled",65.0,0.8,16.28,0.08
+Beet juice,25.0,0.72,5.91,0.06
+"Beets, raw",43.0,1.61,9.56,0.17
+"Spaghetti squash, cooked",49.0,0.65,6.26,2.8
+"Squash, summer, souffle",125.0,4.65,6.87,8.94
+"Squash, winter, souffle",78.0,3.4,12.14,2.26
+"Winter squash, raw",26.0,1.0,6.5,0.1
+"Summer squash, yellow, raw",19.0,1.01,3.88,0.27
+"Arugula, raw",105.0,2.58,3.65,0.66
+"Cabbage, chinese (pak-choi), raw",13.0,1.5,2.18,0.2
+"Cabbage, chinese (pak-choi), cooked, boiled, drained, with salt",48.0,1.56,1.78,0.16
+"Cabbage, chinese (pak-choi), cooked, boiled, drained, without salt",12.0,1.56,1.78,0.16
+"Cabbage, Chinese, raw",13.0,1.5,2.18,0.2
 Almond butter,641.0,20.67,21.11,52.72
 Almond chicken,195.0,15.66,4.46,13.16
-Almond oil,884.0,0.0,0.0,100.0
 Almond paste,458.0,9.0,47.81,27.74
 "Almonds, flavored",599.0,20.07,20.12,53.27
 Peanut butter,598.0,22.21,22.31,51.36
@@ -142,12 +303,6 @@ Peanut butter,598.0,22.21,22.31,51.36
 "Peanut butter sandwich, with regular peanut butter, on white bread",382.0,13.88,39.85,20.21
 "Peanut butter sandwich, with regular peanut butter, on wheat bread",380.0,15.16,37.38,20.46
 Peanut butter and jelly,432.0,11.18,46.13,25.69
-Olive oil,900.0,0.0,0.0,100.0
-"Oil, corn, peanut, and olive",884.0,0.0,0.0,100.0
-"Oil, olive, salad or cooking",3700.0,0.0,0.0,100.0
-"Oil, walnut",3700.0,0.0,0.0,100.0
-Walnut oil,884.0,0.0,0.0,100.0
-"Nuts, walnuts, english",2740.0,15.2,13.7,65.2
 "Nuts, walnuts, glazed",500.0,8.28,47.6,35.7
 "Walnuts, honey roasted",668.0,9.8,29.04,56.92
 Chia seeds,486.0,16.54,42.12,30.74
@@ -161,11 +316,81 @@ Cashew butter,609.0,12.12,30.3,53.03
 "Cashews, salted",578.0,14.7,31.4,47.48
 "Cashews, unroasted",574.0,15.31,32.69,46.35
 "Cashews, unsalted",584.0,14.85,31.71,47.96
+"Nuts, pecans",691.0,9.17,13.9,72.0
+"Pecans, NFS",750.0,9.96,12.7,73.28
+"Pecans, salted",747.0,9.57,12.2,73.35
+"Pecans, unroasted",750.0,9.96,12.7,73.28
+"Pecans, unsalted",754.0,9.66,12.32,74.08
+Fruit butter,173.0,0.39,42.47,0.3
+"Butter, tub",731.0,0.49,0.0,78.3
+"Butter, light",499.0,3.3,0.0,55.1
+"Cheese, cream",350.0,6.15,5.52,34.4
+"Cheese spread, cream cheese",295.0,7.1,3.5,28.6
+"Cream cheese, light",264.0,9.09,5.59,22.66
+"Cheese, cottage, creamed, with fruit",407.0,10.7,4.61,3.85
+"Sour cream, imitation",208.0,2.4,6.63,19.52
+"Sour cream, light",136.0,3.5,7.1,10.6
+"Sour cream, regular",196.0,3.07,5.56,17.99
+"Cream, sour, cultured",198.0,2.44,4.63,19.4
+"Cheese, processed cheese food",307.0,16.09,8.85,23.06
+"Cheese spread, Swiss cheese base",290.0,16.41,8.73,21.23
+"Cheese, cottage cheese, with gelatin dessert",83.0,6.82,9.03,2.27
+"Almond butter, lower sodium",645.0,20.79,21.24,53.04
+"Almond butter sandwich, on white bread",397.0,13.34,39.43,20.68
+"Almond butter sandwich, on wheat bread",395.0,14.62,36.97,20.93
+"Sunflower seeds, flavored",567.0,18.45,25.92,47.56
+"Sunflower seeds, NFS",582.0,19.33,24.07,49.8
+"Seeds, sunflower seed kernels, dried",584.0,20.8,20.0,51.5
+"Seeds, sunflower seed butter, without salt",617.0,17.3,23.3,55.2
+"Pumpkin seeds, salted",567.0,29.49,14.54,48.47
+"Pumpkin seeds, NFS",574.0,29.84,14.71,49.05
+"Pumpkin seeds, unsalted",574.0,29.84,14.71,49.05
+Tahini,697.0,19.71,14.18,62.4
+"Seeds, sesame butter, tahini, type of kernels unspecified",592.0,17.4,21.5,53.0
+"Seeds, sesame butter, tahini, from raw and stone ground kernels",570.0,17.8,26.2,48.0
+"Seeds, sesame butter, tahini, from roasted and toasted kernels (most common type)",595.0,17.0,21.2,53.8
+"Seeds, sesame butter, tahini, from unroasted kernels (non-chemically removed seed coat)",607.0,18.0,17.9,56.4
+"Seeds, hemp seed, hulled",553.0,31.6,8.67,48.8
+Macadamia nuts,716.0,7.79,12.83,76.08
+"Nuts, macadamia nuts, raw",718.0,7.91,13.8,75.8
+"Nuts, macadamia nuts, dry roasted, with salt added",716.0,7.79,12.8,76.1
+"Pistachio nuts, NFS",572.0,21.05,28.28,45.82
+"Pistachio nuts, salted",576.0,20.22,27.16,46.98
+"Pistachio nuts, unsalted",582.0,20.42,27.43,47.44
+Yogurt tube,81.0,4.34,13.68,1.03
+"Yogurt, liquid",74.0,3.65,12.55,1.07
+"Yogurt, NFS",94.0,6.67,10.22,2.87
+"Yogurt, soy",90.0,4.83,12.27,2.63
+Coconut milk,31.0,0.21,2.92,2.08
+"Crackers, milk",446.0,7.6,71.7,13.8
+Goat milk,69.0,3.56,4.45,4.14
+"Almond milk, chocolate",43.0,0.57,7.44,1.2
+"Almond milk, sweetened",30.0,0.53,4.31,1.18
+"Almond milk, unsweetened",15.0,0.55,0.34,1.22
+"Almond milk, NFS",20.0,0.54,1.53,1.21
+"Yogurt, almond milk",128.0,3.03,12.98,7.03
+Oat milk,45.0,0.66,5.37,2.33
+"Oats, raw",379.0,13.15,67.7,6.52
+"Cereal, oat bunches",392.0,7.43,76.25,6.06
+"Yogurt, coconut milk",108.0,2.37,12.91,5.61
+"Coconut milk, used in cooking",230.0,2.29,5.54,23.84
+"Rice, cooked with coconut milk",267.0,3.57,26.55,17.23
+"Beverages, coconut milk, sweetened, fortified with calcium, vitamins A, B12, D2",131.0,0.21,2.92,2.08
+"Cheese substitute, mozzarella",248.0,11.5,23.7,12.2
+"Cheese, Mozzarella, NFS",296.0,23.7,4.44,20.4
+"Cheese, mozzarella, nonfat",141.0,31.7,3.5,0.0
+"Cheese, mozzarella, low sodium",280.0,27.5,3.1,17.1
+"Cheese, Cheddar",409.0,23.3,2.44,34.0
+"Cheese, Cheddar, reduced fat",316.0,27.35,2.67,20.41
+"Cheese spread, American or Cheddar cheese base",290.0,16.41,8.73,21.23
+"Cheese sandwich, cheddar cheese, on white bread",325.0,15.14,29.95,16.11
+"Cheese, parmesan, hard",392.0,35.8,3.22,25.0
+"Cheese, Parmesan, hard",412.0,29.87,8.36,28.75
+"Cheese, parmesan, shredded",415.0,37.9,3.41,27.3
+"Cheese, Feta",273.0,19.71,5.58,19.08
 Dessert pizza,204.0,1.84,32.38,7.53
 Mexican pizza,249.0,15.47,15.3,13.94
 Pizza rolls,345.0,9.19,53.39,10.5
-"PIZZA HUT 12"" Cheese Pizza, Pan Crust",1170.0,11.7,29.9,12.6
-"PIZZA HUT 12"" Pepperoni Pizza, Pan Crust",1250.0,12.0,30.5,14.2
 "Veggie burger, on bun",224.0,12.96,30.82,5.2
 Cheeseburger (Burger King),265.0,14.02,23.66,12.32
 Hamburger (Burger King),254.0,13.63,25.98,10.24
@@ -175,10 +400,8 @@ Whopper (Burger King),226.0,11.34,17.33,12.37
 Beef salad,261.0,17.85,2.9,19.32
 Crab salad,188.0,9.4,1.27,15.89
 Lobster salad,187.0,10.29,1.22,15.4
-Pea salad,180.0,2.98,10.64,14.02
 "Soup, borscht",20.0,0.52,3.9,0.37
 "Soup, pepperpot",91.0,3.06,6.79,5.75
-"Soup, barley",58.0,3.34,6.66,2.07
 "Soup, bean",67.0,3.76,11.62,0.76
 "Soup, peanut",88.0,3.24,8.36,5.29
 "Crackers, sandwich",494.0,11.47,58.38,24.54
@@ -205,7 +428,126 @@ Pasta with tomato-based sauce and cheese,119.0,3.74,14.98,4.83
 "Hummus, plain",243.0,7.35,14.9,17.1
 "Hummus, home prepared",177.0,4.86,20.1,8.59
 "Cookie, granola",464.0,9.8,66.7,17.6
-"Cereal, granola",420.0,9.82,67.35,13.01
 Cereal or granola bar (Quaker Granola Bites),451.0,7.17,66.27,17.5
 Cereal or granola bar (Quaker Chewy Granola Bar),418.0,5.65,70.2,16.57
 Cereal or granola bar (Quaker Chewy Dipps Granola Bar),480.0,7.52,64.96,20.42
+Honey,304.0,0.3,82.4,0.0
+Honey butter,485.0,0.53,48.5,33.85
+Honey mustard dressing,464.0,0.87,23.33,40.83
+Honey mustard dip,275.0,1.77,25.16,18.01
+"Syrups, maple",260.0,0.04,67.0,0.06
+"Syrups, table blends, pancake, with 2% maple",265.0,0.0,69.6,0.1
+"Syrups, table blends, pancake, with 2% maple, with added potassium",265.0,0.0,69.6,0.1
+Pancake syrup,265.0,0.0,69.6,0.1
+Apple salad with dressing,180.0,1.45,12.2,14.24
+Pineapple salad with dressing,105.0,0.5,12.79,5.79
+"Cobb salad, no dressing",93.0,11.32,2.65,4.33
+Soy sauce,53.0,8.14,4.93,0.57
+Soy sauce made from soy (tamari),251.0,10.5,5.57,0.1
+Soy sauce made from soy and wheat (shoyu),53.0,8.14,4.93,0.57
+"Gravy, made with soy sauce",46.0,0.82,9.82,0.29
+Beef with soy-based sauce,187.0,15.86,3.35,12.38
+"OLIVE GARDEN, cheese ravioli with marinara sauce",664.0,7.44,19.6,5.61
+"Restaurant, Italian, cheese ravioli with marinara sauce",154.0,7.07,18.5,5.7
+"Sauce, pasta, spaghetti/marinara, ready-to-serve",186.0,1.41,8.05,1.48
+"CARRABBA'S ITALIAN GRILL, cheese ravioli with marinara sauce",156.0,7.96,17.6,6.0
+Pesto sauce,580.0,8.61,5.67,59.17
+"Sauce, pesto, CLASSICO, basil pesto, ready-to-serve",372.0,4.16,6.93,36.4
+"Guacamole, NFS",155.0,1.95,8.45,14.18
+"Salsa verde or salsa, green",38.0,1.13,6.36,0.89
+"Salsa, NFS",34.0,1.44,6.74,0.19
+"Salsa, red",34.0,1.44,6.74,0.19
+"Salsa, red, homemade",34.0,1.44,6.74,0.19
+"Dip, salsa con queso, cheese and salsa- medium",143.0,3.14,11.1,9.51
+"Burrito bowl, chicken, with rice",155.0,12.46,14.21,5.0
+"Burrito bowl, beef or pork, with rice",181.0,11.92,14.21,8.05
+"Burrito bowl, chicken, with beans and rice",145.0,13.03,10.58,5.44
+"Burrito bowl, beef or pork, with beans and rice",171.0,12.49,10.58,8.48
+"Burrito bowl, with beans",129.0,8.04,17.3,3.42
+Fish wrap sandwich,262.0,14.73,22.61,12.44
+Ham sandwich wrap,230.0,13.54,22.51,9.38
+"Sandwich wrap, NFS",232.0,12.77,23.3,9.4
+Turkey sandwich wrap,232.0,12.77,23.3,9.4
+Vegetable sandwich wrap,160.0,5.42,19.71,6.55
+"TACO BELL, Taco Salad",710.0,6.69,15.1,9.17
+"TACO BELL, Soft Taco with steak",225.0,11.8,17.2,12.1
+Taco sauce,11.0,1.16,0.72,0.68
+"Taco, fish",275.0,11.62,22.99,15.29
+"Taco, NFS",246.0,15.31,15.62,13.56
+"Quesadilla, chicken",287.0,14.45,27.32,12.99
+"Quesadilla, egg",249.0,10.91,20.06,13.71
+"Quesadilla, NFS",316.0,13.36,28.62,16.21
+"Quesadilla, with vegetables",253.0,8.14,29.18,11.32
+"ON THE BORDER, cheese quesadilla",394.0,16.9,24.2,25.5
+Dark chocolate candy,550.0,5.09,59.97,32.2
+Dark chocolate candy with nuts,560.0,8.26,52.18,36.27
+"Candies, SPECIAL DARK Chocolate Bar",556.0,5.54,60.5,32.4
+"Dark chocolate candy, other, NFS",550.0,5.09,59.97,32.2
+"Doughnut, chocolate, with chocolate icing",413.0,5.42,51.01,22.72
+Chocolate dip,393.0,3.33,65.31,13.22
+"Waffle, chocolate",437.0,9.07,48.64,22.7
+"Croissant, chocolate",421.0,7.4,49.4,22.79
+"Pancakes, chocolate",341.0,7.68,41.18,15.94
+"Cream, whipped",346.0,1.9,9.49,33.45
+"Frozen coffee drink, with whipped cream",83.0,1.58,12.89,2.77
+Ice cream cake,283.0,2.95,39.28,12.67
+Ice cream sandwich,990.0,4.29,37.1,8.57
+"Ice cream, chocolate",216.0,3.8,28.2,11.0
+"Ice cream, fried",282.0,3.94,32.77,15.16
+"Ice cream, NFS",221.0,3.57,26.36,11.3
+Frozen yogurt sandwich,204.0,3.9,34.38,6.25
+"Frozen yogurt, chocolate",131.0,3.0,21.6,3.6
+"Frozen yogurt, NFS",127.0,3.0,21.6,3.6
+"Frozen yogurt, vanilla",127.0,3.0,21.6,3.6
+"Frozen yogurts, chocolate",547.0,3.0,21.6,3.6
+"Nutritional drink or shake, high protein, ready-to-drink, NFS",61.0,6.59,0.85,3.38
+"Nutritional drink or shake, high protein, light, ready-to-drink, NFS",138.0,5.38,17.29,5.38
+"Nutritional drink or shake, high protein, ready-to-drink (Slim Fast)",61.0,6.59,0.85,3.38
+Milk shake with malt,125.0,3.76,13.64,6.11
+Vegetable smoothie,89.0,2.75,5.84,6.63
+"Fruit smoothie, light",53.0,2.61,9.71,0.61
+"Fruit smoothie, bottled",50.0,0.48,11.66,0.27
+"Fruit smoothie, NFS",66.0,2.32,11.98,1.1
+"Fruit and vegetable smoothie, bottled",53.0,0.6,12.53,0.26
+"Fruit salad, excluding citrus fruits, with salad dressing or mayonnaise",247.0,1.78,13.57,20.68
+"Fruit salad, including citrus fruits, with salad dressing or mayonnaise",240.0,1.87,13.02,20.26
+"Fruit salad, excluding citrus fruits, with marshmallows",251.0,1.78,17.54,19.48
+"Fruit salad, excluding citrus fruits, with pudding",137.0,1.86,18.11,6.48
+"Fruit salad, including citrus fruits, with marshmallows",244.0,1.87,16.95,19.1
+Cheese ball,441.0,17.89,4.84,38.88
+"Ladoo, round ball",411.0,6.92,46.74,22.25
+"Melon balls, frozen",33.0,0.84,7.94,0.25
+"Soup, Matzo ball",73.0,3.09,10.68,1.96
+"Cookie, rum ball, no bake",514.0,5.37,63.78,26.22
+"Yogurt parfait, with fruit",104.0,5.25,16.08,2.18
+"McDONALD'S, Fruit 'n Yogurt Parfait",439.0,2.73,20.7,1.3
+"Yogurt parfait, lowfat, with fruit and granola",84.0,3.36,15.9,1.01
+"McDONALD'S, Fruit 'n Yogurt Parfait (without granola)",90.0,2.47,17.7,1.13
+Banana pudding,160.0,2.57,28.0,4.26
+"Pudding, bread",156.0,5.6,23.53,4.86
+"Pudding, rice",108.0,3.23,18.39,2.15
+Noodle pudding,209.0,5.94,31.02,7.4
+Sorbet,110.0,0.79,27.12,0.05
+"Light ice cream, vanilla",174.0,4.38,25.44,6.14
+Freezer pop,79.0,0.0,19.23,0.24
+Frozen fruit juice bar,106.0,0.81,25.4,0.06
+"Frozen fruit juice bar, no sugar added",30.0,0.12,7.35,0.01
+"Gelato, chocolate",251.0,4.72,19.78,16.98
+"Gelato, vanilla",249.0,3.5,22.29,16.2
+"Pudding, chocolate, NFS",142.0,2.09,23.01,4.6
+"Cookie, butterscotch, brownie",405.0,4.8,63.9,16.3
+"Cookie, brownie, without icing",405.0,4.8,63.9,16.3
+"Cookie, brownie, with icing or filling",401.0,2.94,63.55,16.95
+"Cookie, brownie, NS as to icing",405.0,4.8,63.9,16.3
+"Cookies, brownies, commercially prepared",405.0,4.8,63.9,16.3
+"Cookie, biscotti",373.0,7.63,66.99,8.38
+"Cookie, rugelach",348.0,3.7,70.9,7.3
+"Cookie, molasses",430.0,5.6,73.8,12.8
+"Cookie, shortbread",514.0,5.37,63.78,26.22
+"Muffin, fruit",375.0,4.49,53.0,16.07
+"Muffin, cheese",367.0,9.72,30.51,23.0
+"Muffin, chocolate",395.0,6.54,50.94,18.75
+"Cake, fruit cake",324.0,2.9,61.6,9.1
+Popcorn cake,384.0,9.7,80.1,3.1
+"Cake, cream",286.0,3.84,30.02,17.03
+Bean cake,414.0,5.8,49.88,21.41
