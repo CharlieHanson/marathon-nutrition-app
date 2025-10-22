@@ -1,14 +1,17 @@
+// src/App.js
 import React, { useState } from 'react';
 import { Calendar, Utensils, CheckCircle, Plus, User, RotateCcw } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import Auth from './components/Auth';
 
 const MarathonNutritionApp = () => {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();
+
   const [currentView, setCurrentView] = useState('training');
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState('');
   const [recipeTitle, setRecipeTitle] = useState('');
+
   const [trainingPlan, setTrainingPlan] = useState({
     monday: { type: '', distance: '', intensity: '', notes: '' },
     tuesday: { type: '', distance: '', intensity: '', notes: '' },
@@ -18,8 +21,10 @@ const MarathonNutritionApp = () => {
     saturday: { type: '', distance: '', intensity: '', notes: '' },
     sunday: { type: '', distance: '', intensity: '', notes: '' }
   });
+
   const [showGroceryModal, setShowGroceryModal] = useState(false);
   const [groceryList, setGroceryList] = useState([]);
+
   const mockSuggestions = {
     monday: {
       breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
@@ -68,15 +73,12 @@ const MarathonNutritionApp = () => {
   const [userProfile, setUserProfile] = useState({
     height: '',
     weight: '',
-    goal: '', // 'lose', 'maintain', 'gain'
-    activityLevel: '', // 'low', 'moderate', 'high'
+    goal: '',
+    activityLevel: '',
     dietaryRestrictions: ''
   });
 
-  const [foodPreferences, setFoodPreferences] = useState({
-    likes: '',
-    dislikes: ''
-  });
+  const [foodPreferences, setFoodPreferences] = useState({ likes: '', dislikes: '' });
 
   const [mealPlan, setMealPlan] = useState({
     monday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
@@ -94,7 +96,6 @@ const MarathonNutritionApp = () => {
   const workoutTypes = [
     'Rest', 'Distance Run', 'Speed or Agility Training', 'Bike Ride', 'Walk/Hike', 'Swim', 'Strength Training', 'Sport Practice'
   ];
-  
   const intensityLevels = ['Low', 'Moderate', 'High'];
 
   const handleTrainingPlanChange = (day, field, value) => {
@@ -107,9 +108,8 @@ const MarathonNutritionApp = () => {
   const generateMealSuggestions = async () => {
     setIsTestingAI(true);
     setAiTestResult('Generating personalized meal plan...');
-    
+
     try {
-      // Prepare data to send to API
       const requestData = {
         userProfile,
         foodPreferences: {
@@ -119,12 +119,9 @@ const MarathonNutritionApp = () => {
         trainingPlan
       };
 
-      // Call our API endpoint
       const response = await fetch('/api/generate-meals', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
       });
 
@@ -136,13 +133,10 @@ const MarathonNutritionApp = () => {
       } else {
         throw new Error(result.error || 'Failed to generate meals');
       }
-
     } catch (error) {
       console.error('Error generating meals:', error);
       setAiTestResult(`❌ Error: ${error.message}`);
-      
-      // Fallback to mock data
-      setMealPlan(mockSuggestions);
+      setMealPlan(mockSuggestions); // fallback
     } finally {
       setIsTestingAI(false);
     }
@@ -150,11 +144,10 @@ const MarathonNutritionApp = () => {
 
   const regenerateMeal = async (day, mealType) => {
     const reason = prompt("Why would you like to regenerate this meal? (e.g., 'don't like salmon', 'too many carbs', 'prefer vegetarian option')");
-    
     if (!reason) return;
-    
+
     setAiTestResult(`Regenerating ${mealType} for ${day}...`);
-    
+
     try {
       const requestData = {
         userProfile,
@@ -180,10 +173,7 @@ const MarathonNutritionApp = () => {
       if (result.success) {
         setMealPlan(prev => ({
           ...prev,
-          [day]: {
-            ...prev[day],
-            [mealType]: result.meal
-          }
+          [day]: { ...prev[day], [mealType]: result.meal }
         }));
         setAiTestResult(`✅ ${mealType} for ${day} regenerated!`);
       } else {
@@ -196,16 +186,12 @@ const MarathonNutritionApp = () => {
 
   const getRecipe = async (day, mealType) => {
     setAiTestResult(`Getting recipe for ${mealPlan[day][mealType]}...`);
-    
+
     try {
       const response = await fetch('/api/get-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          meal: mealPlan[day][mealType],
-          day,
-          mealType 
-        })
+        body: JSON.stringify({ meal: mealPlan[day][mealType], day, mealType })
       });
 
       const result = await response.json();
@@ -214,7 +200,7 @@ const MarathonNutritionApp = () => {
         setRecipeTitle(mealPlan[day][mealType]);
         setCurrentRecipe(result.recipe);
         setShowRecipeModal(true);
-        setAiTestResult(`✅ Recipe generated!`);
+        setAiTestResult('✅ Recipe generated!');
       } else {
         throw new Error(result.error);
       }
@@ -239,25 +225,19 @@ const MarathonNutritionApp = () => {
 
   const generateGroceryList = async () => {
     setAiTestResult('Generating grocery list...');
-    
+
     try {
-      // Collect all meals from the week
       const allMeals = [];
-      Object.entries(mealPlan).forEach(([day, meals]) => {
-        Object.entries(meals).forEach(([mealType, meal]) => {
-          if (meal.trim()) {
-            allMeals.push(meal);
-          }
+      Object.entries(mealPlan).forEach(([_, meals]) => {
+        Object.values(meals).forEach((meal) => {
+          if (meal.trim()) allMeals.push(meal);
         });
       });
 
       const response = await fetch('/api/generate-grocery-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          meals: allMeals,
-          userProfile
-        })
+        body: JSON.stringify({ meals: allMeals, userProfile })
       });
 
       const result = await response.json();
@@ -274,6 +254,7 @@ const MarathonNutritionApp = () => {
     }
   };
 
+  // ---- AUTH GATES ----
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -282,10 +263,11 @@ const MarathonNutritionApp = () => {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return <Auth />;
   }
 
+  // ---- APP UI ----
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -297,12 +279,15 @@ const MarathonNutritionApp = () => {
               <h1 className="text-xl font-bold text-gray-900">Nutrition Coach</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">Welcome, {user.email}!</span>
+              <span className="text-gray-600">Welcome, {user?.email ?? 'Guest'}!</span>
               <button
-                onClick={signOut}
+                onClick={() => {
+                  if (isGuest) disableGuestMode();
+                  else signOut();
+                }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                Logout
+                {isGuest ? 'Exit Guest Mode' : 'Logout'}
               </button>
             </div>
           </div>
@@ -392,12 +377,10 @@ const MarathonNutritionApp = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">User Profile</h2>
               <p className="text-gray-600 mb-6">Tell us about yourself so we can personalize your nutrition plan.</p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Height
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Height</label>
                   <input
                     type="text"
                     placeholder="e.g., 5'8&quot; or 173cm"
@@ -406,11 +389,9 @@ const MarathonNutritionApp = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Weight
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Weight</label>
                   <input
                     type="text"
                     placeholder="e.g., 150 lbs or 68 kg"
@@ -419,11 +400,9 @@ const MarathonNutritionApp = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Weight Goal
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Weight Goal</label>
                   <select
                     value={userProfile.goal}
                     onChange={(e) => handleProfileChange('goal', e.target.value)}
@@ -435,11 +414,9 @@ const MarathonNutritionApp = () => {
                     <option value="gain">Gain weight</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Activity Level (outside training)
-                  </label>
+                  <label className="block text sm font-medium text-gray-700 mb-2">Activity Level (outside training)</label>
                   <select
                     value={userProfile.activityLevel}
                     onChange={(e) => handleProfileChange('activityLevel', e.target.value)}
@@ -451,11 +428,9 @@ const MarathonNutritionApp = () => {
                     <option value="high">High (active job, lots of movement)</option>
                   </select>
                 </div>
-                
+
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dietary Restrictions (optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Dietary Restrictions (optional)</label>
                   <textarea
                     placeholder="e.g., vegetarian, gluten-free, nut allergies, etc."
                     value={userProfile.dietaryRestrictions}
@@ -474,12 +449,10 @@ const MarathonNutritionApp = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Food Preferences</h2>
               <p className="text-gray-600 mb-6">Describe the foods you like and dislike to personalize your meal suggestions.</p>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Foods I Like
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Foods I Like</label>
                   <textarea
                     placeholder="e.g., chicken, salmon, quinoa, berries, Greek yogurt, avocado..."
                     value={foodPreferences.likes}
@@ -488,11 +461,9 @@ const MarathonNutritionApp = () => {
                     rows="4"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Foods I Dislike
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Foods I Dislike</label>
                   <textarea
                     placeholder="e.g., seafood, mushrooms, spicy food, dairy..."
                     value={foodPreferences.dislikes}
@@ -530,13 +501,13 @@ const MarathonNutritionApp = () => {
                   )}
                 </div>
               </div>
-              
+
               {aiTestResult && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md whitespace-pre-line">
                   {aiTestResult}
                 </div>
               )}
-              
+
               <div className="space-y-6">
                 {Object.keys(mealPlan).map((day) => (
                   <div key={day} className="border rounded-lg p-4">
@@ -544,14 +515,13 @@ const MarathonNutritionApp = () => {
                       <Calendar className="w-4 h-4" />
                       {day}
                     </h3>
-                    {/* Main meals - 3 columns */}
+
+                    {/* Main meals */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       {['breakfast', 'lunch', 'dinner'].map((meal) => (
                         <div key={meal} className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <label className="block text-sm font-medium text-gray-700 capitalize">
-                              {meal}
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 capitalize">{meal}</label>
                             {mealPlan[day][meal] && (
                               <button
                                 onClick={() => regenerateMeal(day, meal)}
@@ -581,15 +551,13 @@ const MarathonNutritionApp = () => {
                         </div>
                       ))}
                     </div>
-                    
-                    {/* Snacks and Dessert - 2 columns */}
+
+                    {/* Snacks & dessert */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {['snacks', 'dessert'].map((meal) => (
                         <div key={meal} className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <label className="block text-sm font-medium text-gray-700 capitalize">
-                              {meal}
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 capitalize">{meal}</label>
                             {mealPlan[day][meal] && (
                               <button
                                 onClick={() => regenerateMeal(day, meal)}
