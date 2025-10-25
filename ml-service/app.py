@@ -17,6 +17,10 @@ models = {
 vectorizer = joblib.load('models/vectorizer.joblib')
 print("✅ Models loaded!")
 
+# Print PORT for debugging
+port = os.environ.get('PORT', 'NOT SET')
+print(f"🔍 PORT environment variable: {port}")
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy', 'service': 'ML Macro Predictor'})
@@ -50,6 +54,18 @@ def predict_macros():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# Add a root route for testing
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({
+        'status': 'running',
+        'service': 'ML Macro Predictor',
+        'endpoints': {
+            'health': '/health',
+            'predict': '/predict-macros'
+        }
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
