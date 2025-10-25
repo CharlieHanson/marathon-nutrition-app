@@ -1,8 +1,13 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, Utensils, CheckCircle, Plus, User, RotateCcw } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import Auth from './components/Auth';
+import {
+  fetchPersonalInfo,
+  saveUserProfile,
+  saveFoodPreferences,
+} from './dataClient';
 
 const MarathonNutritionApp = () => {
   const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();
@@ -19,7 +24,7 @@ const MarathonNutritionApp = () => {
     thursday: { type: '', distance: '', intensity: '', notes: '' },
     friday: { type: '', distance: '', intensity: '', notes: '' },
     saturday: { type: '', distance: '', intensity: '', notes: '' },
-    sunday: { type: '', distance: '', intensity: '', notes: '' }
+    sunday: { type: '', distance: '', intensity: '', notes: '' },
   });
 
   const [showGroceryModal, setShowGroceryModal] = useState(false);
@@ -30,44 +35,44 @@ const MarathonNutritionApp = () => {
       breakfast: 'Oatmeal with berries and Greek yogurt (Cal: 350, P: 15g, C: 45g, F: 8g)',
       lunch: 'Quinoa bowl with grilled chicken and avocado (Cal: 450, P: 30g, C: 40g, F: 12g)',
       dinner: 'Salmon with sweet potato and broccoli (Cal: 500, P: 35g, C: 35g, F: 18g)',
-      snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)'
+      snacks: 'Banana with almond butter (Cal: 200, P: 6g, C: 25g, F: 9g)',
     },
     tuesday: {
       breakfast: 'Scrambled eggs with spinach and whole grain toast (Cal: 320, P: 18g, C: 25g, F: 14g)',
       lunch: 'Turkey and avocado wrap with mixed greens (Cal: 420, P: 25g, C: 35g, F: 16g)',
       dinner: 'Pasta with lean ground turkey and vegetables (Cal: 550, P: 32g, C: 58g, F: 15g)',
-      snacks: 'Greek yogurt with mixed nuts (Cal: 180, P: 12g, C: 15g, F: 8g)'
+      snacks: 'Greek yogurt with mixed nuts (Cal: 180, P: 12g, C: 15g, F: 8g)',
     },
     wednesday: {
       breakfast: 'Greek yogurt parfait with granola and berries (Cal: 340, P: 16g, C: 42g, F: 10g)',
       lunch: 'Chicken and vegetable stir-fry with brown rice (Cal: 460, P: 28g, C: 45g, F: 14g)',
       dinner: 'Grilled fish with quinoa and steamed vegetables (Cal: 480, P: 33g, C: 38g, F: 16g)',
-      snacks: 'Apple slices with peanut butter (Cal: 190, P: 7g, C: 20g, F: 9g)'
+      snacks: 'Apple slices with peanut butter (Cal: 190, P: 7g, C: 20g, F: 9g)',
     },
     thursday: {
       breakfast: 'Smoothie bowl with protein powder, banana, and berries (Cal: 380, P: 22g, C: 48g, F: 8g)',
       lunch: 'Lentil soup with whole grain bread and side salad (Cal: 430, P: 18g, C: 58g, F: 12g)',
       dinner: 'Lean beef with roasted vegetables and sweet potato (Cal: 520, P: 36g, C: 34g, F: 20g)',
-      snacks: 'Trail mix with dried fruit and nuts (Cal: 210, P: 8g, C: 18g, F: 12g)'
+      snacks: 'Trail mix with dried fruit and nuts (Cal: 210, P: 8g, C: 18g, F: 12g)',
     },
     friday: {
       breakfast: 'Whole grain cereal with milk and sliced banana (Cal: 310, P: 12g, C: 52g, F: 6g)',
       lunch: 'Tuna salad with mixed greens and chickpeas (Cal: 440, P: 26g, C: 32g, F: 18g)',
       dinner: 'Chicken breast with brown rice and asparagus (Cal: 490, P: 34g, C: 42g, F: 14g)',
-      snacks: 'Cottage cheese with fresh berries (Cal: 160, P: 14g, C: 18g, F: 4g)'
+      snacks: 'Cottage cheese with fresh berries (Cal: 160, P: 14g, C: 18g, F: 4g)',
     },
     saturday: {
       breakfast: 'Whole grain pancakes with Greek yogurt and fresh fruit (Cal: 420, P: 18g, C: 58g, F: 12g)',
       lunch: 'Chicken Caesar salad wrap with whole wheat tortilla (Cal: 480, P: 28g, C: 38g, F: 20g)',
       dinner: 'Pasta with marinara sauce and lean turkey meatballs (Cal: 580, P: 30g, C: 65g, F: 18g)',
-      snacks: 'Energy balls made with oats, dates, and nuts (Cal: 220, P: 6g, C: 28g, F: 10g)'
+      snacks: 'Energy balls made with oats, dates, and nuts (Cal: 220, P: 6g, C: 28g, F: 10g)',
     },
     sunday: {
       breakfast: 'Avocado toast with poached eggs and tomatoes (Cal: 390, P: 16g, C: 32g, F: 22g)',
       lunch: 'Quinoa salad with chickpeas, vegetables, and feta (Cal: 450, P: 20g, C: 48g, F: 16g)',
       dinner: 'Grilled chicken with roasted sweet potatoes and green beans (Cal: 510, P: 35g, C: 40g, F: 16g)',
-      snacks: 'Hummus with carrot and cucumber sticks (Cal: 140, P: 6g, C: 16g, F: 6g)'
-    }
+      snacks: 'Hummus with carrot and cucumber sticks (Cal: 140, P: 6g, C: 16g, F: 6g)',
+    },
   };
 
   const [userProfile, setUserProfile] = useState({
@@ -75,10 +80,13 @@ const MarathonNutritionApp = () => {
     weight: '',
     goal: '',
     activityLevel: '',
-    dietaryRestrictions: ''
+    dietaryRestrictions: '',
   });
 
-  const [foodPreferences, setFoodPreferences] = useState({ likes: '', dislikes: '' });
+  const [foodPreferences, setFoodPreferences] = useState({
+    likes: '',
+    dislikes: '',
+  });
 
   const [mealPlan, setMealPlan] = useState({
     monday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
@@ -87,23 +95,85 @@ const MarathonNutritionApp = () => {
     thursday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
     friday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
     saturday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
-    sunday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' }
+    sunday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '' },
   });
 
   const [aiTestResult, setAiTestResult] = useState('');
   const [isTestingAI, setIsTestingAI] = useState(false);
 
   const workoutTypes = [
-    'Rest', 'Distance Run', 'Speed or Agility Training', 'Bike Ride', 'Walk/Hike', 'Swim', 'Strength Training', 'Sport Practice'
+    'Rest',
+    'Distance Run',
+    'Speed or Agility Training',
+    'Bike Ride',
+    'Walk/Hike',
+    'Swim',
+    'Strength Training',
+    'Sport Practice',
   ];
   const intensityLevels = ['Low', 'Moderate', 'High'];
 
   const handleTrainingPlanChange = (day, field, value) => {
-    setTrainingPlan(prev => ({
+    setTrainingPlan((prev) => ({
       ...prev,
-      [day]: { ...prev[day], [field]: value }
+      [day]: { ...prev[day], [field]: value },
     }));
   };
+
+  // --------- SAVE/LOAD PERSONAL INFO ---------
+
+  // Load from DB after login (non-guest)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user || isGuest) return;
+      try {
+        const data = await fetchPersonalInfo(user.id);
+        if (cancelled) return;
+
+        if (data.userProfile) {
+          setUserProfile({
+            height: data.userProfile.height || '',
+            weight: data.userProfile.weight || '',
+            goal: data.userProfile.goal || '',
+            activityLevel: data.userProfile.activity_level || '',
+            dietaryRestrictions: data.userProfile.dietary_restrictions || '',
+          });
+        }
+        if (data.foodPreferences) {
+          setFoodPreferences({
+            likes: data.foodPreferences.likes || '',
+            dislikes: data.foodPreferences.dislikes || '',
+          });
+        }
+      } catch (e) {
+        console.error('Load personal info failed:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isGuest]);
+
+  const saveProfile = async () => {
+    if (!user || isGuest) return;
+    const { error } = await saveUserProfile(user.id, userProfile);
+    if (error) {
+      console.error(error);
+      alert('Failed to save profile');
+    }
+  };
+
+  const savePrefs = async () => {
+    if (!user || isGuest) return;
+    const { error } = await saveFoodPreferences(user.id, foodPreferences);
+    if (error) {
+      console.error(error);
+      alert('Failed to save preferences');
+    }
+  };
+
+  // --------- MEAL GEN + RECIPE (unchanged) ---------
 
   const generateMealSuggestions = async () => {
     setIsTestingAI(true);
@@ -114,15 +184,15 @@ const MarathonNutritionApp = () => {
         userProfile,
         foodPreferences: {
           likes: Array.from(foodPreferences.likes),
-          dislikes: Array.from(foodPreferences.dislikes)
+          dislikes: Array.from(foodPreferences.dislikes),
         },
-        trainingPlan
+        trainingPlan,
       };
 
       const response = await fetch('/api/generate-meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
 
       const result = await response.json();
@@ -143,7 +213,9 @@ const MarathonNutritionApp = () => {
   };
 
   const regenerateMeal = async (day, mealType) => {
-    const reason = prompt("Why would you like to regenerate this meal? (e.g., 'don't like salmon', 'too many carbs', 'prefer vegetarian option')");
+    const reason = prompt(
+      "Why would you like to regenerate this meal? (e.g., 'don't like salmon', 'too many carbs', 'prefer vegetarian option')"
+    );
     if (!reason) return;
 
     setAiTestResult(`Regenerating ${mealType} for ${day}...`);
@@ -153,27 +225,27 @@ const MarathonNutritionApp = () => {
         userProfile,
         foodPreferences: {
           likes: Array.from(foodPreferences.likes),
-          dislikes: Array.from(foodPreferences.dislikes)
+          dislikes: Array.from(foodPreferences.dislikes),
         },
         trainingPlan,
         day,
         mealType,
         reason,
-        currentMeal: mealPlan[day][mealType]
+        currentMeal: mealPlan[day][mealType],
       };
 
       const response = await fetch('/api/regenerate-meal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setMealPlan(prev => ({
+        setMealPlan((prev) => ({
           ...prev,
-          [day]: { ...prev[day], [mealType]: result.meal }
+          [day]: { ...prev[day], [mealType]: result.meal },
         }));
         setAiTestResult(`✅ ${mealType} for ${day} regenerated!`);
       } else {
@@ -191,7 +263,11 @@ const MarathonNutritionApp = () => {
       const response = await fetch('/api/get-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meal: mealPlan[day][mealType], day, mealType })
+        body: JSON.stringify({
+          meal: mealPlan[day][mealType],
+          day,
+          mealType,
+        }),
       });
 
       const result = await response.json();
@@ -200,7 +276,7 @@ const MarathonNutritionApp = () => {
         setRecipeTitle(mealPlan[day][mealType]);
         setCurrentRecipe(result.recipe);
         setShowRecipeModal(true);
-        setAiTestResult('✅ Recipe generated!');
+        setAiTestResult(`✅ Recipe generated!`);
       } else {
         throw new Error(result.error);
       }
@@ -210,16 +286,16 @@ const MarathonNutritionApp = () => {
   };
 
   const handleMealEdit = (day, meal, value) => {
-    setMealPlan(prev => ({
+    setMealPlan((prev) => ({
       ...prev,
-      [day]: { ...prev[day], [meal]: value }
+      [day]: { ...prev[day], [meal]: value },
     }));
   };
 
   const handleProfileChange = (field, value) => {
-    setUserProfile(prev => ({
+    setUserProfile((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -229,7 +305,7 @@ const MarathonNutritionApp = () => {
     try {
       const allMeals = [];
       Object.entries(mealPlan).forEach(([_, meals]) => {
-        Object.values(meals).forEach((meal) => {
+        Object.entries(meals).forEach(([__ , meal]) => {
           if (meal.trim()) allMeals.push(meal);
         });
       });
@@ -237,7 +313,10 @@ const MarathonNutritionApp = () => {
       const response = await fetch('/api/generate-grocery-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meals: allMeals, userProfile })
+        body: JSON.stringify({
+          meals: allMeals,
+          userProfile,
+        }),
       });
 
       const result = await response.json();
@@ -254,7 +333,7 @@ const MarathonNutritionApp = () => {
     }
   };
 
-  // ---- AUTH GATES ----
+  // ---------- AUTH GATES ----------
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -267,7 +346,7 @@ const MarathonNutritionApp = () => {
     return <Auth />;
   }
 
-  // ---- APP UI ----
+  // ---------- APP UI ----------
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -312,7 +391,13 @@ const MarathonNutritionApp = () => {
                 {view === 'profile' && <User className="w-4 h-4 inline mr-2" />}
                 {view === 'preferences' && <CheckCircle className="w-4 h-4 inline mr-2" />}
                 {view === 'meals' && <Utensils className="w-4 h-4 inline mr-2" />}
-                {view === 'training' ? 'Training Plan' : view === 'profile' ? 'Profile' : view === 'preferences' ? 'Food Preferences' : 'Meal Plan'}
+                {view === 'training'
+                  ? 'Training Plan'
+                  : view === 'profile'
+                  ? 'Profile'
+                  : view === 'preferences'
+                  ? 'Food Preferences'
+                  : 'Meal Plan'}
               </button>
             ))}
           </div>
@@ -324,7 +409,10 @@ const MarathonNutritionApp = () => {
         {currentView === 'training' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Weekly Training Schedule</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Weekly Training Schedule</h2>
+                {/* (optional) add a save button for training plan later */}
+              </div>
               <div className="space-y-4">
                 {Object.keys(trainingPlan).map((day) => (
                   <div key={day} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
@@ -340,7 +428,9 @@ const MarathonNutritionApp = () => {
                       >
                         <option value="">Select workout</option>
                         {workoutTypes.map((type) => (
-                          <option key={type} value={type}>{type}</option>
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -361,7 +451,9 @@ const MarathonNutritionApp = () => {
                       >
                         <option value="">Intensity</option>
                         {intensityLevels.map((level) => (
-                          <option key={level} value={level}>{level}</option>
+                          <option key={level} value={level}>
+                            {level}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -416,7 +508,7 @@ const MarathonNutritionApp = () => {
                 </div>
 
                 <div>
-                  <label className="block text sm font-medium text-gray-700 mb-2">Activity Level (outside training)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Activity Level (outside training)</label>
                   <select
                     value={userProfile.activityLevel}
                     onChange={(e) => handleProfileChange('activityLevel', e.target.value)}
@@ -440,6 +532,13 @@ const MarathonNutritionApp = () => {
                   />
                 </div>
               </div>
+
+              <button
+                onClick={saveProfile}
+                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+              >
+                Save Profile
+              </button>
             </div>
           </div>
         )}
@@ -448,7 +547,9 @@ const MarathonNutritionApp = () => {
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Food Preferences</h2>
-              <p className="text-gray-600 mb-6">Describe the foods you like and dislike to personalize your meal suggestions.</p>
+              <p className="text-gray-600 mb-6">
+                Describe the foods you like and dislike to personalize your meal suggestions.
+              </p>
 
               <div className="space-y-4">
                 <div>
@@ -456,7 +557,7 @@ const MarathonNutritionApp = () => {
                   <textarea
                     placeholder="e.g., chicken, salmon, quinoa, berries, Greek yogurt, avocado..."
                     value={foodPreferences.likes}
-                    onChange={(e) => setFoodPreferences(prev => ({ ...prev, likes: e.target.value }))}
+                    onChange={(e) => setFoodPreferences((prev) => ({ ...prev, likes: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     rows="4"
                   />
@@ -467,12 +568,19 @@ const MarathonNutritionApp = () => {
                   <textarea
                     placeholder="e.g., seafood, mushrooms, spicy food, dairy..."
                     value={foodPreferences.dislikes}
-                    onChange={(e) => setFoodPreferences(prev => ({ ...prev, dislikes: e.target.value }))}
+                    onChange={(e) => setFoodPreferences((prev) => ({ ...prev, dislikes: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     rows="4"
                   />
                 </div>
               </div>
+
+              <button
+                onClick={savePrefs}
+                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+              >
+                Save Preferences
+              </button>
             </div>
           </div>
         )}
@@ -491,7 +599,7 @@ const MarathonNutritionApp = () => {
                     <Plus className="w-4 h-4" />
                     {isTestingAI ? 'Generating...' : 'Generate AI Suggestions'}
                   </button>
-                  {Object.values(mealPlan).some(day => Object.values(day).some(meal => meal.trim())) && (
+                  {Object.values(mealPlan).some((day) => Object.values(day).some((meal) => meal.trim())) && (
                     <button
                       onClick={generateGroceryList}
                       className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
@@ -601,17 +709,12 @@ const MarathonNutritionApp = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-900">Recipe: {recipeTitle}</h3>
-              <button
-                onClick={() => setShowRecipeModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
+              <button onClick={() => setShowRecipeModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">
                 ×
               </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[60vh]">
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
-                {currentRecipe}
-              </pre>
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{currentRecipe}</pre>
             </div>
             <div className="p-4 border-t bg-gray-50">
               <button
@@ -631,10 +734,7 @@ const MarathonNutritionApp = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-900">Weekly Grocery List</h3>
-              <button
-                onClick={() => setShowGroceryModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
+              <button onClick={() => setShowGroceryModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">
                 ×
               </button>
             </div>
@@ -645,7 +745,9 @@ const MarathonNutritionApp = () => {
                     <h4 className="font-semibold text-gray-800 mb-2">{category.category}</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
                       {category.items.map((item, itemIndex) => (
-                        <li key={itemIndex} className="text-gray-700">{item}</li>
+                        <li key={itemIndex} className="text-gray-700">
+                          {item}
+                        </li>
                       ))}
                     </ul>
                   </div>
