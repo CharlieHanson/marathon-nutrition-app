@@ -35,6 +35,12 @@ async function validateMacros(meals) {
   for (const [day, dayMeals] of Object.entries(meals)) {
     for (const [mealType, mealDescription] of Object.entries(dayMeals)) {
       if (!mealDescription) continue;
+
+      // Don't validate snacks/desserts with ML (too different from training data)
+      if (mealType === 'snacks' || mealType === 'dessert') {
+        validatedMeals[day][mealType] = mealDescription; // Keep GPT's estimate
+        continue;
+      }
       
       try {
         // Call ML API to validate
