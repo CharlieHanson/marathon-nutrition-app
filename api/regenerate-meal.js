@@ -24,14 +24,29 @@ function extractMacrosFromString(mealString) {
 function replaceMacrosInString(mealString, newMacros) {
   return mealString.replace(
     /\(Cal: \d+, P: \d+g, C: \d+g, F: \d+g\)/,
-    `(Cal: ${Math.round(newMacros.calories)}, P: ${Math.round(newMacros.protein)}g, C: ${Math.round(newMacros.carbs)}g, F: ${Math.round(newMacros.fat)}g)`
+    `(Cal: ${Math.round(newMacros.calories)}, P: ${Math.round(newMacros.protein)}g, C: ${Math.round(newMacros.carbs)}g, F: ${Math.round(newMacros.fat)}g) ✓ ML Verified`
   );
 }
 
-// Validate single meal with ML
-async function validateMeal(mealDescription) {
+// Validate single meal with meal-type-specific ML model
+async function validateMeal(mealDescription, mealType) {
   try {
-    const mlResponse = await fetch(`${ML_API_URL}/predict-macros`, {
+    // Map meal types to API endpoints
+    const endpointMap = {
+      'breakfast': '/predict-breakfast',
+      'lunch': '/predict-lunch',
+      'dinner': '/predict-dinner',
+      'snacks': '/predict-snacks',
+      'dessert': '/predict-desserts'
+    };
+    
+    const endpoint = endpointMap[mealType];
+    if (!endpoint) {
+      console.log(`No ML model for meal type: ${mealType}`);
+      return mealDescription;
+    }
+    
+    const mlResponse = await fetch(`${ML_API_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ meal: mealDescription })
@@ -94,9 +109,9 @@ Respond with only the meal text, no extra formatting.`;
 
     const gptMeal = response.choices[0].message.content.trim();
     
-    // Validate with ML
-    console.log('🤖 Validating regenerated meal with ML...');
-    const validatedMeal = await validateMeal(gptMeal);
+    // Validate with meal-type-specific ML model
+    console.log(`🤖 Validating regenerated ${mealType} with ML...`);
+    const validatedMeal = await validateMeal(gptMeal, mealType);
     console.log('✅ ML validation complete');
 
     res.status(200).json({ success: true, meal: validatedMeal });

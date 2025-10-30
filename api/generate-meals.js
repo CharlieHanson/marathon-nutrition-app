@@ -28,23 +28,33 @@ function replaceMacrosInString(mealString, newMacros) {
   );
 }
 
-// Validate macros using ML API
+// Validate macros using meal-type-specific ML API
 async function validateMacros(meals) {
   const validatedMeals = { ...meals };
+  
+  // Map meal types to API endpoints
+  const endpointMap = {
+    'breakfast': '/predict-breakfast',
+    'lunch': '/predict-lunch',
+    'dinner': '/predict-dinner',
+    'snacks': '/predict-snacks',
+    'dessert': '/predict-desserts'  // Note: dessert → desserts
+  };
   
   for (const [day, dayMeals] of Object.entries(meals)) {
     for (const [mealType, mealDescription] of Object.entries(dayMeals)) {
       if (!mealDescription) continue;
-
-      // Don't validate snacks/desserts with ML (too different from training data)
-      if (mealType === 'snacks' || mealType === 'dessert') {
-        validatedMeals[day][mealType] = mealDescription; // Keep GPT's estimate
+      
+      // Get the correct endpoint for this meal type
+      const endpoint = endpointMap[mealType];
+      if (!endpoint) {
+        console.log(`No ML model for meal type: ${mealType}`);
         continue;
       }
       
       try {
-        // Call ML API to validate
-        const mlResponse = await fetch(`${ML_API_URL}/predict-macros`, {
+        // Call meal-type-specific ML API
+        const mlResponse = await fetch(`${ML_API_URL}${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ meal: mealDescription })
@@ -62,19 +72,15 @@ async function validateMacros(meals) {
           
           // If ML predicts >20% different, use ML's numbers
           if (percentDiff > 20 && gptMacros.calories > 0) {
-            console.log(`⚠️ Large difference detected for ${day} ${mealType}: GPT=${gptMacros.calories}cal, ML=${mlMacros.calories}cal`);
+            console.log(`⚠️ Large difference for ${day} ${mealType}: GPT=${gptMacros.calories}cal, ML=${mlMacros.calories}cal`);
             validatedMeals[day][mealType] = replaceMacrosInString(mealDescription, mlMacros);
           } else if (gptMacros.calories > 0) {
-            // ML agrees with GPT (within 20%), just add verification badge
-            validatedMeals[day][mealType] = mealDescription.replace(
-              /\)$/,
-              ') ✓'
-            );
+            // ML agrees with GPT, add verification badge
+            validatedMeals[day][mealType] = mealDescription.replace(/\)$/, ') ✓');
           }
         }
       } catch (error) {
         console.error(`ML validation failed for ${day} ${mealType}:`, error.message);
-        // Keep GPT's original if ML fails
       }
     }
   }
