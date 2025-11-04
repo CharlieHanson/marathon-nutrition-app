@@ -24,7 +24,7 @@ function extractMacrosFromString(mealString) {
 function replaceMacrosInString(mealString, newMacros) {
   return mealString.replace(
     /\(Cal: \d+, P: \d+g, C: \d+g, F: \d+g\)/,
-    `(Cal: ${Math.round(newMacros.calories)}, P: ${Math.round(newMacros.protein)}g, C: ${Math.round(newMacros.carbs)}g, F: ${Math.round(newMacros.fat)}g)`
+    `(Cal: ${Math.round(newMacros.calories)}, P: ${Math.round(newMacros.protein)}g, C: ${Math.round(newMacros.carbs)}g, F: ${Math.round(newMacros.fat)}g) test`
   );
 }
 
@@ -38,7 +38,7 @@ async function validateMacros(meals) {
     'lunch': '/predict-lunch',
     'dinner': '/predict-dinner',
     'snacks': '/predict-snacks',
-    'dessert': '/predict-desserts'  // Note: dessert → desserts
+    'dessert': '/predict-desserts' 
   };
   
   for (const [day, dayMeals] of Object.entries(meals)) {
