@@ -336,8 +336,8 @@ const MarathonNutritionApp = () => {
   // ---------- AUTH GATES ----------
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-indigo-600">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center">
+        <div className="text-primary font-semibold">Loading...</div>
       </div>
     );
   }
@@ -354,7 +354,7 @@ const MarathonNutritionApp = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-2">
-              <Utensils className="w-8 h-8 text-indigo-600" />
+              <img src="/logo.png" alt="Logo" className="w-8 h-8" />
               <h1 className="text-xl font-bold text-gray-900">Nutrition Coach</h1>
             </div>
             <div className="flex items-center gap-4">
@@ -383,7 +383,7 @@ const MarathonNutritionApp = () => {
                 onClick={() => setCurrentView(view)}
                 className={`py-4 px-2 border-b-2 font-medium text-sm capitalize transition-colors ${
                   currentView === view
-                    ? 'border-indigo-500 text-indigo-600'
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -424,7 +424,7 @@ const MarathonNutritionApp = () => {
                       <select
                         value={trainingPlan[day].type}
                         onChange={(e) => handleTrainingPlanChange(day, 'type', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Select workout</option>
                         {workoutTypes.map((type) => (
@@ -440,14 +440,14 @@ const MarathonNutritionApp = () => {
                         placeholder="Distance/Duration"
                         value={trainingPlan[day].distance}
                         onChange={(e) => handleTrainingPlanChange(day, 'distance', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
                     <div>
                       <select
                         value={trainingPlan[day].intensity}
                         onChange={(e) => handleTrainingPlanChange(day, 'intensity', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Intensity</option>
                         {intensityLevels.map((level) => (
@@ -478,7 +478,7 @@ const MarathonNutritionApp = () => {
                     placeholder="e.g., 5'8&quot; or 173cm"
                     value={userProfile.height}
                     onChange={(e) => handleProfileChange('height', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -489,7 +489,7 @@ const MarathonNutritionApp = () => {
                     placeholder="e.g., 150 lbs or 68 kg"
                     value={userProfile.weight}
                     onChange={(e) => handleProfileChange('weight', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -498,7 +498,7 @@ const MarathonNutritionApp = () => {
                   <select
                     value={userProfile.goal}
                     onChange={(e) => handleProfileChange('goal', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select goal</option>
                     <option value="lose">Lose weight</option>
@@ -512,7 +512,7 @@ const MarathonNutritionApp = () => {
                   <select
                     value={userProfile.activityLevel}
                     onChange={(e) => handleProfileChange('activityLevel', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Select level</option>
                     <option value="low">Low (desk job, minimal activity)</option>
@@ -527,7 +527,7 @@ const MarathonNutritionApp = () => {
                     placeholder="e.g., vegetarian, gluten-free, nut allergies, etc."
                     value={userProfile.dietaryRestrictions}
                     onChange={(e) => handleProfileChange('dietaryRestrictions', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     rows="3"
                   />
                 </div>
@@ -535,7 +535,7 @@ const MarathonNutritionApp = () => {
 
               <button
                 onClick={saveProfile}
-                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                className="mt-4 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
               >
                 Save Profile
               </button>
@@ -558,7 +558,7 @@ const MarathonNutritionApp = () => {
                     placeholder="e.g., chicken, salmon, quinoa, berries, Greek yogurt, avocado..."
                     value={foodPreferences.likes}
                     onChange={(e) => setFoodPreferences((prev) => ({ ...prev, likes: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     rows="4"
                   />
                 </div>
@@ -569,7 +569,7 @@ const MarathonNutritionApp = () => {
                     placeholder="e.g., seafood, mushrooms, spicy food, dairy..."
                     value={foodPreferences.dislikes}
                     onChange={(e) => setFoodPreferences((prev) => ({ ...prev, dislikes: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     rows="4"
                   />
                 </div>
@@ -577,7 +577,7 @@ const MarathonNutritionApp = () => {
 
               <button
                 onClick={savePrefs}
-                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                className="mt-4 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
               >
                 Save Preferences
               </button>
@@ -594,7 +594,7 @@ const MarathonNutritionApp = () => {
                   <button
                     onClick={generateMealSuggestions}
                     disabled={isTestingAI}
-                    className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:bg-gray-400"
+                    className="bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-700 transition-colors flex items-center gap-2 disabled:bg-gray-400"
                   >
                     <Plus className="w-4 h-4" />
                     {isTestingAI ? 'Generating...' : 'Generate AI Suggestions'}
@@ -602,7 +602,7 @@ const MarathonNutritionApp = () => {
                   {Object.values(mealPlan).some((day) => Object.values(day).some((meal) => meal.trim())) && (
                     <button
                       onClick={generateGroceryList}
-                      className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                      className="bg-secondary text-gray-900 py-2 px-4 rounded-md hover:bg-secondary-600 transition-colors font-medium"
                     >
                       Generate Grocery List
                     </button>
@@ -611,7 +611,7 @@ const MarathonNutritionApp = () => {
               </div>
 
               {aiTestResult && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md whitespace-pre-line">
+                <div className="mb-4 p-3 bg-orange-50 border border-primary rounded-md whitespace-pre-line">
                   {aiTestResult}
                 </div>
               )}
@@ -644,14 +644,14 @@ const MarathonNutritionApp = () => {
                           <textarea
                             value={mealPlan[day][meal]}
                             onChange={(e) => handleMealEdit(day, meal, e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                             rows="3"
                             placeholder={`Enter ${meal}...`}
                           />
                           {mealPlan[day][meal] && (
                             <button
                               onClick={() => getRecipe(day, meal)}
-                              className="w-full text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-green-700 mt-1"
+                              className="w-full text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded text-gray-900 mt-1 font-medium"
                             >
                               Get Recipe
                             </button>
@@ -680,14 +680,14 @@ const MarathonNutritionApp = () => {
                           <textarea
                             value={mealPlan[day][meal]}
                             onChange={(e) => handleMealEdit(day, meal, e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                             rows="3"
                             placeholder={`Enter ${meal}...`}
                           />
                           {mealPlan[day][meal] && (
                             <button
                               onClick={() => getRecipe(day, meal)}
-                              className="w-full text-xs bg-green-100 hover:bg-green-200 px-2 py-1 rounded text-green-700 mt-1"
+                              className="w-full text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded text-gray-900 mt-1 font-medium"
                             >
                               Get Recipe
                             </button>
@@ -719,7 +719,7 @@ const MarathonNutritionApp = () => {
             <div className="p-4 border-t bg-gray-50">
               <button
                 onClick={() => setShowRecipeModal(false)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
               >
                 Close
               </button>
@@ -757,7 +757,7 @@ const MarathonNutritionApp = () => {
             <div className="p-4 border-t bg-gray-50">
               <button
                 onClick={() => setShowGroceryModal(false)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
               >
                 Close
               </button>
