@@ -41,11 +41,10 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-6">
-          <Utensils className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Nutrition Training Coach</h1>
+          <img src="/alimenta-logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
           <p className="text-gray-600 mt-2">Personalized nutrition for any training goal</p>
         </div>
 
@@ -57,7 +56,7 @@ const Auth = () => {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Enter your name"
                 required
               />
@@ -71,7 +70,7 @@ const Auth = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Enter your email"
               required
             />
@@ -84,7 +83,7 @@ const Auth = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Enter your password"
               minLength="6"
               required
@@ -100,7 +99,7 @@ const Auth = () => {
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400"
+            className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400"
           >
             <User className="w-4 h-4" />
             {pending ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
@@ -110,7 +109,7 @@ const Auth = () => {
             <button
               type="button"
               onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-indigo-600 hover:text-indigo-700"
+              className="text-primary hover:text-primary-700"
             >
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
