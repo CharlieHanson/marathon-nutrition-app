@@ -44,8 +44,8 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-6">
-          <img src="/alimenta_logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
-          <p className="text-gray-600 mt-2">Personalized nutrition for any training goal</p>
+          <img src="/alimenta_logo.png" alt="Logo" className="h-14 mx-auto mb-4" />
+          <p className="text-gray-600 mt-2">Where nutrition meets performance</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

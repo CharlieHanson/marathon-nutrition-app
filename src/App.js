@@ -354,7 +354,7 @@ const MarathonNutritionApp = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center gap-2">
-              <img src="/alimenta_logo.png" alt="Logo" className="w-8 h-8" />
+              <img src="/alimenta_logo.png" alt="Logo" className="h-8 mx-auto mb-4" />
             </div>
             <div className="flex items-center gap-4">
               <span className="text-gray-600">Welcome, {user?.email ?? 'Guest'}!</span>
