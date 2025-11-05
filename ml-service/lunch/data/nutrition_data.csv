@@ -1,6 +1,5 @@
 description,calories,protein,carbs,fat
 "Chicken breast, rotisserie, skin not eaten",144.0,28.04,0.0,3.57
-"Chicken breast, roll, oven-roasted",562.0,14.6,1.79,7.65
 "Chicken breast, rotisserie, skin eaten",175.0,26.37,0.09,7.67
 "Chicken breast, sauteed, skin eaten",206.0,25.72,0.0,10.62
 "Chicken fillet, grilled",151.0,22.31,2.36,5.81
@@ -16,16 +15,11 @@ description,calories,protein,carbs,fat
 "Chicken, fried, with potatoes, vegetable, frozen meal",157.0,10.26,10.63,8.13
 "Chicken fillet sandwich, fried, on wheat bun",263.0,13.08,26.3,11.7
 "Bologna, turkey",209.0,11.4,4.68,16.0
-"Frankfurter, turkey",933.0,12.2,3.81,17.3
 "Pastrami, turkey",139.0,16.3,3.34,6.21
 Turkey with gravy,125.0,20.46,1.58,3.46
-"Turkey breast, sliced, prepackaged",442.0,14.8,2.2,3.77
-"Turkey, whole, breast, meat only, raw",479.0,23.7,0.14,1.48
 "Turkey, all classes, breast, meat and skin, raw",157.0,21.9,0.0,7.02
 "Turkey, retail parts, breast, meat and skin, raw",155.0,21.9,0.0,7.45
-"Turkey, retail parts, breast, meat only, raw",478.0,23.3,0.0,2.33
 "Turkey, prepackaged or deli, luncheon meat",106.0,14.81,2.2,3.77
-"Turkey, white, rotisserie, deli cut",468.0,13.5,7.7,3.0
 "Turkey ham, prepackaged or deli, luncheon meat",106.0,14.81,2.2,3.77
 "Ham, turkey, sliced, extra lean, prepackaged or deli",134.0,19.6,0.93,5.8
 "Turkey, prepackaged or deli, luncheon meat, reduced sodium",106.0,14.81,2.2,3.77
@@ -58,17 +52,13 @@ Ham croquette,273.0,17.97,2.6,20.74
 "Beef, roast",206.0,29.08,0.0,9.72
 "Beef, pot roast",251.0,28.39,0.0,15.35
 "Beef, roast, hash",140.0,13.2,10.74,5.1
-Roast beef spread,931.0,15.3,3.73,16.3
 Roast beef sandwich on wheat,192.0,14.89,23.8,3.84
 "Pastrami, NFS",147.0,21.8,0.36,5.82
-"Beef, cured, pastrami",615.0,21.8,0.36,5.82
-"Pastrami, beef, 98% fat-free",397.0,19.6,1.54,1.16
 "Pastrami, made from any kind of meat, reduced fat",115.0,18.62,0.64,3.69
 "Salami, NFS",378.0,21.07,0.72,31.65
 Salami sandwich on wheat,319.0,16.07,23.84,17.34
 Salami sandwich on white,321.0,15.05,25.8,17.14
 "Salami, cooked, turkey",172.0,19.2,1.55,9.21
-Tofu yogurt,394.0,3.5,16.0,1.8
 "Soup, miso or tofu",24.0,2.21,2.3,0.85
 "Fish, tofu, and vegetables, tempura",177.0,4.01,4.53,16.0
 Tempeh,192.0,20.3,7.64,10.8
@@ -91,21 +81,16 @@ Kidney beans and white rice,158.0,5.9,23.91,4.29
 "Beans, liquid from stewed kidney beans",47.0,1.8,2.8,3.2
 Lentil curry,111.0,3.68,12.33,5.65
 "Lentils, NFS",166.0,8.38,18.71,6.86
-"Lentils, raw",352.0,24.6,63.4,1.06
 "Soup, lentil",60.0,3.82,10.2,0.69
 "Egg, whole, cooked, hard-boiled",155.0,12.6,1.12,10.6
 "Egg, whole, boiled or poached",143.0,12.4,0.96,9.96
 "Peanuts, boiled",318.0,13.5,21.26,22.01
-Hard cider,56.0,0.0,5.92,0.0
-"Chicken, feet, boiled",215.0,19.4,0.2,14.6
-Potato salad with egg,658.0,1.96,16.2,9.4
 Chicken or turkey salad with egg,228.0,13.81,2.73,18.06
 Egg salad sandwich on wheat,259.0,10.64,15.81,16.75
 Egg salad sandwich on white,260.0,9.98,17.07,16.62
 Shrimp cocktail,99.0,13.24,7.92,1.22
 Shrimp scampi,192.0,15.41,2.27,12.98
 "Shrimp, fried",218.0,12.26,12.41,12.94
-Shrimp chips,426.0,7.14,59.09,17.86
 "Fajita, shrimp",189.0,8.33,18.35,8.92
 Crab,83.0,17.88,0.0,0.74
 Crab salad made with imitation crab,197.0,4.07,8.66,16.28
@@ -117,7 +102,6 @@ Lobster gumbo,59.0,6.19,4.63,1.78
 Lobster salad,187.0,10.29,1.22,15.4
 Shrimp with lobster sauce,151.0,16.78,2.16,7.85
 "Crustaceans, lobster, northern, raw",77.0,16.5,0.0,0.75
-"Crackers, sandwich",494.0,11.47,58.38,24.54
 Cuban sandwich,228.0,15.86,16.3,10.69
 Falafel sandwich,265.0,6.22,27.04,14.76
 Gyro sandwich,184.0,11.24,18.78,6.76
@@ -128,7 +112,6 @@ Club sandwich on white,222.0,15.08,23.09,7.48
 "Club sandwich on white, with cheese",241.0,15.81,20.62,10.35
 "Club sandwich or sub, restaurant",234.0,15.99,18.43,10.55
 "Fast foods, submarine sandwich, bacon, lettuce, and tomato on white bread",205.0,10.1,26.7,6.41
-"SUBWAY, B.L.T. sub on white bread with bacon, lettuce and tomato",856.0,10.1,26.7,6.41
 "Bacon, lettuce, tomato sandwich on white",231.0,10.89,29.71,7.54
 "Chicken or turkey garden salad with bacon and cheese, chicken and/or turkey, bacon, cheese, lettuce and/or greens, tomato and/or carrots, other vegetables, no dressing",106.0,10.95,3.0,5.61
 "Chicken or turkey, breaded, fried, garden salad with bacon and cheese, chicken and/or turkey, bacon, cheese, lettuce and/or greens, tomato and/or carrots, other vegetables, no dressing",122.0,6.78,6.36,7.72
@@ -147,7 +130,6 @@ Tuna salad sandwich on wheat,217.0,10.52,17.07,11.89
 "Veggie burger, on bun",224.0,12.96,30.82,5.2
 "Veggie burger patty, no bun",177.0,15.7,14.27,6.3
 "Veggie burger, on bun, with cheese",243.0,14.0,27.23,8.43
-"Veggie burgers or soyburgers, unprepared",739.0,15.7,14.3,6.3
 Fish wrap sandwich,262.0,14.73,22.61,12.44
 Ham sandwich wrap,230.0,13.54,22.51,9.38
 "Sandwich wrap, NFS",232.0,12.77,23.3,9.4
@@ -156,7 +138,6 @@ Vegetable sandwich wrap,160.0,5.42,19.71,6.55
 "Chicken fillet wrap sandwich, grilled, from fast food",252.0,20.83,17.3,10.42
 Falafel,514.0,8.28,28.96,41.19
 "Falafel, home-prepared",333.0,13.3,31.8,17.8
-Pita chips,457.0,11.79,68.26,15.2
 "Bread, pita",275.0,9.1,55.7,1.2
 "Bread, pita with fruit",279.0,8.16,59.51,1.05
 "Bread, pita, white, enriched",275.0,9.1,55.7,1.2
@@ -189,13 +170,9 @@ Cheeseburger slider,297.0,18.09,17.9,16.41
 "McDONALD'S, Cheeseburger",263.0,13.0,27.8,11.8
 "Turkey or chicken burger, on wheat bun",227.0,20.7,18.74,7.72
 "Turkey or chicken burger, on white bun",234.0,20.03,20.68,7.69
-"Salad dressing, NFS, for salads",430.0,1.32,5.9,44.54
 Beef salad,261.0,17.85,2.9,19.32
 Pea salad,180.0,2.98,10.64,14.02
 "Caesar salad, with romaine, no dressing",77.0,4.0,7.49,3.41
-"Salad dressing, caesar, fat-free",547.0,1.47,30.7,0.23
-"Salad dressing, caesar, low calorie",460.0,0.3,18.6,4.4
-Caesar dressing,542.0,2.17,3.3,57.85
 "Cobb salad, no dressing",93.0,11.32,2.65,4.33
 "Greek Salad, no dressing",48.0,2.75,4.35,2.26
 Chicken salad spread,200.0,11.64,7.41,13.52
@@ -209,11 +186,8 @@ Chicken salad spread,200.0,11.64,7.41,13.52
 "Spinach, raw",27.0,2.85,2.41,0.62
 Spinach souffle,128.0,5.72,7.13,8.64
 "Kale, raw",35.0,2.92,4.42,1.49
-"Kale, frozen, unprepared",116.0,2.66,4.88,0.46
 "Lamb, chop",264.0,27.36,0.0,16.27
 "Veal, chop",158.0,29.51,0.07,4.4
-"Ham, chopped, canned",1000.0,16.1,0.26,18.8
-"Ham, chopped, not canned",925.0,16.5,0.0,16.7
 "Pork, chop, stuffed",190.0,18.37,7.82,9.04
 "Burrito bowl, chicken, with rice",155.0,12.46,14.21,5.0
 "Burrito bowl, beef or pork, with rice",181.0,11.92,14.21,8.05
@@ -226,14 +200,9 @@ Spinach souffle,128.0,5.72,7.13,8.64
 "Burrito bowl, chicken, with beans",135.0,13.6,6.94,5.87
 Ramen bowl with beef,137.0,6.81,15.4,5.19
 Ramen bowl with chicken,126.0,7.04,15.4,3.86
-"Poke greens, cooked",42.0,2.24,3.01,2.93
-"Pokeberry shoots, (poke), raw",23.0,2.6,3.7,0.4
-"Pokeberry shoots, (poke), cooked, boiled, drained, with salt",20.0,2.3,3.1,0.4
-"Pokeberry shoots, (poke), cooked, boiled, drained, without salt",20.0,2.3,3.1,0.4
 "Rice bowl with chicken, frozen entree, prepared (includes fried, teriyaki, and sweet and sour varieties)",126.0,5.65,22.5,1.56
 Shrimp teriyaki,120.0,21.62,3.34,1.56
 Steak teriyaki,198.0,28.86,1.94,8.25
-Teriyaki sauce,89.0,5.93,15.56,0.02
 Chicken or turkey with teriyaki,163.0,25.73,1.62,5.96
 "Quinoa, cooked",120.0,4.4,21.3,1.92
 "Quinoa, fat added",146.0,4.2,20.22,5.42
@@ -242,35 +211,25 @@ Chicken or turkey with teriyaki,163.0,25.73,1.62,5.96
 "Soup, pepperpot",91.0,3.06,6.79,5.75
 "Soup, barley",58.0,3.34,6.66,2.07
 "Soup, bean",67.0,3.76,11.62,0.76
-"Soup, peanut",88.0,3.24,8.36,5.29
 "Soup, chicken noodle",53.0,3.84,6.21,1.4
 "Soup, chicken noodle, canned",42.0,2.38,6.02,0.98
-"CAMPBELL'S, Chicken Noodle Soup, condensed",197.0,2.37,5.97,1.53
 "Soup, chicken noodle, canned, condensed",48.0,2.37,6.07,1.55
-"Soup, chicken noodle, dry, mix",377.0,15.4,62.3,6.51
 "Soup, tomato",19.0,0.65,3.64,0.41
 "Soup, cream of tomato",70.0,1.21,6.39,4.68
 "Soup, tomato, canned",34.0,0.63,7.65,0.33
 "CAMPBELL'S, Tomato Soup, condensed",71.0,1.46,15.2,0.44
-"Soup, tomato, canned, condensed",275.0,1.46,15.2,0.44
 "Soup, minestrone",40.0,1.71,7.3,0.5
 "SMART SOUP, Greek Minestrone",40.0,1.7,8.4,0.53
-"Soup, minestrone, canned, condensed",285.0,3.48,9.17,2.05
-"Soup, minestrone, canned, chunky, ready-to-serve",222.0,2.13,8.64,1.17
-"Soup, minestrone, canned, prepared with equal volume water",142.0,1.77,4.66,1.04
 Chili with macaroni,126.0,8.99,14.35,3.65
-"APPLEBEE'S, chili",656.0,12.6,4.57,9.79
 Chili with chicken,100.0,14.11,2.41,3.71
 Chili with meat,139.0,13.32,2.41,8.22
 "Chili, NFS",118.0,9.8,10.25,4.33
 "Soup, lentil, canned",43.0,2.48,7.22,0.64
 "Soup, lentil, with meat",78.0,5.94,8.76,2.3
-"SMART SOUP, French Lentil",222.0,2.9,9.5,1.06
 "Soup, lentil, canned, reduced sodium",43.0,2.49,7.23,0.64
 "Soup, bean, with meat",84.0,5.88,10.0,2.35
 "Soup, bean, canned",47.0,2.44,8.1,0.68
 "Soup, bean, canned, reduced sodium",47.0,2.45,8.12,0.68
-"Restaurant, Latino, black bean soup",430.0,5.1,14.8,2.57
 "Soup, vegetable",27.0,0.84,5.08,0.45
 "Soup, cream of vegetable",78.0,1.41,7.83,4.72
 "Soup, vegetable, canned",38.0,1.12,7.62,0.4
@@ -286,9 +245,7 @@ Egg burrito,249.0,10.91,20.06,13.71
 "Quesadilla, NFS",316.0,13.36,28.62,16.21
 "Quesadilla, with vegetables",253.0,8.14,29.18,11.32
 "ON THE BORDER, cheese quesadilla",394.0,16.9,24.2,25.5
-"TACO BELL, Taco Salad",710.0,6.69,15.1,9.17
 "TACO BELL, Soft Taco with steak",225.0,11.8,17.2,12.1
-Taco sauce,11.0,1.16,0.72,0.68
 "Taco, fish",275.0,11.62,22.99,15.29
 "Taco, NFS",246.0,15.31,15.62,13.56
 "Enchilada, beef",191.0,9.76,14.64,10.54
@@ -318,20 +275,14 @@ Macaroni or pasta salad with shrimp,203.0,6.86,20.94,9.99
 Big Mac (McDonalds),261.0,11.94,21.53,14.1
 "McDONALD'S, BIG MAC (without Big Mac Sauce)",234.0,12.8,21.0,11.6
 "Cheese, processed cheese food",307.0,16.09,8.85,23.06
-Spaghetti sauce,51.0,1.41,8.05,1.48
-"DENNY'S, spaghetti and meatballs",170.0,7.84,15.5,8.52
 Spaghetti sauce with meat,90.0,5.94,6.54,4.36
 Spaghetti sauce with poultry,75.0,6.29,6.54,2.62
 Spaghetti sauce with seafood,64.0,5.33,7.09,1.48
 "Pasta, cooked",157.0,5.76,30.68,0.92
 Flavored pasta,87.0,2.47,14.45,2.21
-"Pasta, dry, enriched",371.0,13.0,74.7,1.51
-"Pasta, dry, unenriched",371.0,13.0,74.7,1.51
 "Pasta, vegetable, cooked",128.0,4.52,26.55,0.11
-Dessert pizza,204.0,1.84,32.38,7.53
 Mexican pizza,249.0,15.47,15.3,13.94
 Pizza rolls,345.0,9.19,53.39,10.5
-"Crackers, flatbread",412.0,9.85,75.23,8.25
 "Sushi, NFS",94.0,2.92,18.39,0.67
 "Sushi, topped with egg",119.0,7.32,10.25,5.23
 "Sushi roll, California",94.0,2.92,18.39,0.67
@@ -340,36 +291,10 @@ Sushi roll tuna,97.0,7.4,15.3,0.26
 "Sushi roll, vegetable",93.0,1.8,17.65,1.47
 "Sushi roll, salmon",103.0,6.88,15.3,1.28
 "Sushi roll, shrimp",100.0,7.01,15.67,0.55
-"Avocados, raw, California",697.0,1.96,8.64,15.4
 "Grapefruit, raw, white, California",37.0,0.88,9.09,0.1
 "Oranges, raw, California, valencias",49.0,1.04,11.9,0.3
 "Roll, multigrain",263.0,9.6,44.6,6.0
 "Rice, fried, meatless",174.0,3.84,32.5,3.19
 "Rice, fried, NFS",174.0,3.84,32.5,3.19
 "Rice, fried, with beef",178.0,7.86,27.62,4.06
-"Rice, fried, with pork",179.0,7.56,27.62,4.16
-"Lo mein, with shrimp",121.0,8.56,16.24,2.21
-"Lo mein, meatless",121.0,4.77,20.16,2.35
-"Lo mein, NFS",121.0,4.77,20.16,2.35
-"Lo mein, with beef",129.0,9.73,16.18,2.77
-"Lo mein, with chicken",130.0,9.15,16.15,3.15
-Pad Thai with chicken,154.0,8.13,14.36,7.5
-Pad Thai with meat,160.0,8.18,14.73,7.92
-Pad Thai with seafood,147.0,6.84,15.05,6.82
-"Pad Thai, meatless",165.0,5.79,16.34,9.2
-"Pad Thai, NFS",154.0,8.13,14.36,7.5
-Ramen bowl with fish,112.0,5.78,15.4,2.87
-"Ramen bowl, NFS",127.0,7.13,13.95,4.57
-"Ramen bowl, vegetarian",108.0,4.01,15.57,3.33
-"Wheat, hard red spring",329.0,15.4,68.0,1.92
-"Egg roll, with shrimp",258.0,6.68,27.12,13.61
-"Pork, roll",329.0,13.07,4.49,28.39
-"Dumpling, no meat",125.0,3.45,20.49,3.37
-Chicken or turkey with dumplings,144.0,15.69,8.04,5.55
-"Stew, dumpling with mutton (Navajo)",101.0,8.71,8.03,3.78
-"Wonton, dumpling or pot sticker, fried",192.0,8.76,14.05,11.13
-"Wonton, dumpling or pot sticker, steamed",113.0,6.9,11.07,4.6
-"Hummus, commercial",237.0,7.78,15.0,17.8
-"Hummus, flavored",241.0,7.22,14.63,17.1
-"Hummus, plain",243.0,7.35,14.9,17.1
-"Hummus, home prepared",177.0,4.86,20.1,8.59
+"Rice, fried, with pork",179.0,7.56,27.62,4.

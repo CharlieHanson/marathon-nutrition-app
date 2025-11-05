@@ -1,15 +1,12 @@
 description,calories,protein,carbs,fat
 Ice cream cake,283.0,2.95,39.28,12.67
-Ice cream sandwich,990.0,4.29,37.1,8.57
 "Ice cream, chocolate",216.0,3.8,28.2,11.0
 "Ice cream, fried",282.0,3.94,32.77,15.16
 "Ice cream, NFS",221.0,3.57,26.36,11.3
 "Ice cream, vanilla",207.0,3.5,23.6,11.0
-"Ice creams, vanilla",868.0,3.5,23.6,11.0
 "Light ice cream, vanilla",174.0,4.38,25.44,6.14
 "Ice cream bar, vanilla",358.0,2.11,37.12,25.26
 "Ice cream sandwich, vanilla",264.0,4.28,35.88,11.8
-"Ice creams, chocolate",216.0,3.8,28.2,11.0
 "Ice cream bar, chocolate",329.0,4.41,25.17,23.89
 "Ice cream sandwich, chocolate",270.0,4.5,39.33,11.8
 "Ice cream soda, chocolate",87.0,1.0,15.23,2.9
@@ -17,12 +14,10 @@ Frozen yogurt sandwich,204.0,3.9,34.38,6.25
 "Frozen yogurt, chocolate",131.0,3.0,21.6,3.6
 "Frozen yogurt, NFS",127.0,3.0,21.6,3.6
 "Frozen yogurt, vanilla",127.0,3.0,21.6,3.6
-"Frozen yogurts, chocolate",547.0,3.0,21.6,3.6
 Sorbet,110.0,0.79,27.12,0.05
 Freezer pop,79.0,0.0,19.23,0.24
 Frozen fruit juice bar,106.0,0.81,25.4,0.06
 "Frozen fruit juice bar, no sugar added",30.0,0.12,7.35,0.01
-"Sherbet, orange",602.0,1.1,30.4,2.0
 "Sherbet, all flavors",144.0,1.1,30.4,2.0
 "Fruit smoothie, with whole fruit and dairy",66.0,2.32,11.98,1.1
 "Fruit smoothie, with whole fruit and dairy, added protein",79.0,7.35,10.04,1.24
@@ -31,26 +26,14 @@ Frozen fruit juice bar,106.0,0.81,25.4,0.06
 Popsicle,79.0,0.0,19.23,0.24
 "Popsicle, NFS",79.0,0.0,19.23,0.24
 "Popsicle, no sugar added",24.0,0.0,5.92,0.0
-"Frozen novelties, juice type, POPSICLE SCRIBBLERS",81.0,0.0,19.7,0.24
-"Frozen novelties, ice type, sugar free, orange, cherry, and grape POPSICLE pops",86.0,0.0,5.14,0.0
-"Frozen novelties, ice type, pop",331.0,0.0,19.2,0.24
-"Frozen novelties, ice type, pop, with low calorie sweetener",24.0,0.0,5.92,0.0
-"Potato chips, popped, NFS",469.0,5.0,71.4,18.2
 Fudgesicle,163.0,2.56,29.99,3.67
 "Fudgesicle, light",124.0,3.67,23.11,1.87
 "Fruit mixture, frozen",48.0,0.69,11.29,0.23
-"Pancakes, fruit, frozen",224.0,4.99,36.47,6.52
-"Waffle, fruit, frozen",296.0,7.07,46.58,9.05
 "Frozen novelties, fruit and juice bars",87.0,1.2,20.2,0.1
 "Pie, banana cream",284.0,2.42,32.35,16.17
-"Cream, fluid, light (coffee cream or table cream)",815.0,2.96,3.66,19.1
 "Cream, light",195.0,2.96,3.66,19.1
-Cream of rice,69.0,1.17,15.28,0.09
 "Cream, heavy",343.0,2.02,3.8,35.56
-"Milk, malted",66.0,3.19,8.64,2.05
-Alcoholic malt beverage,58.0,0.9,0.27,0.0
 Milk shake with malt,125.0,3.76,13.64,6.11
-Barley malt flour,361.0,10.3,78.3,1.84
 "Cookie, biscotti",373.0,7.63,66.99,8.38
 "Cookie, rugelach",348.0,3.7,70.9,7.3
 "Cookie, raisin",401.0,4.1,68.0,13.6
@@ -68,42 +51,20 @@ Barley malt flour,361.0,10.3,78.3,1.84
 "Cookie, peanut butter, with chocolate",475.0,7.8,59.51,25.29
 "Cookie, peanut butter sandwich",478.0,8.8,65.6,21.1
 "Cookie, peanut butter, sugar free",523.0,10.34,50.52,31.03
-"Cookies, peanut butter sandwich, regular",478.0,8.8,65.6,21.1
-"Cookie, sugar or plain, sugar free",523.0,10.34,50.52,31.03
-"Cookie, sugar wafer, sugar free",531.0,3.57,66.26,28.57
 "Cookie, butter or sugar",464.0,5.35,67.34,19.55
 "Cookie, sugar wafer",502.0,3.84,70.64,23.24
 "Cookie, sandwich, reduced sugar",461.0,4.5,68.0,22.1
 "Cookie, butterscotch, brownie",405.0,4.8,63.9,16.3
 "Cookie, brownie, without icing",405.0,4.8,63.9,16.3
 "Cookie, brownie, with icing or filling",401.0,2.94,63.55,16.95
-"Cookie, brownie, NS as to icing",405.0,4.8,63.9,16.3
-"Cookies, brownies, commercially prepared",405.0,4.8,63.9,16.3
-"Martha White Foods, Martha White's Chewy Fudge Brownie Mix, dry",407.0,4.42,83.6,6.16
 "Cookie, chocolate or fudge",433.0,6.6,72.7,14.2
-"Cereal, rice crispy, plain",358.0,6.96,79.81,1.21
-"Cereal, rice crispy, flavored",372.0,4.95,86.01,0.92
-"Cereals ready-to-eat, MALT-O-MEAL, Crispy Rice",346.0,6.07,86.4,1.12
-"Cereal, chocolate crispy",380.0,5.35,81.85,4.24
-Cereal or granola bar (Quaker Chewy Granola Bar),418.0,5.65,70.2,16.57
-Cereal or granola bar (Quaker Chewy Dipps Granola Bar),480.0,7.52,64.96,20.42
-Cereal or granola bar (Quaker Chewy 90 Calorie Granola Bar),408.0,4.17,79.17,8.33
-Cereal or granola bar (Quaker Granola Bites),451.0,7.17,66.27,17.5
-"Cereal or Granola bar, NFS",471.0,10.1,64.4,19.8
 "Cookie, bar, with chocolate",492.0,5.1,65.36,24.72
 "Cookie, fig bar",348.0,3.7,70.9,7.3
 "Cookie, lemon bar",437.0,5.13,62.65,18.94
 "Cookie, toffee bar",492.0,5.1,65.36,24.72
-"Cookies, fig bars",348.0,3.7,70.9,7.3
-"Lemon, raw",29.0,1.1,9.32,0.3
 "Pie, lemon",280.0,2.41,31.48,16.16
 "Pie, lemon meringue",294.0,4.53,43.69,11.34
-"Lemon juice from concentrate, bottled, REAL LEMON",73.0,0.47,5.66,0.07
 "Cake, fruit cake",324.0,2.9,61.6,9.1
-Popcorn cake,384.0,9.7,80.1,3.1
-"Cake, cream",286.0,3.84,30.02,17.03
-Rice cake,392.0,7.1,81.1,4.3
-Bean cake,414.0,5.8,49.88,21.41
 "Snack cake, chocolate",399.0,3.63,60.31,15.93
 "Cake, chocolate, flourless",410.0,4.87,37.93,29.42
 "Cake or cupcake, chocolate, no icing",303.0,5.08,43.28,13.24
@@ -115,8 +76,6 @@ Bean cake,414.0,5.8,49.88,21.41
 "Cake, cheesecake, prepared from mix, no-bake type",274.0,5.5,35.5,12.7
 "Cake or cupcake, carrot",374.0,2.49,51.8,17.52
 "Cake, pudding-type, carrot, dry mix",415.0,5.1,79.2,9.8
-"Carrots, raw",44.0,0.87,9.68,0.24
-"Carrot, dehydrated",341.0,8.1,79.6,1.49
 "Cake or cupcake, red velvet",355.0,2.79,54.36,14.58
 "Cake or cupcake, apple",376.0,2.41,52.52,17.5
 "Cake or cupcake, banana",379.0,2.47,53.07,17.51
@@ -135,43 +94,25 @@ Bean cake,414.0,5.8,49.88,21.41
 "Coffee cake, crumb or quick-bread type, cheese-filled",365.0,6.8,45.07,17.55
 Pie shell,508.0,6.5,56.24,28.59
 "Pie, NFS",296.0,2.7,37.55,15.28
-Frito pie,328.0,9.96,26.32,20.98
 "Pie, apple",296.0,2.7,37.55,15.28
 "Pie, berry",306.0,3.16,39.53,15.43
-Apple pie filling,100.0,0.1,26.1,0.1
 "Pie, apple, fast food",316.0,3.0,42.6,16.1
-"Pie fillings, apple, canned",420.0,0.1,26.1,0.1
 "Pie, apple, prepared from recipe",265.0,2.4,37.1,12.5
 "Pie, pumpkin",249.0,4.76,36.34,9.78
-"Pumpkin pie mix, canned",104.0,1.09,26.4,0.13
 "Pie, pumpkin, prepared from recipe",204.0,4.5,26.4,9.3
 "Pie, pecan",449.0,6.02,49.46,25.25
-"Pie, pecan, commercially prepared",407.0,4.5,59.6,16.7
-"Pie, pecan, prepared from recipe",412.0,4.9,52.2,22.2
 "Pie, cherry",311.0,2.95,40.93,15.3
-Cherry pie filling,122.0,0.6,28.59,0.91
-"Pie fillings, canned, cherry",481.0,0.37,28.0,0.07
-"Pie, cherry, commercially prepared",260.0,2.0,39.8,11.0
-"Pie, fried pies, cherry",316.0,3.0,42.6,16.1
 "Pie, blueberry",300.0,2.82,37.95,15.52
-Blueberry pie filling,181.0,0.41,44.38,0.2
-"Pie fillings, blueberry, canned",181.0,0.41,44.4,0.2
 "Pie, blueberry, commercially prepared",232.0,1.8,34.9,10.0
 "Pie, blueberry, prepared from recipe",245.0,2.7,33.5,11.9
 "Pie, key lime",322.0,5.78,42.16,14.92
-SILK Key Lime soy yogurt,368.0,2.35,17.6,1.18
-"Yogurt, Greek, 2% fat, key lime blend, CHOBANI",92.0,7.75,11.9,1.47
 "Doughnuts, cake-type, chocolate, sugared or glazed",417.0,4.5,57.4,19.9
 "Doughnuts, cake-type, plain (includes unsugared, old-fashioned)",434.0,5.31,47.1,24.9
 "Doughnuts, cake-type, plain, chocolate-coated or frosted",452.0,4.93,51.3,25.2
 "Doughnuts, cake-type, plain, sugared or glazed",426.0,5.2,50.8,22.9
 "Doughnuts, french crullers, glazed",412.0,3.1,59.5,18.3
-"Carrots, glazed, cooked",97.0,0.9,17.32,2.78
-"Nuts, walnuts, glazed",500.0,8.28,47.6,35.7
-"Frostings, glaze, prepared-from-recipe",341.0,0.44,83.6,0.53
 "Doughnut, chocolate",417.0,5.2,51.95,22.44
 "Doughnut, chocolate, with chocolate icing",413.0,5.42,51.01,22.72
-Chocolate dip,393.0,3.33,65.31,13.22
 "Waffle, chocolate",437.0,9.07,48.64,22.7
 "Croissant, chocolate",421.0,7.4,49.4,22.79
 "Danish pastry, cheese",374.0,8.0,37.2,21.9
@@ -188,27 +129,17 @@ Croissant,406.0,8.2,45.8,21.0
 "Pillsbury, Cinnamon Rolls with Icing, refrigerated dough",330.0,4.34,53.4,11.3
 "Sweet rolls, cinnamon, commercially prepared with raisins",372.0,6.2,50.9,16.4
 "Turnover, fruit",316.0,3.0,42.6,16.1
-"Turnover, seafood",207.0,9.39,24.57,7.91
-Turnover or lean pocket,208.0,10.61,24.38,7.5
-"Turnover or breakfast pocket, egg",265.0,10.01,30.9,11.29
-"Turnover or hot pocket, beef",233.0,10.35,24.49,10.25
 "Strudel, apple",281.0,1.96,37.18,14.08
 "Strudel, berry",291.0,2.43,39.23,14.24
 "Strudel, cheese",358.0,5.85,39.14,19.81
 "Strudel, cherry",296.0,2.22,40.68,14.1
 Breakfast tart,385.0,4.01,71.83,9.02
 "Breakfast tart, lowfat",372.0,3.99,76.8,5.99
-"Cherry juice, tart",248.0,0.31,13.7,0.54
 "Tart, all types",316.0,3.0,42.6,16.1
-"Tart, breakfast, low fat",372.0,3.99,76.8,5.99
 Dark chocolate candy,550.0,5.09,59.97,32.2
 Dark chocolate candy with nuts,560.0,8.26,52.18,36.27
 "Candies, SPECIAL DARK Chocolate Bar",556.0,5.54,60.5,32.4
 "Dark chocolate candy, other, NFS",550.0,5.09,59.97,32.2
-"Almond milk, chocolate",43.0,0.57,7.44,1.2
-Chocolate milk drink,49.0,0.64,10.68,0.4
-"Chocolate milk, NFS",65.0,3.44,10.98,0.83
-"Chocolate milk, whole",83.0,3.17,10.34,3.39
 "Frozen yogurt bar, chocolate",131.0,3.0,21.6,3.6
 "Chocolate candy, fudge",396.0,1.72,79.42,7.93
 "Syrups, chocolate, fudge-type",350.0,4.6,62.9,8.9
@@ -216,11 +147,8 @@ Chocolate milk drink,49.0,0.64,10.68,0.4
 "Candies, fudge, chocolate, prepared-from-recipe",410.0,2.39,76.7,10.4
 "Pudding, chocolate, NFS",142.0,2.09,23.01,4.6
 "Pudding, chocolate, ready-to-eat",142.0,2.09,23.01,4.6
-"Puddings, chocolate, ready-to-eat",593.0,2.09,23.0,4.6
-"Puddings, chocolate, dry mix, instant",378.0,2.3,87.9,1.9
 Mousse,212.0,4.2,16.23,15.12
 "Desserts, mousse, chocolate, prepared-from-recipe",225.0,4.14,16.1,16.0
-Fish timbale or mousse,149.0,10.08,1.96,10.95
 "Pie, chocolate mousse, prepared from mix, no-bake type",260.0,3.5,29.6,15.4
 Chocolate chips,480.0,4.2,63.9,30.0
 "Muffin, chocolate chip",402.0,5.77,55.4,19.04
@@ -230,86 +158,23 @@ Chocolate candy,535.0,7.65,59.4,29.66
 Banana pudding,160.0,2.57,28.0,4.26
 "Pudding, bread",156.0,5.6,23.53,4.86
 "Pudding, rice",108.0,3.23,18.39,2.15
-Noodle pudding,209.0,5.94,31.02,7.4
-"Puddings, vanilla, ready-to-eat",545.0,1.45,22.6,3.78
-"Babyfood, dessert, cherry vanilla pudding, junior",69.0,0.2,18.4,0.2
-"Babyfood, dessert, cherry vanilla pudding, strained",68.0,0.2,17.8,0.3
-"Puddings, rice, dry mix",376.0,2.7,91.2,0.1
 "Puddings, rice, ready-to-eat",108.0,3.23,18.4,2.15
-"Puddings, rice, dry mix, prepared with 2% milk",465.0,3.29,20.8,1.63
-"Puddings, rice, dry mix, prepared with whole milk",507.0,3.25,20.7,2.82
 "Pudding, tapioca, ready-to-eat",130.0,1.95,21.69,3.88
-"Puddings, tapioca, dry mix",369.0,0.1,94.3,0.1
-"Puddings, tapioca, ready-to-eat",542.0,1.95,21.7,3.88
-"Pudding, tapioca, made from dry mix",130.0,1.95,21.69,3.88
-"Puddings, tapioca, dry mix, with no added salt",369.0,0.1,94.3,0.1
 Custard,97.0,5.08,10.97,3.64
 "Pie, custard",210.0,5.5,20.8,11.6
 "Doughnut, custard-filled",363.0,5.2,42.86,18.92
 "Doughnut, custard-filled, with icing",368.0,4.52,46.25,18.7
-"Egg custards, dry mix",410.0,6.9,82.8,6.4
 Flan,178.0,5.23,28.24,4.94
-"Desserts, flan, caramel custard, prepared-from-recipe",609.0,4.53,22.8,4.03
-"Flan, caramel custard, dry mix, prepared with 2% milk",430.0,2.99,18.8,1.72
-"Flan, caramel custard, dry mix, prepared with whole milk",475.0,2.95,18.7,3.0
 Creme brulee,113.0,4.06,17.85,2.83
 "Cookie, oatmeal sandwich, with creme filling",398.0,2.61,55.62,18.29
-"Cookies, oatmeal sandwich, with creme filling",398.0,2.61,55.6,18.3
 "Cookies, vanilla sandwich with creme filling",483.0,4.5,72.1,20.0
-"Doughnuts, yeast-leavened, with creme filling",361.0,6.4,30.0,24.5
 "Yogurt parfait, with fruit",104.0,5.25,16.08,2.18
-"McDONALD'S, Fruit 'n Yogurt Parfait",439.0,2.73,20.7,1.3
 "Yogurt parfait, lowfat, with fruit and granola",84.0,3.36,15.9,1.01
-"McDONALD'S, Fruit 'n Yogurt Parfait (without granola)",90.0,2.47,17.7,1.13
-Tofu yogurt,394.0,3.5,16.0,1.8
 "Yogurt, Greek, with oats",149.0,9.22,20.02,3.67
-"Yogurt, Greek, Blueberry, CHOBANI",343.0,7.23,12.8,0.24
-"Yogurt, Greek, plain, lowfat",305.0,9.95,3.94,1.92
-"Yogurt, Greek, plain, nonfat",61.0,10.3,3.64,0.37
-"Yogurt, Greek, strawberry, lowfat",439.0,8.17,12.3,2.57
-"Fruit salad, excluding citrus fruits, with salad dressing or mayonnaise",247.0,1.78,13.57,20.68
-"Fruit salad, including citrus fruits, with salad dressing or mayonnaise",240.0,1.87,13.02,20.26
-"Fruit salad, excluding citrus fruits, with marshmallows",251.0,1.78,17.54,19.48
-"Fruit salad, excluding citrus fruits, with pudding",137.0,1.86,18.11,6.48
-"Fruit salad, including citrus fruits, with marshmallows",244.0,1.87,16.95,19.1
-"Burrito bowl, chicken",161.0,21.04,0.27,8.11
-"Burrito bowl, NFS",145.0,13.03,10.58,5.44
-"Burrito bowl, with beans",129.0,8.04,17.3,3.42
-Ramen bowl with beef,137.0,6.81,15.4,5.19
-Ramen bowl with chicken,126.0,7.04,15.4,3.86
-"Fruit smoothie, with whole fruit, no dairy",54.0,0.61,12.67,0.35
-"Topping, fruit",254.0,0.2,66.3,0.1
-Biscuit with fruit,363.0,6.7,46.47,17.05
-Chia seeds,486.0,16.54,42.12,30.74
-Dessert dip,249.0,6.01,22.48,15.05
-Dessert pizza,204.0,1.84,32.38,7.53
-Dessert sauce,150.0,0.09,19.53,7.95
 Gelatin dessert,60.0,1.22,14.19,0.0
-Oat milk,45.0,0.66,5.37,2.33
-"Nutritional drink or shake, high protein, ready-to-drink, NFS",61.0,6.59,0.85,3.38
-"Nutritional drink or shake, high protein, light, ready-to-drink, NFS",138.0,5.38,17.29,5.38
-"Nutritional drink or shake, high protein, ready-to-drink (Slim Fast)",61.0,6.59,0.85,3.38
-Vegetable smoothie,89.0,2.75,5.84,6.63
-"Fruit smoothie, light",53.0,2.61,9.71,0.61
-"Fruit smoothie, bottled",50.0,0.48,11.66,0.27
-"Fruit smoothie, NFS",66.0,2.32,11.98,1.1
-"Bananas, dehydrated, or banana powder",346.0,3.89,88.3,1.81
-"Banana, baked",161.0,0.82,32.43,3.21
-"Banana, raw",97.0,0.74,22.71,0.28
-Banana chips,519.0,2.3,58.4,33.6
-Banana nectar,74.0,0.26,18.01,0.13
-"Apple, candied",134.0,1.34,29.61,2.15
-"Apple, raw",61.0,0.17,14.8,0.15
-"Apple, dried",243.0,0.93,65.89,0.32
-"Candy, caramel",384.0,3.1,82.36,5.7
-Seafood dip,337.0,6.18,4.2,32.8
-Layer dip,146.0,5.41,6.67,11.33
-Tzatziki dip,91.0,5.22,4.1,6.0
-Gelatin dessert with fruit,56.0,1.1,13.34,0.01
 "Gelatin dessert, sugar free",20.0,0.83,4.22,0.0
 "Gelatin dessert, sugar free, with fruit",22.0,0.77,4.86,0.01
-Gelatin salad with vegetables,61.0,1.47,14.02,0.02
-"Gelatin shot, alcoholic",102.0,0.24,2.8,0.0
+Gelatin dessert with fruit,56.0,1.1,13.34,0.01
 "Pastry, Italian, with cheese",267.0,7.52,35.06,10.94
 Tiramisu,353.0,5.65,29.44,23.86
 "Cream puff, eclair, custard or cream filled, iced",334.0,4.41,37.4,18.5
@@ -328,11 +193,7 @@ Funnel cake with sugar and fruit,380.0,5.84,55.18,15.7
 "Cobbler, berry",231.0,2.66,36.2,8.86
 "Cobbler, cherry",237.0,2.37,38.07,8.69
 "Cobbler, peach",217.0,2.22,32.98,8.66
-"Babyfood, cherry cobbler, junior",326.0,0.3,19.2,0.1
 "Crisp, apple",215.0,2.81,30.18,9.59
 "Crisp, berry",228.0,3.41,32.81,9.78
 "Crisp, cherry",234.0,3.13,34.67,9.61
 "Crisp, peach",214.0,2.98,29.6,9.59
-"Chicken, ground, crumbles, cooked, pan-browned",189.0,23.3,0.0,10.9
-"Turkey, ground, fat free, pan-broiled crumbles",151.0,31.7,0.0,2.71
-"Pork, ground, 84% lean / 16% fat, cooked, crumbles",289.0,26.7,0.58,20.0

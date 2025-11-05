@@ -94,20 +94,38 @@ def evaluate_model(model, X, y_true, target_name):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     r2 = r2_score(y_true, y_pred)
     
-    # Calculate percentage error
-    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    # Calculate percentage error, handling zeros
+    # Only calculate MAPE for non-zero values
+    non_zero_mask = y_true > 0.1  # Ignore values very close to zero
+    if np.sum(non_zero_mask) > 0:
+        mape = np.mean(np.abs((y_true[non_zero_mask] - y_pred[non_zero_mask]) / y_true[non_zero_mask])) * 100
+    else:
+        mape = 0.0  # If all values are zero, MAPE doesn't apply
+    
+    # Better accuracy metric: percentage of predictions within acceptable threshold
+    # Define "accurate" based on typical acceptable errors
+    thresholds = {
+        'calories': 75,   # Within 75 calories
+        'protein': 3,     # Within 3g
+        'carbs': 10,      # Within 10g
+        'fat': 4          # Within 4g
+    }
+    
+    threshold = thresholds.get(target_name.lower(), 10)
+    within_threshold = np.abs(y_true - y_pred) <= threshold
+    accuracy_pct = (np.sum(within_threshold) / len(y_true)) * 100
     
     print(f"\n{target_name} Model Performance:")
     print(f"  Mean Absolute Error: {mae:.2f}")
     print(f"  Root Mean Squared Error: {rmse:.2f}")
     print(f"  R² Score: {r2:.3f}")
-    print(f"  Mean Absolute Percentage Error: {mape:.1f}%")
+    print(f"  Predictions within ±{threshold}: {accuracy_pct:.1f}%")
     
     return {
         'mae': mae,
         'rmse': rmse,
         'r2': r2,
-        'mape': mape
+        'accuracy': accuracy_pct
     }
 
 def save_models(models, vectorizer, output_dir='models'):
@@ -153,14 +171,13 @@ if __name__ == "__main__":
     print("Saving Models")
     print("="*60)
     save_models(models, vectorizer)
-
     
     print("\n" + "="*60)
     print("✅ Model Training Complete!")
     print("="*60)
     print("\nSummary:")
     for target, metric in metrics.items():
-        print(f"  {target.capitalize()}: MAE={metric['mae']:.2f}, Accuracy={100-metric['mape']:.1f}%")
-    
+        print(f"  {target.capitalize()}: MAE={metric['mae']:.2f}, Accuracy={metric['accuracy']:.1f}%")
+
     print("\nModels saved to 'models/' directory")
     print("Ready to deploy! 🚀")

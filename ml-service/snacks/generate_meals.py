@@ -9,99 +9,70 @@ def load_nutrition_data(filename='data/nutrition_data.csv'):
     return df
 
 def categorize_foods(df):
-    """Categorize foods into protein, carbs, vegetables, fats"""
+    """Categorize foods into simple snack categories"""
     categories = {
-        'protein': [],
-        'carbs': [],
-        'vegetables': [],
-        'fats': []
+        'fruits': [],
+        'nuts': [],
+        'yogurt': [],
+        'bars': [],
+        'other': []
     }
     
-    # Keywords to identify categories
-    protein_keywords = ['chicken', 'turkey', 'beef', 'salmon', 'tuna', 'fish', 
-                       'egg', 'yogurt', 'cottage cheese', 'tofu', 'protein']
-    carb_keywords = ['rice', 'quinoa', 'oat', 'potato', 'pasta', 'bread', 
-                    'banana', 'apple', 'berry', 'orange', 'granola']
-    veg_keywords = ['broccoli', 'spinach', 'kale', 'carrot', 'pepper', 
-                   'asparagus', 'bean', 'tomato', 'cucumber', 'lettuce', 'salad']
-    fat_keywords = ['almond', 'peanut', 'oil', 'walnut', 'chia', 'flax', 
-                   'cashew', 'avocado', 'butter']
+    # Keywords to identify snack categories
+    fruit_keywords = ['apple', 'banana', 'orange', 'pear', 'peach', 'plum', 
+                     'grape', 'strawberry', 'blueberry', 'raspberry', 
+                     'blackberry', 'mango', 'berry']
+    nut_keywords = ['almond', 'peanut', 'walnut', 'cashew', 'pistachio',
+                   'macadamia', 'pecan', 'nut', 'seed']
+    yogurt_keywords = ['yogurt', 'parfait']
+    bar_keywords = ['bar', 'protein bar', 'granola bar', 'energy bar']
     
     for _, row in df.iterrows():
         desc = row['description'].lower()
         
         # Categorize based on keywords
-        if any(keyword in desc for keyword in protein_keywords):
-            categories['protein'].append(row)
-        elif any(keyword in desc for keyword in carb_keywords):
-            categories['carbs'].append(row)
-        elif any(keyword in desc for keyword in veg_keywords):
-            categories['vegetables'].append(row)
-        elif any(keyword in desc for keyword in fat_keywords):
-            categories['fats'].append(row)
+        if any(keyword in desc for keyword in fruit_keywords):
+            categories['fruits'].append(row)
+        elif any(keyword in desc for keyword in nut_keywords):
+            categories['nuts'].append(row)
+        elif any(keyword in desc for keyword in yogurt_keywords):
+            categories['yogurt'].append(row)
+        elif any(keyword in desc for keyword in bar_keywords):
+            categories['bars'].append(row)
+        else:
+            categories['other'].append(row)
     
-    print(f"\nCategorized foods:")
+    print(f"\nCategorized snacks:")
     for cat, items in categories.items():
         print(f"  {cat}: {len(items)} items")
     
     return categories
 
-def create_meal_combination(protein, carb, vegetable, fat=None):
-    """Combine foods into a meal and sum macros"""
+def create_snack(items, portions):
+    """Create a snack from 1-2 items with appropriate portions"""
     
-    # Typical serving sizes (grams)
-    protein_serving = 150  # ~5oz chicken breast
-    carb_serving = 150     # ~1 cup cooked rice
-    veg_serving = 100      # ~1 cup vegetables
-    fat_serving = 15       # ~1 tbsp
-    
-    # Calculate macros (USDA data is per 100g)
-    protein_macros = {
-        'calories': protein['calories'] * (protein_serving / 100),
-        'protein': protein['protein'] * (protein_serving / 100),
-        'carbs': protein['carbs'] * (protein_serving / 100),
-        'fat': protein['fat'] * (protein_serving / 100)
-    }
-    
-    carb_macros = {
-        'calories': carb['calories'] * (carb_serving / 100),
-        'protein': carb['protein'] * (carb_serving / 100),
-        'carbs': carb['carbs'] * (carb_serving / 100),
-        'fat': carb['fat'] * (carb_serving / 100)
-    }
-    
-    veg_macros = {
-        'calories': vegetable['calories'] * (veg_serving / 100),
-        'protein': vegetable['protein'] * (veg_serving / 100),
-        'carbs': vegetable['carbs'] * (veg_serving / 100),
-        'fat': vegetable['fat'] * (veg_serving / 100)
-    }
-    
-    # Build meal description
-    meal_desc = f"{protein['description']} with {carb['description']} and {vegetable['description']}"
-    
-    # Sum macros
     total_macros = {
-        'calories': protein_macros['calories'] + carb_macros['calories'] + veg_macros['calories'],
-        'protein': protein_macros['protein'] + carb_macros['protein'] + veg_macros['protein'],
-        'carbs': protein_macros['carbs'] + carb_macros['carbs'] + veg_macros['carbs'],
-        'fat': protein_macros['fat'] + carb_macros['fat'] + veg_macros['fat']
+        'calories': 0,
+        'protein': 0,
+        'carbs': 0,
+        'fat': 0
     }
     
-    # Add fat source if provided (FIXED: check if not None instead of truthiness)
-    if fat is not None:
-        fat_macros = {
-            'calories': fat['calories'] * (fat_serving / 100),
-            'protein': fat['protein'] * (fat_serving / 100),
-            'carbs': fat['carbs'] * (fat_serving / 100),
-            'fat': fat['fat'] * (fat_serving / 100)
-        }
-        total_macros['calories'] += fat_macros['calories']
-        total_macros['protein'] += fat_macros['protein']
-        total_macros['carbs'] += fat_macros['carbs']
-        total_macros['fat'] += fat_macros['fat']
-        
-        meal_desc += f" with {fat['description']}"
+    descriptions = []
+    
+    for item, portion in zip(items, portions):
+        # Calculate macros (USDA data is per 100g)
+        descriptions.append(item['description'])
+        total_macros['calories'] += item['calories'] * (portion / 100)
+        total_macros['protein'] += item['protein'] * (portion / 100)
+        total_macros['carbs'] += item['carbs'] * (portion / 100)
+        total_macros['fat'] += item['fat'] * (portion / 100)
+    
+    # Create description
+    if len(items) == 1:
+        meal_desc = descriptions[0]
+    else:
+        meal_desc = f"{descriptions[0]} with {descriptions[1]}"
     
     return {
         'description': meal_desc,
@@ -111,48 +82,98 @@ def create_meal_combination(protein, carb, vegetable, fat=None):
         'fat': round(total_macros['fat'], 1)
     }
 
-def generate_synthetic_meals(categories, num_meals=500):
-    """Generate synthetic meal combinations"""
-    meals = []
+def generate_synthetic_snacks(categories, num_snacks=1000):
+    """Generate realistic snack combinations"""
+    snacks = []
     
-    proteins = categories['protein']
-    carbs = categories['carbs']
-    vegetables = categories['vegetables']
-    fats = categories['fats']
+    # Flatten all categories into snack options
+    all_snacks = []
+    for cat, items in categories.items():
+        all_snacks.extend(items)
     
-    if not proteins or not carbs or not vegetables:
-        raise ValueError("Not enough categorized foods to generate meals!")
+    if len(all_snacks) < 5:
+        raise ValueError("Not enough snack foods to generate combinations!")
     
-    print(f"\nGenerating {num_meals} synthetic meals...")
+    print(f"\nGenerating {num_snacks} synthetic snacks...")
     
-    for i in range(num_meals):
-        # Randomly select components
-        protein = random.choice(proteins)
-        carb = random.choice(carbs)
-        vegetable = random.choice(vegetables)
+    attempts = 0
+    max_attempts = num_snacks * 3  # Try 3x to handle filtering
+    
+    while len(snacks) < num_snacks and attempts < max_attempts:
+        attempts += 1
         
-        # 50% chance to add a fat source
-        fat = random.choice(fats) if fats and random.random() > 0.5 else None
+        # Decide: single item (70%) or combo (30%)
+        is_single = random.random() < 0.7
         
-        meal = create_meal_combination(protein, carb, vegetable, fat)
-        meals.append(meal)
+        if is_single:
+            # Single item snack
+            item = random.choice(all_snacks)
+            # Small to medium portion (30-120g)
+            portion = random.uniform(30, 120)
+            
+            snack = create_snack([item], [portion])
+        else:
+            # Two-item combo (fruit + nut butter, crackers + cheese, etc.)
+            item1 = random.choice(all_snacks)
+            item2 = random.choice(all_snacks)
+            
+            # Make sure they're different
+            if item1['description'] == item2['description']:
+                continue
+            
+            # Smaller portions for combos
+            portion1 = random.uniform(40, 80)
+            portion2 = random.uniform(20, 50)
+            
+            snack = create_snack([item1, item2], [portion1, portion2])
         
-        if (i + 1) % 100 == 0:
-            print(f"  Generated {i + 1} meals...")
+        # Filter: snacks should be 50-400 calories
+        if 50 <= snack['calories'] <= 400:
+            snacks.append(snack)
+            
+            if len(snacks) % 100 == 0:
+                print(f"  Generated {len(snacks)} snacks...")
     
-    return pd.DataFrame(meals)
+    if len(snacks) < num_snacks:
+        print(f"⚠️  Only generated {len(snacks)} valid snacks (wanted {num_snacks})")
+    
+    return pd.DataFrame(snacks)
+
+def filter_realistic_snacks(df):
+    """Remove non-snack foods from training data"""
+    # Keywords that indicate full meals (not snacks)
+    meal_keywords = ['platter', 'burgundy', 'stir fry', 'casserole', 
+                    'grilled chicken breast', 'baked salmon', 'roast',
+                    'fried chicken', 'chicken tenderloin', 'pot roast',
+                    'pasta dish', 'dinner', 'entree']
+    
+    def is_valid_snack(description):
+        desc_lower = description.lower()
+        # Reject if it contains meal keywords
+        if any(keyword in desc_lower for keyword in meal_keywords):
+            return False
+        return True
+    
+    original_count = len(df)
+    filtered = df[df['description'].apply(is_valid_snack)]
+    removed = original_count - len(filtered)
+    
+    print(f"\n🔍 Filtered out {removed} non-snack items")
+    print(f"✅ Kept {len(filtered)} realistic snacks")
+    
+    return filtered
 
 def save_training_data(df, filename='data/training_data.csv'):
     """Save training data to CSV"""
     df.to_csv(filename, index=False)
-    print(f"\n✅ Saved {len(df)} meals to {filename}")
-    print(f"\nSample meals:")
+    print(f"\n✅ Saved {len(df)} snacks to {filename}")
+    print(f"\nSample snacks:")
     print(df.head(10))
     print(f"\nMacro ranges:")
     print(df.describe())
 
 if __name__ == "__main__":
-    print("🍽️ Generating synthetic meal data for training...")
+    print("🍽️ Generating synthetic snack data for training...")
     
     # Load nutrition data
     nutrition_df = load_nutrition_data()
@@ -160,10 +181,16 @@ if __name__ == "__main__":
     # Categorize foods
     categories = categorize_foods(nutrition_df)
     
-    # Generate synthetic meals
-    meals_df = generate_synthetic_meals(categories, num_meals=1000)
+    # Generate synthetic snacks (generate extra to account for filtering)
+    snacks_df = generate_synthetic_snacks(categories, num_snacks=1200)
+    
+    # Filter out non-snacks
+    snacks_df = filter_realistic_snacks(snacks_df)
+    
+    # Keep only 1000 after filtering
+    snacks_df = snacks_df.head(1000)
     
     # Save training data
-    save_training_data(meals_df)
+    save_training_data(snacks_df)
     
-    print("\n📊 Synthetic meal generation complete!")
+    print("\n📊 Synthetic snack generation complete!")

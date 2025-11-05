@@ -1,6 +1,5 @@
 import pandas as pd
 import random
-from itertools import combinations
 
 def load_nutrition_data(filename='data/nutrition_data.csv'):
     """Load the USDA nutrition data"""
@@ -8,8 +7,24 @@ def load_nutrition_data(filename='data/nutrition_data.csv'):
     print(f"Loaded {len(df)} food items")
     return df
 
+def clean_data(df):
+    """Remove implausible foods"""
+    def is_plausible(row):
+        # Check for negatives
+        if any(row[k] < 0 for k in ['calories', 'protein', 'carbs', 'fat']):
+            return False
+        # Sanity check: macro-derived calories should be close to listed calories
+        macro_cal = 4*row['protein'] + 4*row['carbs'] + 9*row['fat']
+        listed_cal = row['calories']
+        # Allow 25% tolerance
+        return (0.75*macro_cal <= listed_cal <= 1.25*macro_cal) or macro_cal == 0
+    
+    cleaned = df[df.apply(is_plausible, axis=1)]
+    print(f"Cleaned: {len(df)} → {len(cleaned)} items")
+    return cleaned
+
 def categorize_foods(df):
-    """Categorize foods into protein, carbs, vegetables, fats"""
+    """Categorize foods into lunch-specific categories"""
     categories = {
         'protein': [],
         'carbs': [],
@@ -17,102 +32,136 @@ def categorize_foods(df):
         'fats': []
     }
     
-    # Keywords to identify categories
-    protein_keywords = ['chicken', 'turkey', 'beef', 'salmon', 'tuna', 'fish', 
-                       'egg', 'yogurt', 'cottage cheese', 'tofu', 'protein']
-    carb_keywords = ['rice', 'quinoa', 'oat', 'potato', 'pasta', 'bread', 
-                    'banana', 'apple', 'berry', 'orange', 'granola']
-    veg_keywords = ['broccoli', 'spinach', 'kale', 'carrot', 'pepper', 
-                   'asparagus', 'bean', 'tomato', 'cucumber', 'lettuce', 'salad']
-    fat_keywords = ['almond', 'peanut', 'oil', 'walnut', 'chia', 'flax', 
-                   'cashew', 'avocado', 'butter']
+    protein_keywords = ['chicken', 'turkey', 'tuna', 'salmon', 'ham', 'roast beef',
+                       'tofu', 'egg', 'chickpea', 'black bean', 'lentil', 'shrimp']
+    carb_keywords = ['bread', 'wrap', 'tortilla', 'rice', 'pasta', 'quinoa', 
+                    'pita', 'sandwich', 'burger', 'roll', 'noodle', 'chip', 'cracker']
+    veg_keywords = ['lettuce', 'tomato', 'cucumber', 'pepper', 'spinach', 'salad',
+                   'avocado', 'carrot', 'onion', 'broccoli', 'kale', 'bean']
+    fat_keywords = ['dressing', 'mayo', 'hummus', 'cheese', 'oil', 'nut', 'seed',
+                   'avocado', 'guacamole', 'butter']
     
     for _, row in df.iterrows():
         desc = row['description'].lower()
         
-        # Categorize based on keywords
-        if any(keyword in desc for keyword in protein_keywords):
+        if any(kw in desc for kw in protein_keywords):
             categories['protein'].append(row)
-        elif any(keyword in desc for keyword in carb_keywords):
+        if any(kw in desc for kw in carb_keywords):
             categories['carbs'].append(row)
-        elif any(keyword in desc for keyword in veg_keywords):
+        if any(kw in desc for kw in veg_keywords):
             categories['vegetables'].append(row)
-        elif any(keyword in desc for keyword in fat_keywords):
+        if any(kw in desc for kw in fat_keywords):
             categories['fats'].append(row)
     
-    print(f"\nCategorized foods:")
+    print(f"\nCategorized lunch foods:")
     for cat, items in categories.items():
         print(f"  {cat}: {len(items)} items")
     
     return categories
 
-def create_meal_combination(protein, carb, vegetable, fat=None):
-    """Combine foods into a meal and sum macros"""
+def get_serving_size(food_desc, role):
+    """Return smart serving size based on food type"""
+    desc = food_desc.lower()
     
-    # Typical serving sizes (grams)
-    protein_serving = 150  # ~5oz chicken breast
-    carb_serving = 150     # ~1 cup cooked rice
-    veg_serving = 100      # ~1 cup vegetables
-    fat_serving = 15       # ~1 tbsp
+    if role == 'protein':
+        if any(k in desc for k in ['chicken', 'turkey', 'tuna', 'salmon']): 
+            return random.uniform(100, 150)
+        if any(k in desc for k in ['egg', 'chickpea', 'bean']): 
+            return random.uniform(80, 120)
+        if any(k in desc for k in ['ham', 'roast beef']): 
+            return random.uniform(60, 100)
+        return random.uniform(90, 140)
     
-    # Calculate macros (USDA data is per 100g)
-    protein_macros = {
-        'calories': protein['calories'] * (protein_serving / 100),
-        'protein': protein['protein'] * (protein_serving / 100),
-        'carbs': protein['carbs'] * (protein_serving / 100),
-        'fat': protein['fat'] * (protein_serving / 100)
-    }
+    if role == 'carbs':
+        if 'bread' in desc or 'sandwich' in desc: 
+            return random.uniform(60, 100)
+        if 'wrap' in desc or 'tortilla' in desc: 
+            return random.uniform(70, 110)
+        if any(k in desc for k in ['rice', 'pasta', 'quinoa', 'noodle']): 
+            return random.uniform(120, 180)
+        if any(k in desc for k in ['chip', 'cracker']): 
+            return random.uniform(30, 50)
+        return random.uniform(80, 130)
     
-    carb_macros = {
-        'calories': carb['calories'] * (carb_serving / 100),
-        'protein': carb['protein'] * (carb_serving / 100),
-        'carbs': carb['carbs'] * (carb_serving / 100),
-        'fat': carb['fat'] * (carb_serving / 100)
-    }
+    if role == 'vegetables':
+        if 'salad' in desc: 
+            return random.uniform(100, 200)
+        return random.uniform(60, 120)
     
-    veg_macros = {
-        'calories': vegetable['calories'] * (veg_serving / 100),
-        'protein': vegetable['protein'] * (veg_serving / 100),
-        'carbs': vegetable['carbs'] * (veg_serving / 100),
-        'fat': vegetable['fat'] * (veg_serving / 100)
-    }
+    if role == 'fats':
+        if 'dressing' in desc or 'mayo' in desc: 
+            return random.uniform(15, 30)
+        if 'cheese' in desc: 
+            return random.uniform(20, 40)
+        if any(k in desc for k in ['hummus', 'guacamole']): 
+            return random.uniform(30, 60)
+        return random.uniform(10, 25)
     
-    # Build meal description
-    meal_desc = f"{protein['description']} with {carb['description']} and {vegetable['description']}"
+    return 100
+
+def create_lunch_meal(protein, carb, vegetable=None, fat=None):
+    """Create lunch with smart portions"""
+    # Get smart serving sizes
+    p_grams = get_serving_size(protein['description'], 'protein')
+    c_grams = get_serving_size(carb['description'], 'carbs')
+    v_grams = get_serving_size(vegetable['description'], 'vegetables') if vegetable is not None else 0
+    f_grams = get_serving_size(fat['description'], 'fats') if fat is not None else 0
     
-    # Sum macros
-    total_macros = {
-        'calories': protein_macros['calories'] + carb_macros['calories'] + veg_macros['calories'],
-        'protein': protein_macros['protein'] + carb_macros['protein'] + veg_macros['protein'],
-        'carbs': protein_macros['carbs'] + carb_macros['carbs'] + veg_macros['carbs'],
-        'fat': protein_macros['fat'] + carb_macros['fat'] + veg_macros['fat']
-    }
+    # Calculate macros (per 100g)
+    p_cal = protein['calories'] * (p_grams / 100)
+    p_prot = protein['protein'] * (p_grams / 100)
+    p_carb = protein['carbs'] * (p_grams / 100)
+    p_fat = protein['fat'] * (p_grams / 100)
     
-    # Add fat source if provided (FIXED: check if not None instead of truthiness)
-    if fat is not None:
-        fat_macros = {
-            'calories': fat['calories'] * (fat_serving / 100),
-            'protein': fat['protein'] * (fat_serving / 100),
-            'carbs': fat['carbs'] * (fat_serving / 100),
-            'fat': fat['fat'] * (fat_serving / 100)
-        }
-        total_macros['calories'] += fat_macros['calories']
-        total_macros['protein'] += fat_macros['protein']
-        total_macros['carbs'] += fat_macros['carbs']
-        total_macros['fat'] += fat_macros['fat']
+    c_cal = carb['calories'] * (c_grams / 100)
+    c_prot = carb['protein'] * (c_grams / 100)
+    c_carb = carb['carbs'] * (c_grams / 100)
+    c_fat = carb['fat'] * (c_grams / 100)
+    
+    # Start with protein + carb
+    total_cal = p_cal + c_cal
+    total_prot = p_prot + c_prot
+    total_carb = p_carb + c_carb
+    total_fat = p_fat + c_fat
+    
+    desc = f"{protein['description']} with {carb['description']}"
+    
+    # Add vegetable
+    if vegetable is not None:
+        v_cal = vegetable['calories'] * (v_grams / 100)
+        v_prot = vegetable['protein'] * (v_grams / 100)
+        v_carb = vegetable['carbs'] * (v_grams / 100)
+        v_fat = vegetable['fat'] * (v_grams / 100)
         
-        meal_desc += f" with {fat['description']}"
+        total_cal += v_cal
+        total_prot += v_prot
+        total_carb += v_carb
+        total_fat += v_fat
+        desc += f" and {vegetable['description']}"
+    
+    # Add fat
+    if fat is not None:
+        f_cal = fat['calories'] * (f_grams / 100)
+        f_prot = fat['protein'] * (f_grams / 100)
+        f_carb = fat['carbs'] * (f_grams / 100)
+        f_fat = fat['fat'] * (f_grams / 100)
+        
+        total_cal += f_cal
+        total_prot += f_prot
+        total_carb += f_carb
+        total_fat += f_fat
+        desc += f" with {fat['description']}"
     
     return {
-        'description': meal_desc,
-        'calories': round(total_macros['calories'], 1),
-        'protein': round(total_macros['protein'], 1),
-        'carbs': round(total_macros['carbs'], 1),
-        'fat': round(total_macros['fat'], 1)
+        'description': desc,
+        'calories': round(total_cal, 1),
+        'protein': round(total_prot, 1),
+        'carbs': round(total_carb, 1),
+        'fat': round(total_fat, 1)
     }
 
-def generate_synthetic_meals(categories, num_meals=500):
-    """Generate synthetic meal combinations"""
+def generate_synthetic_lunches(categories, num_meals=1000):
+    """Generate synthetic lunch combinations with smart logic"""
     meals = []
     
     proteins = categories['protein']
@@ -120,25 +169,37 @@ def generate_synthetic_meals(categories, num_meals=500):
     vegetables = categories['vegetables']
     fats = categories['fats']
     
-    if not proteins or not carbs or not vegetables:
-        raise ValueError("Not enough categorized foods to generate meals!")
+    if not proteins or not carbs:
+        raise ValueError("Not enough categorized foods to generate lunches!")
     
-    print(f"\nGenerating {num_meals} synthetic meals...")
+    print(f"\nGenerating {num_meals} synthetic lunches...")
     
-    for i in range(num_meals):
-        # Randomly select components
+    attempts = 0
+    max_attempts = num_meals * 2
+    
+    while len(meals) < num_meals and attempts < max_attempts:
+        attempts += 1
+        
         protein = random.choice(proteins)
         carb = random.choice(carbs)
-        vegetable = random.choice(vegetables)
         
-        # 50% chance to add a fat source
-        fat = random.choice(fats) if fats and random.random() > 0.5 else None
+        # Vegetables more likely with salads/wraps
+        carb_desc = carb['description'].lower()
+        veg_prob = 0.8 if any(k in carb_desc for k in ['salad', 'wrap', 'sandwich']) else 0.6
+        vegetable = random.choice(vegetables) if vegetables and random.random() < veg_prob else None
         
-        meal = create_meal_combination(protein, carb, vegetable, fat)
-        meals.append(meal)
+        # Fat more likely with salads (dressing), less likely with chips/fries
+        fat_prob = 0.7 if 'salad' in carb_desc else (0.3 if any(k in carb_desc for k in ['chip', 'fries']) else 0.5)
+        fat = random.choice(fats) if fats and random.random() < fat_prob else None
         
-        if (i + 1) % 100 == 0:
-            print(f"  Generated {i + 1} meals...")
+        meal = create_lunch_meal(protein, carb, vegetable, fat)
+        
+        # Filter: keep 350-750 cal
+        if 350 <= meal['calories'] <= 750:
+            meals.append(meal)
+            
+            if len(meals) % 100 == 0:
+                print(f"  Generated {len(meals)} meals...")
     
     return pd.DataFrame(meals)
 
@@ -152,18 +213,12 @@ def save_training_data(df, filename='data/training_data.csv'):
     print(df.describe())
 
 if __name__ == "__main__":
-    print("🍽️ Generating synthetic meal data for training...")
+    print("🍽️ Generating synthetic lunch data for training...")
     
-    # Load nutrition data
     nutrition_df = load_nutrition_data()
-    
-    # Categorize foods
+    nutrition_df = clean_data(nutrition_df)
     categories = categorize_foods(nutrition_df)
-    
-    # Generate synthetic meals
-    meals_df = generate_synthetic_meals(categories, num_meals=1000)
-    
-    # Save training data
+    meals_df = generate_synthetic_lunches(categories, num_meals=1000)
     save_training_data(meals_df)
     
-    print("\n📊 Synthetic meal generation complete!")
+    print("\n📊 Synthetic lunch generation complete!")

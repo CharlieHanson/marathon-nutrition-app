@@ -1,6 +1,5 @@
 description,calories,protein,carbs,fat
 "Chicken breast, rotisserie, skin not eaten",144.0,28.04,0.0,3.57
-"Chicken breast, roll, oven-roasted",562.0,14.6,1.79,7.65
 "Chicken breast, rotisserie, skin eaten",175.0,26.37,0.09,7.67
 "Chicken breast, sauteed, skin eaten",206.0,25.72,0.0,10.62
 "Chicken fillet, grilled",151.0,22.31,2.36,5.81
@@ -21,7 +20,6 @@ description,calories,protein,carbs,fat
 "Chicken, chicken roll, roasted",164.0,26.68,0.0,6.33
 "Chicken, roasting, meat and skin, cooked, roasted",223.0,24.0,0.0,13.4
 "Chicken, roasting, meat only, cooked, roasted",167.0,25.0,0.0,6.63
-"Chicken, roasting, giblets, raw",127.0,18.1,1.14,5.04
 "Chicken, roasting, dark meat, meat only, cooked, roasted",178.0,23.2,0.0,8.75
 "Restaurant, Italian, chicken parmesan without pasta",204.0,16.2,10.9,10.6
 "CARRABBA'S ITALIAN GRILL, chicken parmesan without cavatappi pasta",206.0,19.0,7.8,11.0
@@ -35,54 +33,38 @@ Salmon salad,213.0,10.82,2.73,17.36
 "Fish, salmon, canned",136.0,24.62,0.0,4.21
 "Fish, salmon, fried",307.0,17.45,11.72,20.68
 "Fish, salmon, grilled",259.0,25.92,0.0,16.48
-"Scallops, grilled",108.0,15.3,4.04,2.89
-"Shrimp, grilled",110.0,17.26,1.16,3.55
 "Fish, salmon, baked or broiled",274.0,25.4,0.01,18.4
 "Fish, salmon, baked or broiled, coated",277.0,22.7,7.79,16.58
-"Vegetarian, fillet",290.0,23.0,9.0,18.0
+"Scallops, grilled",108.0,15.3,4.04,2.89
+"Shrimp, grilled",110.0,17.26,1.16,3.55
 "Fish, tilapia, fried",237.0,17.18,11.72,13.46
 "Fish, tilapia, grilled",142.0,25.46,0.0,4.42
 "Fish, tilapia, NFS",160.0,24.95,0.01,6.65
-"Fish, tilapia, raw",400.0,20.1,0.0,1.7
 "Fish, tilapia, steamed",121.0,25.37,0.0,2.15
-Cape Cod,98.0,0.0,10.18,0.08
 "Fish, cod, fried",217.0,13.52,11.72,12.48
 "Fish, cod, grilled",108.0,19.36,0.0,2.79
-"Fish, cod, NFS",217.0,13.52,11.72,12.48
 "Fish, cod, steamed",87.0,19.29,0.0,0.52
-"Fish, halibut",175.0,20.73,7.79,6.24
-"Fish, halibut, Greenland, raw",186.0,14.4,0.0,13.8
-"Fish, halibut, Atlantic and Pacific, raw",382.0,18.6,0.0,1.33
 "Fish, halibut, cooked, with skin (Alaska Native)",113.0,22.1,0.0,2.73
 "Fish, halibut, greenland, cooked, dry heat",239.0,18.4,0.0,17.7
 "Fish, trout, fried",271.0,17.08,11.72,16.87
 "Fish, trout, grilled",199.0,25.28,0.0,10.1
-"Fish, trout, NFS",271.0,17.08,11.72,16.87
 "Fish, trout, steamed",178.0,25.19,0.0,7.81
 "Fish, trout, baked or broiled",216.0,24.78,0.01,12.21
 Pepper steak,145.0,11.88,4.34,9.12
-Steak sauce,95.0,1.25,22.04,0.23
-Steak tartare,216.0,17.45,0.34,15.6
 Steak teriyaki,198.0,28.86,1.94,8.25
 Swiss steak,115.0,15.48,3.67,4.42
 "Fish, swordfish",231.0,21.89,7.79,11.82
-"Fish, swordfish, raw",144.0,19.7,0.0,6.65
-"Fish, swordfish, cooked, dry heat",718.0,23.4,0.0,7.93
 Shrimp cocktail,99.0,13.24,7.92,1.22
 Shrimp scampi,192.0,15.41,2.27,12.98
 "Shrimp, fried",218.0,12.26,12.41,12.94
-Shrimp chips,426.0,7.14,59.09,17.86
 "Fajita, shrimp",189.0,8.33,18.35,8.92
 "Asian stir fry vegetables, cooked, fat added",71.0,2.01,9.65,2.84
 "Asian stir fry vegetables, cooked, no added fat",50.0,2.07,9.93,0.3
-Fry sauce,535.0,0.98,7.28,56.16
 "Mushrooms, shiitake, stir-fried",162.0,3.45,7.68,0.35
 "Mushrooms, white, stir-fried",26.0,3.58,4.04,0.33
 "Beef, steak, ribeye, lean and fat eaten",289.0,23.5,0.0,21.64
 "Beef, steak, ribeye, lean only eaten",230.0,26.47,0.0,13.83
 "Beef, steak, ribeye, NS as to fat eaten",260.0,24.99,0.0,17.73
-"Game meat, bison, ribeye, separable lean only, 1"" steak, cooked, broiled",177.0,29.4,0.0,5.67
-"DENNY'S, top sirloin steak",762.0,28.9,0.14,7.34
 "CRACKER BARREL, grilled sirloin steak",203.0,31.5,0.0,8.52
 "Restaurant, family style, sirloin steak",195.0,29.8,0.0,8.48
 "APPLEBEE'S, 9 oz house sirloin steak",189.0,26.8,0.0,9.08
@@ -90,19 +72,13 @@ Fry sauce,535.0,0.98,7.28,56.16
 "Salmon, red (sockeye), filets with skin, smoked (Alaska Native)",345.0,60.6,0.0,11.4
 "Fast Foods, grilled chicken filet sandwich, with lettuce, tomato and spread",182.0,17.3,16.8,4.57
 "Beef, steak, flank",243.0,29.13,0.0,14.09
-"Beef, flank, steak, separable lean and fat, trimmed to 0"" fat, choice, raw",165.0,21.2,0.0,8.29
-"Beef, flank, steak, separable lean and fat, trimmed to 0"" fat, select, raw",145.0,21.2,0.0,6.06
-"Beef, flank, steak, separable lean only, trimmed to 0"" fat, choice, raw",149.0,21.7,0.0,6.29
 "Beef, ground",261.0,25.55,0.0,16.82
 "Beef, ground, patty",272.0,25.45,0.0,18.18
-"Beef, ground, raw",213.0,18.44,0.0,14.88
 "Beef, ground, with egg and onion",228.0,21.86,1.05,14.54
 Spanish rice with ground beef,163.0,9.68,14.79,6.91
 Corned beef patty,164.0,8.73,9.27,10.24
 Potato patty,171.0,3.89,13.49,11.32
 "Beef, ground, 70% lean meat / 30% fat, patty, cooked, broiled",277.0,25.4,0.0,18.7
-Meatloaf sandwich,217.0,11.75,28.73,6.15
-Vegetarian meatloaf or patties,824.0,21.0,8.0,9.0
 "Meat loaf dinner, NFS, frozen meal",134.0,6.66,10.13,7.4
 "Meat loaf with potatoes, vegetable, frozen meal",134.0,6.66,10.13,7.4
 "Stew, beef",107.0,8.76,6.29,5.07
@@ -115,76 +91,43 @@ Vegetarian meatloaf or patties,824.0,21.0,8.0,9.0
 "Pork, chop, lean only eaten",171.0,28.03,0.0,5.94
 "Pork, chop, NS as to fat eaten",183.0,27.5,0.0,7.55
 "HORMEL ALWAYS TENDER, Boneless Pork Loin, Fresh Pork",145.0,19.0,0.76,7.18
-"Pork, fresh, loin, top loin (roasts), boneless, separable lean and fat, raw",696.0,21.3,0.0,8.33
-"Pork, fresh, loin, top loin (roasts), boneless, separable lean only, raw",132.0,22.4,0.0,4.06
 "Pork, tenderloin",134.0,24.65,0.09,3.38
 "HORMEL ALWAYS TENDER, Pork Tenderloin, Peppercorn-Flavored",110.0,17.2,1.82,3.8
 "HORMEL ALWAYS TENDER, Pork Tenderloin, Teriyaki-Flavored",119.0,18.2,4.63,3.07
 "Pork, fresh, loin, tenderloin, separable lean and fat, raw",120.0,20.6,0.0,3.53
 Pulled pork in barbecue sauce,168.0,13.2,18.7,4.42
 "Pork, pickled pork hocks",171.0,19.1,0.0,10.5
-"Pork, cracklings",569.0,45.03,0.0,41.74
 "Pork, belly",404.0,26.58,0.0,32.24
 "Bologna, turkey",209.0,11.4,4.68,16.0
-"Frankfurter, turkey",933.0,12.2,3.81,17.3
 "Pastrami, turkey",139.0,16.3,3.34,6.21
 Turkey with gravy,125.0,20.46,1.58,3.46
-"Turkey breast, sliced, prepackaged",442.0,14.8,2.2,3.77
-"Turkey, whole, breast, meat only, raw",479.0,23.7,0.14,1.48
-"Turkey, all classes, breast, meat and skin, raw",157.0,21.9,0.0,7.02
-"Turkey, retail parts, breast, meat and skin, raw",155.0,21.9,0.0,7.45
-"Turkey, retail parts, breast, meat only, raw",478.0,23.3,0.0,2.33
 "Turkey, ground",211.0,26.87,0.0,11.5
 "Turkey, Ground, cooked",203.0,27.4,0.0,10.4
-"Turkey, Ground, raw",148.0,19.7,0.0,7.66
-"Turkey, ground, fat free, raw",468.0,23.6,0.0,1.95
-"Meatball, meatless",197.0,21.0,8.0,9.0
 "Meatballs, meatless",197.0,21.0,8.0,9.0
-"Soup, meatball",52.0,2.65,5.53,2.17
 "DENNY'S, spaghetti and meatballs",170.0,7.84,15.5,8.52
 Meatball sandwich or sub,207.0,11.3,21.31,8.23
 "Lamb, chop",264.0,27.36,0.0,16.27
 "Lamb, ground",281.0,24.55,0.0,19.49
 "Stew, lamb",117.0,8.19,6.29,6.39
-"Lamb, New Zealand, imported, ground lamb, raw",807.0,20.3,0.0,12.4
 Lamb or mutton loaf,192.0,14.05,7.44,11.58
-"Lamb, New Zealand, imported, loin chop, separable lean only, raw",142.0,20.0,0.0,6.88
-"Lamb, New Zealand, imported, neck chops, separable lean and fat, raw",968.0,17.4,0.14,17.9
-"Lamb, New Zealand, imported, neck chops, separable lean only, raw",632.0,19.8,0.0,7.97
 Frog legs,220.0,14.38,11.72,12.4
-"Lamb, New Zealand, imported, leg chop/steak, bone-in, separable lean and fat, raw",861.0,18.6,0.13,14.5
-"Lamb, New Zealand, imported, leg chop/steak, bone-in, separable lean only, raw",126.0,21.1,0.0,4.64
 "Lamb, leg, shank half, separable lean and fat, trimmed to 1/4"" fat, choice, raw",201.0,18.6,0.0,13.5
-"Lamb, leg, shank half, separable lean and fat, trimmed to 1/8"" fat, choice, raw",185.0,19.0,0.0,11.5
-Duck sauce,245.0,0.36,60.66,0.13
 "Duck, Peking",154.0,5.32,6.47,11.76
-"Duck egg, cooked",224.0,11.96,1.36,18.55
 "Duck, cooked, skin eaten",336.0,18.91,0.0,28.23
 "Duck, cooked, skin not eaten",200.0,23.38,0.0,11.15
 "Duck, wild, breast, meat only, raw",123.0,19.8,0.0,4.25
-Tofu yogurt,394.0,3.5,16.0,1.8
 "Soup, miso or tofu",24.0,2.21,2.3,0.85
 "Fish, tofu, and vegetables, tempura",177.0,4.01,4.53,16.0
 Beans and brown rice,162.0,6.4,24.29,4.54
-"Flour, rice, brown",365.0,7.19,75.5,3.85
-"Rice flour, brown",363.0,7.23,76.5,2.78
-"Flavored rice, brown and wild",106.0,2.72,19.34,2.15
-"Snacks, rice cakes, brown rice, buckwheat",380.0,9.0,80.1,3.5
 Beans and white rice,164.0,6.5,25.19,4.21
-"Rice, white, cooked, glutinous",96.0,2.01,20.97,0.19
 Black beans and white rice,160.0,6.01,24.42,4.32
 Kidney beans and white rice,158.0,5.9,23.91,4.29
 Pinto beans and white rice,167.0,6.09,25.82,4.38
 Dirty rice,112.0,5.12,17.25,2.25
 Rice dressing,110.0,1.98,17.61,3.29
-"Crackers, rice",416.0,10.0,82.64,5.0
-Rice paper,323.0,5.91,72.26,1.11
 Rice pilaf,137.0,3.29,24.08,3.03
 "Wild rice, cooked",101.0,3.99,21.3,0.34
-"Wild rice, raw",357.0,14.7,74.9,1.08
-"Rice, white and wild, cooked, fat added",112.0,2.17,20.62,2.14
-"Rice and vermicelli mix, rice pilaf flavor, unprepared",359.0,10.4,76.3,1.37
-"Rice and vermicelli mix, rice pilaf flavor, prepared with 80% margarine",618.0,2.94,25.7,3.7
+"Rice, white, cooked, glutinous",96.0,2.01,20.97,0.19
 "Spanish rice, fat added",115.0,2.87,19.65,2.6
 "Spanish rice, no added fat",101.0,2.91,19.91,1.01
 "Spanish rice, NS as to fat",115.0,2.87,19.64,2.6
@@ -192,17 +135,11 @@ Rice pilaf,137.0,3.29,24.08,3.03
 "Pasta, cooked",157.0,5.76,30.68,0.92
 Flavored pasta,87.0,2.47,14.45,2.21
 "Pasta, vegetable, cooked",128.0,4.52,26.55,0.11
-"Pasta, gluten free",179.0,3.2,38.05,1.0
 "Pasta with sauce, NFS",125.0,5.86,19.15,2.58
-Spaghetti sauce,51.0,1.41,8.05,1.48
 Spaghetti sauce with meat,90.0,5.94,6.54,4.36
 Spaghetti sauce with poultry,75.0,6.29,6.54,2.62
 Spaghetti sauce with seafood,64.0,5.33,7.09,1.48
-"Pasta, whole-wheat, dry (Includes foods for USDA's Food Distribution Program)",352.0,13.9,73.4,2.93
 "Pasta, cooked, enriched, with added salt",157.0,5.8,30.6,0.93
-"Pasta, cooked, enriched, without added salt",660.0,5.8,30.9,0.93
-"Pasta, cooked, unenriched, with added salt",655.0,5.8,30.6,0.93
-"Pasta, cooked, unenriched, without added salt",660.0,5.8,30.9,0.93
 "Macaroni or noodles, creamed, with cheese and tuna",143.0,7.85,17.35,4.52
 Lasagna with meat,139.0,7.45,16.17,4.97
 "Lasagna, meatless",130.0,6.54,13.84,5.33
@@ -218,171 +155,75 @@ Macaroni or noodles with cheese and tomato,148.0,3.94,18.72,6.53
 "Quinoa, fat added",146.0,4.2,20.22,5.42
 "Quinoa, no added fat",120.0,4.38,21.21,1.91
 "Couscous, cooked",112.0,3.79,23.2,0.16
-"Couscous, dry",376.0,12.8,77.4,0.64
 "Couscous, plain, cooked",111.0,3.77,23.11,0.16
 "Bulgur, cooked",83.0,3.08,18.6,0.24
-"Bulgur, dry",342.0,12.3,75.9,1.33
 "Bulgur, fat added",121.0,2.9,17.31,5.07
 "Bulgur, no added fat",83.0,3.06,18.48,0.24
 "Soup, potato",90.0,1.51,10.53,4.71
 Potato pancake,196.0,4.47,20.64,10.8
 Stewed potatoes,103.0,1.99,16.26,3.39
-"Potato, NFS",126.0,1.87,20.45,4.25
 "Potato, baked, NFS",93.0,1.95,21.45,0.1
-"Potato chips, baked, flavored",467.0,4.97,71.04,18.11
-"Potato chips, baked, plain",469.0,5.0,71.4,18.2
-"Potato tots, frozen, baked",187.0,2.03,26.1,9.17
 "Potato, baked, peel eaten",93.0,2.49,21.05,0.13
 "Potato, mashed, NFS",114.0,2.15,17.6,4.07
 "Sweet potato, casserole or mashed",99.0,1.89,17.22,2.56
 "Potato, mashed, from restaurant",138.0,2.07,16.77,7.22
 "Potato, mashed, ready-to-heat",106.0,1.97,13.29,5.01
 "Fast foods, potato, mashed",89.0,1.65,14.6,2.82
-"Potato, roasted, NFS",126.0,1.87,20.45,4.25
-"Potato, roasted, ready-to-heat",126.0,1.87,20.45,4.25
-"Potatoes, roasted, salt added in processing, frozen, unprepared",530.0,2.22,26.2,1.81
 "Potato, roasted, from fresh, peel eaten, made with butter",123.0,2.41,20.07,4.02
 "Potato, roasted, from fresh, peel eaten, made with margarine",116.0,2.38,20.1,3.21
 Sweet potato tots,191.0,2.26,37.3,9.35
-"Bread, sweet potato",241.0,8.64,45.38,2.87
-"Pie, sweet potato",269.0,4.96,41.08,9.75
-Sweet potato chips,529.0,2.92,56.54,32.19
-Sweet potato paste,305.0,0.49,75.14,0.34
-"Yam, raw",494.0,1.53,27.9,0.17
-"Mountain yam, hawaii, raw",67.0,1.34,16.3,0.1
-"Mountain yam, hawaii, cooked, steamed, with salt",82.0,1.73,20.0,0.08
-"Yam, cooked, boiled, drained, or baked, with salt",477.0,1.49,27.0,0.14
-"Mountain yam, hawaii, cooked, steamed, without salt",82.0,1.73,20.0,0.08
-"Bread, fruit",374.0,6.01,47.34,18.1
-"Bread, naan",311.0,11.09,50.23,7.28
-"Bread, zucchini",306.0,5.05,42.64,13.14
-"Bread, puri",409.0,6.84,39.23,24.94
-"Bread, pumpkin",305.0,4.97,43.21,12.93
-"Rolls, dinner, egg",307.0,9.5,52.0,6.4
-"Rolls, dinner, rye",286.0,10.3,53.1,3.4
-"Rolls, dinner, sweet",321.0,10.0,53.6,7.37
-"Rolls, dinner, wheat",273.0,8.6,46.0,6.3
-"Rolls, dinner, oat bran",236.0,9.5,40.2,4.6
 "Garlic bread, frozen",350.0,8.36,41.7,16.6
 "Garlic bread, NFS",349.0,8.34,41.64,16.58
 "Garlic bread, from frozen",350.0,8.36,41.72,16.61
 "Garlic bread, from fast food / restaurant",349.0,8.34,41.64,16.58
 "Garlic bread, with melted cheese, from frozen",343.0,10.36,36.86,17.1
-Cornbread stuffing,179.0,2.9,21.9,8.8
-Chicken cornbread,167.0,13.78,9.38,8.21
-"Cornbread, prepared from mix",330.0,6.59,54.46,9.58
-"Cornbread muffin, stick, round",305.0,5.9,51.0,8.4
-"Cornbread, made from home recipe",287.0,6.55,42.87,9.8
+"Rolls, dinner, wheat",273.0,8.6,46.0,6.3
+"Rolls, dinner, oat bran",236.0,9.5,40.2,4.6
 "Rice noodles, cooked",107.0,1.78,23.87,0.2
 "Long rice noodles, made from mung beans, cooked",84.0,0.04,20.66,0.01
 "Noodles, japanese, soba, cooked",99.0,5.06,21.4,0.1
-"Noodles, japanese, soba, dry",336.0,14.4,74.6,0.71
 "Noodles, cooked",137.0,4.51,25.01,2.06
 "Adobo, with noodles",172.0,16.89,8.14,7.66
 Noodle pudding,209.0,5.94,31.02,7.4
 "Noodles, chow mein",521.0,10.33,51.9,31.72
 "Beef and noodles, no sauce",189.0,11.37,16.24,8.41
 Fried broccoli,223.0,4.28,22.41,12.88
-"Broccoli, raw",39.0,2.57,6.27,0.34
 Beef and broccoli,160.0,10.43,5.09,10.63
 "Oysters, steamed",65.0,7.23,3.44,2.16
 "Clams, steamed or boiled",109.0,18.57,4.52,1.22
 "Fish, bass, steamed",123.0,23.28,0.0,2.53
 "Fish, catfish, steamed",150.0,19.24,0.0,7.5
-"Asparagus, raw",85.0,2.2,3.88,0.12
-"Asparagus, frozen, unprepared",24.0,3.23,4.1,0.23
-"Asparagus, canned, cooked with oil",45.0,2.08,2.39,3.54
 Green bean casserole,56.0,1.96,7.05,2.21
-"Green beans, raw",40.0,1.97,7.41,0.28
 Fried green beans,223.0,4.04,22.86,12.86
-"Green beans, pickled",54.0,1.63,11.0,0.25
 "Bean salad, yellow and/or green string beans",109.0,3.52,13.0,5.0
-"Brussels sprouts, raw",43.0,3.38,8.95,0.3
-"Brussels sprouts, frozen, unprepared",41.0,3.78,7.86,0.41
 "Brussels sprouts, NS as to form, cooked",67.0,3.42,9.03,2.96
-"Carrots, raw",44.0,0.87,9.68,0.24
-"Carrot, dehydrated",341.0,8.1,79.6,1.49
-"Muffin, carrot",314.0,5.01,44.42,13.21
-"Carrots, raw, salad",212.0,1.25,17.62,15.74
 "Carrots, glazed, cooked",97.0,0.9,17.32,2.78
-"Nuts, walnuts, glazed",500.0,8.28,47.6,35.7
-"Doughnuts, french crullers, glazed",412.0,3.1,59.5,18.3
-"Muffin, zucchini",306.0,5.05,42.64,13.14
-"Zucchini, pickled",35.0,1.0,7.44,0.28
-"Cake or cupcake, zucchini",371.0,2.52,51.08,17.52
-"Squash, zucchini, baby, raw",21.0,2.71,3.11,0.4
 Fried cauliflower,218.0,4.02,21.9,12.86
-"Cauliflower, pickled",41.0,1.59,8.98,0.25
 "Cauliflower, raw",25.0,1.92,4.97,0.28
 "Spinach, creamed",90.0,2.39,6.11,6.09
-"Spinach, raw",27.0,2.85,2.41,0.62
 Spinach souffle,128.0,5.72,7.13,8.64
 "Chicken wing, sauteed",265.0,23.13,0.0,18.39
 "Onions, yellow, sauteed",123.0,0.95,7.86,10.8
 "Peppers, sweet, green, sauteed",116.0,0.78,4.22,11.8
-"Peppers, sweet, red, sauteed",555.0,1.04,6.57,12.8
-"Babyfood, vegetables, spinach, creamed, strained",37.0,2.5,5.7,1.3
 "Ravioli, cheese and spinach-filled, with cream sauce",145.0,5.56,15.67,6.74
-"Kale, raw",35.0,2.92,4.42,1.49
-"Kale, frozen, unprepared",116.0,2.66,4.88,0.46
 "Kale, NS as to form, cooked",69.0,3.05,4.61,4.29
-"Babyfood, vegetables, mix vegetables junior",36.0,1.4,8.2,0.4
-"Babyfood, vegetables, mix vegetables strained",36.0,1.0,8.25,0.5
-Mixed vegetable juice,28.0,0.72,6.3,0.16
-"Vegetables, mixed, frozen, unprepared",301.0,3.33,13.5,0.52
-"Babyfood, dinner, mixed vegetable, junior",142.0,1.01,7.88,0.11
-"Babyfood, vegetables, garden vegetable, strained",132.0,2.3,6.8,0.2
 Biryani with vegetables,109.0,1.93,17.91,3.2
-Vegetable chips,495.0,4.72,59.2,26.56
 "Fish sandwich, grilled",180.0,16.06,21.21,3.29
 "Fish, bass, grilled",143.0,23.37,0.0,4.8
-Corn beverage,44.0,0.84,9.4,0.21
-Corn nuts,446.0,8.5,71.86,15.64
-"Corn, creamed",72.0,1.74,18.13,0.42
-"Corn, raw",86.0,3.27,18.7,1.35
-"Corn, sweet, white, frozen, kernels on cob, unprepared",98.0,3.28,23.5,0.78
-"Corn, sweet, yellow, frozen, kernels on cob, unprepared",98.0,3.28,23.5,0.78
-"Corn, sweet, white, frozen, kernels cut off cob, unprepared",367.0,3.02,20.7,0.77
-"Corn, sweet, white, frozen, kernels on cob, cooked, boiled, drained, with salt",391.0,3.11,22.3,0.74
-"Corn, sweet, yellow, frozen, kernels on cob, cooked, boiled, drained, with salt",94.0,3.11,22.3,0.74
-Wasabi peas,432.0,14.11,62.2,14.11
-Pea salad,180.0,2.98,10.64,14.02
-"Soup, split pea",61.0,3.55,10.59,0.7
-"Blackeyed peas, NFS",166.0,7.18,19.29,7.0
-"Beans, snap, green, microwaved",33.0,2.31,6.41,0.5
-"Beans, snap, green, raw",131.0,1.83,6.97,0.22
-"Beans, snap, yellow, raw",129.0,1.82,7.13,0.12
-Snow cone,128.0,0.4,32.6,0.0
-"Snow cone, no sugar added",24.0,0.0,5.92,0.0
-"Peppers, jalapenos",26.0,0.86,5.53,0.38
-"Peppers, hot, raw",34.0,1.39,7.66,0.4
-"Peppers, hot, cooked",59.0,1.41,7.72,3.06
-"Peppers, red, cooked",55.0,0.92,6.71,2.78
-Eggplant dip,183.0,4.8,8.15,14.98
-"Eggplant, pickled",205.0,0.9,9.77,0.7
-"Eggplant, raw",25.0,0.98,5.88,0.18
 "Spaghetti squash, cooked",49.0,0.65,6.26,2.8
 "Squash, summer, souffle",125.0,4.65,6.87,8.94
 "Squash, winter, souffle",78.0,3.4,12.14,2.26
-"Winter squash, raw",26.0,1.0,6.5,0.1
-"Summer squash, yellow, raw",19.0,1.01,3.88,0.27
-"Squash, winter, butternut, raw",45.0,1.0,11.7,0.1
-"Babyfood, vegetable, butternut squash and corn",211.0,2.0,9.26,0.6
-"Squash, winter, butternut, frozen, unprepared",237.0,1.76,14.4,0.1
 "Squash, winter, butternut, cooked, baked, with salt",40.0,0.9,10.5,0.09
-"Squash, winter, acorn, raw",40.0,0.8,10.4,0.1
 "Squash, winter, acorn, cooked, baked, with salt",234.0,1.12,14.6,0.14
 "Squash, winter, acorn, cooked, baked, without salt",56.0,1.12,14.6,0.14
 "Squash, winter, acorn, cooked, boiled, mashed, with salt",34.0,0.67,8.79,0.08
 Stir fried beef and vegetables in soy sauce,102.0,10.73,4.44,4.81
 Beef curry,113.0,7.57,6.53,6.57
 Chicken curry,107.0,6.48,6.54,6.48
-Curry sauce,95.0,1.39,5.03,8.22
 Fish curry,93.0,4.94,6.65,5.42
 Lentil curry,111.0,3.68,12.33,5.65
 Chicken curry with rice,116.0,4.96,15.12,4.0
 "SMART SOUP, Thai Coconut Curry",151.0,0.8,6.5,1.06
-"Firni, Indian pudding",144.0,3.58,25.13,3.11
 Spinach and cheese casserole,130.0,7.05,9.86,7.59
 Broccoli casserole with noodles,112.0,3.55,15.86,3.77
 Broccoli casserole with rice,107.0,4.14,15.06,3.6
@@ -399,7 +240,6 @@ Tuna noodle casserole with vegetables and mushroom sauce,124.0,8.11,12.96,4.46
 "Pot pie, chicken",255.0,9.24,23.95,13.54
 "Beef, roast",206.0,29.08,0.0,9.72
 "Beef, roast, hash",140.0,13.2,10.74,5.1
-Roast beef spread,931.0,15.3,3.73,16.3
 Roast beef sandwich on wheat,192.0,14.89,23.8,3.84
 "Fajita, chicken",206.0,11.33,17.99,9.8
 "Fajita, NFS",219.0,11.7,17.99,11.02
@@ -407,33 +247,21 @@ Roast beef sandwich on wheat,192.0,14.89,23.8,3.84
 "Fajita, beef or pork",231.0,12.07,17.99,12.24
 "TACO BELL, Taco Salad",710.0,6.69,15.1,9.17
 "TACO BELL, Soft Taco with steak",225.0,11.8,17.2,12.1
-Taco sauce,11.0,1.16,0.72,0.68
 "Taco, fish",275.0,11.62,22.99,15.29
 "Taco, NFS",246.0,15.31,15.62,13.56
 "TACO BELL, Soft Taco with chicken, cheese and lettuce",189.0,13.3,19.7,6.35
 Taco or tostada salad with chicken,167.0,7.83,16.29,8.02
 "Taco, flour tortilla, chicken, cheese",220.0,17.48,18.87,7.91
 "Taco, corn tortilla, chicken, cheese",211.0,16.23,15.3,9.6
-"TACO BELL, BURRITO SUPREME with chicken",750.0,9.84,20.5,6.42
-"Enchilada, beef",191.0,9.76,14.64,10.54
-"Enchilada, chicken",178.0,10.03,14.64,9.02
-"Enchilada, NFS",178.0,10.03,14.64,9.02
-"Enchilada, no meat",165.0,6.37,17.34,8.2
-"Enchilada, pork",192.0,9.54,14.64,10.74
 "Burrito, NFS",219.0,11.12,23.87,8.54
 Egg burrito,249.0,10.91,20.06,13.71
 "Burrito, beef, cheese",267.0,13.28,28.33,10.68
 "Burrito, cheese only",328.0,13.69,30.59,16.53
 "Burrito, chicken, cheese",244.0,13.74,28.33,8.06
 Shepherd's pie,123.0,7.64,8.72,6.3
-Pie shell,508.0,6.5,56.24,28.59
-"Pie, NFS",296.0,2.7,37.55,15.28
-Frito pie,328.0,9.96,26.32,20.98
-"Pie, apple",296.0,2.7,37.55,15.28
 "Cheese, cottage, with fruit",74.0,9.41,4.94,1.96
 "Cheese, cottage, NFS",82.0,11.0,4.31,2.3
 "Cheese, cottage, with vegetables",79.0,9.78,5.63,1.98
-"Cottage cheese, farmer's",148.0,10.96,4.33,9.73
 Stuffed jalapeno pepper,241.0,8.82,16.5,15.93
 "Stuffed pepper, with meat",198.0,9.2,4.23,15.87
 "Stuffed pepper, with rice and meat",178.0,7.83,9.93,11.66
@@ -441,7 +269,6 @@ Stuffed jalapeno pepper,241.0,8.82,16.5,15.93
 "Stuffed green pepper, Puerto Rican style",152.0,8.89,15.63,5.84
 Chicken or turkey with stuffing,172.0,20.04,11.74,4.88
 "Stuffed shells, with chicken, with tomato sauce",136.0,10.76,16.3,3.36
-"Kraft, Stove Top Stuffing Mix Chicken Flavor",381.0,12.6,73.1,4.1
 "Stuffed chicken, drumstick or breast, Puerto Rican style",236.0,28.4,6.51,10.54
 Bread stuffing,177.0,3.14,21.71,8.51
 "Beef shish kabob with vegetables, excluding potatoes",122.0,14.8,5.06,4.88
