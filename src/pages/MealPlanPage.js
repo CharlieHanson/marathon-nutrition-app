@@ -1,3 +1,14 @@
+import React, { useState } from 'react';
+import { Plus, RotateCcw, Star, ShoppingCart } from 'lucide-react';
+import { Card } from '../components/shared/Card';
+import { Button } from '../components/shared/Button';
+import { RecipeModal } from '../components/modals/RecipeModal';
+import { GroceryModal } from '../components/modals/GroceryModal';
+import { calculateDayMacros } from '../services/mealService';
+
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
 export const MealPlanPage = ({ 
   mealPlan, 
   onUpdate, 
