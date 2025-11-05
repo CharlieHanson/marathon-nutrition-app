@@ -272,3 +272,79 @@ export const MealPlanPage = ({
     </div>
   );
 };
+
+// Meal Card Component
+const MealCard = ({ 
+  day, 
+  mealType, 
+  meal, 
+  rating,
+  onUpdate, 
+  onRate,
+  onRegenerate, 
+  onGetRecipe 
+}) => {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <label className="block text-sm font-medium text-gray-700 capitalize">
+          {mealType}
+        </label>
+        {meal && (
+          <button
+            onClick={() => onRegenerate(day, mealType)}
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1"
+            title="Regenerate this meal"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Regenerate
+          </button>
+        )}
+      </div>
+
+      <textarea
+        value={meal || ''}
+        onChange={(e) => onUpdate(day, mealType, e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+        rows="3"
+        placeholder={`Enter ${mealType}...`}
+      />
+
+      {meal && (
+        <>
+          {/* Star Rating */}
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => onRate(day, mealType, star)}
+                className="focus:outline-none"
+              >
+                <Star
+                  className={`w-4 h-4 ${
+                    star <= rating
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'text-gray-300'
+                  }`}
+                />
+              </button>
+            ))}
+            {rating > 0 && (
+              <span className="text-xs text-gray-600 ml-2">
+                ({rating}/5)
+              </span>
+            )}
+          </div>
+
+          {/* Get Recipe Button */}
+          <button
+            onClick={() => onGetRecipe(day, mealType)}
+            className="w-full text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded text-gray-900 font-medium"
+          >
+            Get Recipe
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
