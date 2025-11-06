@@ -152,7 +152,7 @@ Respond with ONLY a JSON object in this exact format:
 }`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4.1-mini",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 2000,
       temperature: 0.7
