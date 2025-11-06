@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const EMPTY_WEEK = {
   monday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '', rating: 0 },
@@ -10,32 +10,43 @@ const EMPTY_WEEK = {
   sunday: { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '', rating: 0 },
 };
 
-export const useMealPlan = () => {
+export const useMealPlan = (user, isGuest) => {
   const [mealPlan, setMealPlan] = useState(EMPTY_WEEK);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(''); // NEW!
+  const [statusMessage, setStatusMessage] = useState('');
+
+  // Reset meal plan whenever we lose auth or enter guest mode
+  useEffect(() => {
+    if (!user || isGuest) {
+      setMealPlan(EMPTY_WEEK);
+    }
+  }, [user?.id, isGuest]);
 
   const updateMeal = (day, mealType, value) => {
-    setMealPlan(prev => ({
+    setMealPlan((prev) => ({
       ...prev,
-      [day]: { ...prev[day], [mealType]: value }
+      [day]: { ...prev[day], [mealType]: value },
     }));
   };
 
   const rateMeal = (day, mealType, rating) => {
-    setMealPlan(prev => ({
+    setMealPlan((prev) => ({
       ...prev,
-      [day]: { 
-        ...prev[day], 
-        [`${mealType}_rating`]: rating 
-      }
+      [day]: {
+        ...prev[day],
+        [`${mealType}_rating`]: rating,
+      },
     }));
   };
 
   const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
+    if (!user || isGuest) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
     setIsGenerating(true);
     setStatusMessage('🔄 Generating personalized meal plan...');
-    
+
     try {
       const response = await fetch('/api/generate-meals', {
         method: 'POST',
@@ -44,14 +55,14 @@ export const useMealPlan = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
-        setMealPlan(result.meals);
+        setMealPlan(result.meals || EMPTY_WEEK);
         setStatusMessage('✅ Meal plan generated successfully!');
         setTimeout(() => setStatusMessage(''), 3000);
         return { success: true };
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
       setStatusMessage(`❌ Error: ${error.message}`);
@@ -63,8 +74,12 @@ export const useMealPlan = () => {
   };
 
   const regenerateMeal = async (day, mealType, reason, context) => {
+    if (!user || isGuest) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
     setStatusMessage(`🔄 Regenerating ${mealType} for ${day}...`);
-    
+
     try {
       const response = await fetch('/api/regenerate-meal', {
         method: 'POST',
@@ -79,14 +94,14 @@ export const useMealPlan = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         updateMeal(day, mealType, result.meal);
         setStatusMessage(`✅ ${mealType} for ${day} regenerated!`);
         setTimeout(() => setStatusMessage(''), 3000);
         return { success: true };
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
       setStatusMessage(`❌ Error: ${error.message}`);
@@ -102,6 +117,6 @@ export const useMealPlan = () => {
     generateMeals,
     regenerateMeal,
     isGenerating,
-    statusMessage, // NEW! Export this
+    statusMessage,
   };
 };

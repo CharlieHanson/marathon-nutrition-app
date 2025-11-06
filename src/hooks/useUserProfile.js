@@ -1,27 +1,33 @@
 import { useState, useEffect } from 'react';
 import { fetchPersonalInfo, saveUserProfile } from '../dataClient';
 
-export const useUserProfile = (user, isGuest) => {
-  const [profile, setProfile] = useState({
-    name: '',
-    age: '',
-    height: '',
-    weight: '',
-    goal: '',
-    activityLevel: '',
-    objective: '', // NEW
-    dietaryRestrictions: '',
-  });
+const EMPTY_PROFILE = {
+  name: '',
+  age: '',
+  height: '',
+  weight: '',
+  goal: '',
+  activityLevel: '',
+  objective: '',
+  dietaryRestrictions: '',
+};
 
+export const useUserProfile = (user, isGuest) => {
+  const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load from DB
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      if (!user || isGuest) return;
+    // If logged out or guest → clear profile
+    if (!user || isGuest) {
+      setProfile(EMPTY_PROFILE);
+      return () => {
+        cancelled = true;
+      };
+    }
 
+    (async () => {
       try {
         const data = await fetchPersonalInfo(user.id);
         if (cancelled) return;
@@ -34,9 +40,11 @@ export const useUserProfile = (user, isGuest) => {
             weight: data.userProfile.weight || '',
             goal: data.userProfile.goal || '',
             activityLevel: data.userProfile.activity_level || '',
-            objective: data.userProfile.objective || '', // NEW
+            objective: data.userProfile.objective || '',
             dietaryRestrictions: data.userProfile.dietary_restrictions || '',
           });
+        } else {
+          setProfile(EMPTY_PROFILE);
         }
       } catch (e) {
         console.error('Load profile failed:', e);
@@ -46,7 +54,7 @@ export const useUserProfile = (user, isGuest) => {
     return () => {
       cancelled = true;
     };
-  }, [user, isGuest]);
+  }, [user?.id, isGuest]);
 
   const updateProfile = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));

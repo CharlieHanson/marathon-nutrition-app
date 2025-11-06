@@ -21,10 +21,12 @@ const App = () => {
   const profile = useUserProfile(user, isGuest);
   const preferences = useFoodPreferences(user, isGuest);
   const trainingPlan = useTrainingPlan(user, isGuest);
-  const mealPlan = useMealPlan();
+  const mealPlan = useMealPlan(user, isGuest);
+
+  const userId = user?.id; // derive once
 
   useEffect(() => {
-    if (!user || isGuest) {
+    if (!userId || isGuest) {
       setUserName(null);
       return;
     }
@@ -32,12 +34,12 @@ const App = () => {
     let cancelled = false;
 
     const loadUserName = async () => {
-      console.log('Fetching user profile for:', user.id);
+      console.log('Fetching user profile for:', userId);
 
       const { data, error } = await supabase
         .from('user_profiles')
         .select('name')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       console.log('Profile data:', data, 'Error:', error);
@@ -52,7 +54,7 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isGuest]);
+  }, [userId, isGuest]);
 
 
   if (loading) {

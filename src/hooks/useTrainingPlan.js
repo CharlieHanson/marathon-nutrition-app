@@ -15,19 +15,26 @@ export const useTrainingPlan = (user, isGuest) => {
   const [plan, setPlan] = useState(EMPTY_WEEK);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load from DB
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      if (!user || isGuest) return;
+    // If logged out or guest → clear plan
+    if (!user || isGuest) {
+      setPlan(EMPTY_WEEK);
+      return () => {
+        cancelled = true;
+      };
+    }
 
+    (async () => {
       try {
         const data = await fetchTrainingPlan(user.id);
         if (cancelled) return;
 
         if (data) {
           setPlan(data);
+        } else {
+          setPlan(EMPTY_WEEK);
         }
       } catch (e) {
         console.error('Load training plan failed:', e);
@@ -37,7 +44,7 @@ export const useTrainingPlan = (user, isGuest) => {
     return () => {
       cancelled = true;
     };
-  }, [user, isGuest]);
+  }, [user?.id, isGuest]);
 
   const updatePlan = (day, field, value) => {
     setPlan((prev) => ({

@@ -1,44 +1,79 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { supabase } from '../supabaseClient';
 
-const AuthContext = createContext({});
+const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
-  // Initial Supabase session + auth state listener
+  // ----- Initial auth state + auth change listener -----
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      setUser(session?.user ?? null);
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (session?.user) {
+        setUser(session.user);
+        setIsGuest(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('guestMode');
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
-    });
+    };
+
+    init();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (!mounted) return;
+
+      if (session?.user) {
+        setUser(session.user);
+        setIsGuest(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('guestMode');
+        }
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
     return () => {
-      isMounted = false;
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
-  // Initialize guest mode from localStorage + keep in sync across tabs
+  // ----- Initialize guest mode from localStorage -----
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setIsGuest(localStorage.getItem('guestMode') === 'true');
+
+    const stored = localStorage.getItem('guestMode') === 'true';
+    setIsGuest(stored);
 
     const onStorage = (e) => {
-      if (e.key === 'guestMode') setIsGuest(e.newValue === 'true');
+      if (e.key === 'guestMode') {
+        setIsGuest(e.newValue === 'true');
+      }
     };
+
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -49,15 +84,22 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { name } },
+        options: {
+          data: { name },
+        },
       });
       if (error) throw error;
 
-      if (data.user) {
-        await supabase.from('profiles').update({ name }).eq('id', data.user.id);
+      // If you have a profile table, you can upsert here
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guestMode');
       }
+      setIsGuest(false);
+
       return { data, error: null };
     } catch (error) {
+      console.error('signUp error:', error);
       return { data: null, error };
     }
   };
@@ -69,48 +111,76 @@ export const AuthProvider = ({ children }) => {
         password,
       });
       if (error) throw error;
+
+      // onAuthStateChange will set user; we just kill guest mode
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guestMode');
+      }
+      setIsGuest(false);
+
       return { data, error: null };
     } catch (error) {
+      console.error('signIn error:', error);
       return { data: null, error };
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error signing out:', error);
+    try {
+      // Local-only logout to avoid "Auth session missing" 403 noise
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      // Hard reset app-side state no matter what
+      setUser(null);
+      setIsGuest(false);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guestMode');
+      }
+    }
   };
 
-  // ----- Guest mode helpers -----
+  // ----- Guest Mode -----
   const enableGuestMode = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('guestMode', 'true');
-      setIsGuest(true); // immediate in this tab
     }
+    setIsGuest(true);
+    setUser(null); // make sure guest never has a real user object
   };
 
   const disableGuestMode = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('guestMode');
-      setIsGuest(false);
     }
+    setIsGuest(false);
+    // user stays null until a real login occurs
   };
 
   const value = {
     user,
     loading,
+    isGuest,
     signUp,
     signIn,
     signOut,
-    isGuest,
     enableGuestMode,
     disableGuestMode,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (ctx === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return ctx;
 };
