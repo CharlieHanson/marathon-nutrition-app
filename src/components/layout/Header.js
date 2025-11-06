@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Header = ({ user, isGuest, onSignOut, onDisableGuestMode }) => {
+export const Header = ({ user, userName, isGuest, onSignOut, onDisableGuestMode }) => {
   return (
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -10,7 +10,7 @@ export const Header = ({ user, isGuest, onSignOut, onDisableGuestMode }) => {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-gray-600">
-              Welcome, {user?.email ?? 'Guest'}!
+              Welcome, {userName ?? user?.email ?? 'Guest'}!
             </span>
             <button
               onClick={isGuest ? onDisableGuestMode : onSignOut}

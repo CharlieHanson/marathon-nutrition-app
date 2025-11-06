@@ -1,6 +1,7 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
+import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
 import { Layout } from './components/layout/Layout';
 import { ProfilePage } from './pages/ProfilePage';
@@ -15,11 +16,44 @@ import { useMealPlan } from './hooks/useMealPlan';
 const App = () => {
   const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();
   const [currentView, setCurrentView] = useState('training');
+  const [userName, setUserName] = useState(null);
 
   const profile = useUserProfile(user, isGuest);
   const preferences = useFoodPreferences(user, isGuest);
   const trainingPlan = useTrainingPlan(user, isGuest);
   const mealPlan = useMealPlan();
+
+  useEffect(() => {
+    if (!user || isGuest) {
+      setUserName(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadUserName = async () => {
+      console.log('Fetching user profile for:', user.id);
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('name')
+        .eq('user_id', user.id)
+        .single();
+
+      console.log('Profile data:', data, 'Error:', error);
+
+      if (!cancelled && data && !error) {
+        setUserName(data.name);
+      }
+    };
+
+    loadUserName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isGuest]);
+
 
   if (loading) {
     return (
@@ -36,6 +70,7 @@ const App = () => {
   return (
     <Layout
       user={user}
+      userName={userName}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

@@ -4,6 +4,7 @@ import { Navigation } from './Navigation';
 
 export const Layout = ({ 
   user, 
+  userName,
   isGuest, 
   onSignOut, 
   onDisableGuestMode,
@@ -15,6 +16,7 @@ export const Layout = ({
     <div className="min-h-screen bg-gray-50">
       <Header 
         user={user}
+        userName={userName}
         isGuest={isGuest}
         onSignOut={onSignOut}
         onDisableGuestMode={onDisableGuestMode}
