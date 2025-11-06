@@ -5,33 +5,9 @@ const openai = new OpenAI({
 });
 const ML_API_URL = 'https://marathon-nutrition-app-production.up.railway.app';
 
-// Helper function to extract macros from string
-function extractMacrosFromString(mealString) {
-  const calMatch = mealString.match(/Cal:\s*(\d+)/);
-  const proteinMatch = mealString.match(/P:\s*(\d+)g/);
-  const carbsMatch = mealString.match(/C:\s*(\d+)g/);
-  const fatMatch = mealString.match(/F:\s*(\d+)g/);
-  
-  return {
-    calories: calMatch ? parseInt(calMatch[1]) : 0,
-    protein: proteinMatch ? parseInt(proteinMatch[1]) : 0,
-    carbs: carbsMatch ? parseInt(carbsMatch[1]) : 0,
-    fat: fatMatch ? parseInt(fatMatch[1]) : 0
-  };
-}
-
-// Helper to replace macros in string and add ML verification badge
-function replaceMacrosInString(mealString, newMacros) {
-  return mealString.replace(
-    /\(Cal: \d+, P: \d+g, C: \d+g, F: \d+g\)/,
-    `(Cal: ${Math.round(newMacros.calories)}, P: ${Math.round(newMacros.protein)}g, C: ${Math.round(newMacros.carbs)}g, F: ${Math.round(newMacros.fat)}g)`
-  );
-}
-
-// Validate single meal with meal-type-specific ML model
-async function validateMeal(mealDescription, mealType) {
+// Get macros from ML API
+async function getMacrosFromML(mealDescription, mealType) {
   try {
-    // Map meal types to API endpoints
     const endpointMap = {
       'breakfast': '/predict-breakfast',
       'lunch': '/predict-lunch',
@@ -43,7 +19,7 @@ async function validateMeal(mealDescription, mealType) {
     const endpoint = endpointMap[mealType];
     if (!endpoint) {
       console.log(`No ML model for meal type: ${mealType}`);
-      return mealDescription;
+      return null;
     }
     
     const mlResponse = await fetch(`${ML_API_URL}${endpoint}`, {
@@ -55,28 +31,13 @@ async function validateMeal(mealDescription, mealType) {
     const mlData = await mlResponse.json();
     
     if (mlData.success) {
-      const gptMacros = extractMacrosFromString(mealDescription);
-      const mlMacros = mlData.predictions;
-      
-      // Calculate percentage difference
-      const caloriesDiff = Math.abs(gptMacros.calories - mlMacros.calories);
-      const percentDiff = (caloriesDiff / gptMacros.calories) * 100;
-      
-      // If ML predicts >20% different, use ML's numbers
-      if (percentDiff > 20 && gptMacros.calories > 0) {
-        console.log(`⚠️ Large difference: GPT=${gptMacros.calories}cal, ML=${mlMacros.calories}cal`);
-        return replaceMacrosInString(mealDescription, mlMacros);
-      } else if (gptMacros.calories > 0) {
-        // ML agrees, add verification badge
-        return mealDescription.replace(/\)$/, ') ✓');
-      }
+      return mlData.predictions;
     }
   } catch (error) {
-    console.error('ML validation failed:', error.message);
+    console.error('ML prediction failed:', error.message);
   }
   
-  // Return original if validation fails
-  return mealDescription;
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -87,34 +48,50 @@ export default async function handler(req, res) {
   try {
     const { userProfile, foodPreferences, day, mealType, reason, currentMeal } = req.body;
 
+    // Extract just the meal description (remove macros if present)
+    const currentMealDesc = currentMeal.replace(/\(Cal:.*?\).*$/, '').trim();
+
     const prompt = `Generate a single ${mealType} for ${day} that addresses this feedback: "${reason}"
 
-Current meal that needs improvement: ${currentMeal}
+Current meal that needs improvement: ${currentMealDesc}
 
 User profile:
 - Goal: ${userProfile.goal || 'maintain weight'}
 - Dietary restrictions: ${userProfile.dietaryRestrictions || 'None'}
+- Likes: ${foodPreferences.likes || 'None specified'}
+- Dislikes: ${foodPreferences.dislikes || 'None specified'}
 
-Generate ONE meal that fixes the user's concern while maintaining proper nutrition.
-Format: "Meal name - description (Cal: XXX, P: XXg, C: XXg, F: XXg)"
+Generate ONE meal description that fixes the user's concern while maintaining proper nutrition.
+Format: Just the meal name and ingredients (e.g., "Grilled salmon with quinoa and roasted vegetables")
 
-Respond with only the meal text, no extra formatting.`;
+DO NOT include macros - they will be calculated automatically.
 
+Respond with only the meal description, no extra text.`;
+
+    console.log(`🤖 Generating new ${mealType}...`);
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 150,
+      max_tokens: 100,  // Smaller since no macros
       temperature: 0.8
     });
 
-    const gptMeal = response.choices[0].message.content.trim();
+    const mealDescription = response.choices[0].message.content.trim();
     
-    // Validate with meal-type-specific ML model
-    console.log(`🤖 Validating regenerated ${mealType} with ML...`);
-    const validatedMeal = await validateMeal(gptMeal, mealType);
-    console.log('✅ ML validation complete');
+    // Get macros from ML
+    console.log(`🤖 Calculating macros with ML...`);
+    const macros = await getMacrosFromML(mealDescription, mealType);
+    
+    let finalMeal;
+    if (macros) {
+      finalMeal = `${mealDescription} (Cal: ${Math.round(macros.calories)}, P: ${Math.round(macros.protein)}g, C: ${Math.round(macros.carbs)}g, F: ${Math.round(macros.fat)}g)`;
+    } else {
+      finalMeal = mealDescription;  // Return without macros if ML fails
+    }
+    
+    console.log('✅ Regeneration complete');
 
-    res.status(200).json({ success: true, meal: validatedMeal });
+    res.status(200).json({ success: true, meal: finalMeal });
 
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
