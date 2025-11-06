@@ -40,7 +40,7 @@ export const useMealPlan = (user, isGuest) => {
   };
 
   const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
-    if (!user || isGuest) {
+    if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
     }
 
@@ -74,7 +74,7 @@ export const useMealPlan = (user, isGuest) => {
   };
 
   const regenerateMeal = async (day, mealType, reason, context) => {
-    if (!user || isGuest) {
+    if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
     }
 
