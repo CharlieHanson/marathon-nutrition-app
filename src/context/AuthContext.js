@@ -1,3 +1,4 @@
+// src/context/AuthContext.js
 import React, {
   createContext,
   useContext,
@@ -85,12 +86,13 @@ export const AuthProvider = ({ children }) => {
         email,
         password,
         options: {
-          data: { name },
+          data: { 
+            name,
+            is_new_user: true, // Flag to trigger onboarding
+          },
         },
       });
       if (error) throw error;
-
-      // If you have a profile table, you can upsert here
 
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guestMode');

@@ -127,3 +127,35 @@ export async function fetchTrainingPlan(userId) {
 
   return data?.plan_data || null;
 }
+
+export async function checkOnboardingStatus(userId) {
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('id, name')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const { data: preferences, error: prefsError } = await supabase
+      .from('food_preferences')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // User has completed onboarding if they have both profile and preferences
+    const hasCompletedOnboarding = !!(profile?.name && preferences?.id);
+
+    return {
+      hasCompletedOnboarding,
+      hasProfile: !!profile,
+      hasPreferences: !!preferences,
+    };
+  } catch (error) {
+    console.error('Error checking onboarding status:', error);
+    return {
+      hasCompletedOnboarding: false,
+      hasProfile: false,
+      hasPreferences: false,
+    };
+  }
+}

@@ -12,11 +12,15 @@ import { useUserProfile } from './hooks/useUserProfile';
 import { useFoodPreferences } from './hooks/useFoodPreferences';
 import { useTrainingPlan } from './hooks/useTrainingPlan';
 import { useMealPlan } from './hooks/useMealPlan';
+import { checkOnboardingStatus } from './dataClient';
+import { OnboardingFlow } from './pages/OnboardingFlow';
 
 const App = () => {
   const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();
   const [currentView, setCurrentView] = useState('training');
   const [userName, setUserName] = useState(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   const profile = useUserProfile(user, isGuest);
   const preferences = useFoodPreferences(user, isGuest);
@@ -56,8 +60,25 @@ const App = () => {
     };
   }, [userId, isGuest]);
 
+  // Check if user needs onboarding
+  useEffect(() => {
+    async function checkOnboarding() {
+      if (!user || isGuest) {
+        setCheckingOnboarding(false);
+        setNeedsOnboarding(false);
+        return;
+      }
 
-  if (loading) {
+      const status = await checkOnboardingStatus(user.id);
+      setNeedsOnboarding(!status.hasCompletedOnboarding);
+      setCheckingOnboarding(false);
+    }
+
+    checkOnboarding();
+  }, [user, isGuest]);
+
+
+  if (loading || checkingOnboarding) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center">
         <div className="text-primary font-semibold">Loading...</div>
@@ -67,6 +88,19 @@ const App = () => {
 
   if (!user && !isGuest) {
     return <Auth />;
+  }
+
+  // Show onboarding for new users
+  if (needsOnboarding && !isGuest) {
+    return (
+      <OnboardingFlow
+        user={user}
+        onComplete={() => {
+          setNeedsOnboarding(false);
+          setCurrentView('training'); // Start on training plan page after onboarding
+        }}
+      />
+    );
   }
 
   return (
