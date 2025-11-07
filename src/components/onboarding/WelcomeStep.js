@@ -11,7 +11,7 @@ export const WelcomeStep = ({ onNext }) => {
         <div className="text-center mb-8">
           <img src="/alimenta_logo.png" alt="Logo" className="h-16 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to Nutrition Training Coach!
+            Welcome to Alimenta!
           </h1>
           <p className="text-gray-600">
             Let's personalize your nutrition experience in just 3 quick steps

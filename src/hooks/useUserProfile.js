@@ -12,7 +12,7 @@ const EMPTY_PROFILE = {
   dietaryRestrictions: '',
 };
 
-export const useUserProfile = (user, isGuest) => {
+export const useUserProfile = (user, isGuest, reloadKey = 0) => {
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -54,7 +54,7 @@ export const useUserProfile = (user, isGuest) => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isGuest]);
+  }, [user, isGuest, reloadKey]);
 
   const updateProfile = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));

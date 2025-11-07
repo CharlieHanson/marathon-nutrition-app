@@ -7,7 +7,7 @@ const EMPTY_PREFERENCES = {
   cuisineFavorites: '',
 };
 
-export const useFoodPreferences = (user, isGuest) => {
+export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,7 +44,7 @@ export const useFoodPreferences = (user, isGuest) => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isGuest]);
+  }, [user, isGuest, reloadKey]);
 
   const updatePreferences = (field, value) => {
     setPreferences((prev) => ({ ...prev, [field]: value }));

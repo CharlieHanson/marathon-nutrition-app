@@ -21,9 +21,10 @@ const App = () => {
   const [userName, setUserName] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const profile = useUserProfile(user, isGuest);
-  const preferences = useFoodPreferences(user, isGuest);
+  const profile = useUserProfile(user, isGuest, reloadKey);
+  const preferences = useFoodPreferences(user, isGuest, reloadKey);
   const trainingPlan = useTrainingPlan(user, isGuest);
   const mealPlan = useMealPlan(user, isGuest);
 
@@ -97,6 +98,7 @@ const App = () => {
         user={user}
         onComplete={() => {
           setNeedsOnboarding(false);
+          setReloadKey(prev => prev + 1);
           setCurrentView('training'); // Start on training plan page after onboarding
         }}
       />
