@@ -77,7 +77,7 @@ def predict_breakfast():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         predictions = predict_for_meal_type(data['meal'], 'breakfast')
         if predictions:
@@ -97,7 +97,7 @@ def predict_lunch():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         predictions = predict_for_meal_type(data['meal'], 'lunch')
         if predictions:
@@ -117,7 +117,7 @@ def predict_dinner():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         predictions = predict_for_meal_type(data['meal'], 'dinner')
         if predictions:
@@ -137,7 +137,7 @@ def predict_snacks():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         predictions = predict_for_meal_type(data['meal'], 'snacks')
         if predictions:
@@ -157,7 +157,7 @@ def predict_desserts():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         predictions = predict_for_meal_type(data['meal'], 'desserts')
         if predictions:
@@ -178,7 +178,7 @@ def predict_macros():
     try:
         data = request.get_json()
         if not data or 'meal' not in data:
-            return jsonify({'error': 'Missing meal description'}), 400
+            return jsonify({'success': False, 'error': 'Missing meal description'}), 400
         
         # Get meal type from request, default to 'dinner' if not specified
         meal_type = data.get('meal_type', 'dinner')

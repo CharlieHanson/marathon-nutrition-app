@@ -1,0 +1,83 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-ml-models:
+    name: Test ML Models & API
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          cd ml-service
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      
+      - name: Run ML model tests
+        run: |
+          cd ml-service
+          pytest tests/ -v
+      
+      - name: Check model files exist
+        run: |
+          cd ml-service
+          test -f breakfast/models/calories_model.joblib || exit 1
+          test -f lunch/models/calories_model.joblib || exit 1
+          test -f dinner/models/calories_model.joblib || exit 1
+          test -f snacks/models/calories_model.joblib || exit 1
+          test -f desserts/models/calories_model.joblib || exit 1
+          echo "✅ All model files present"
+  
+  test-frontend:
+    name: Test Frontend & APIs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build project
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  
+  deploy:
+    name: Deploy to Production
+    needs: [test-ml-models, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Deployment Status
+        run: |
+          echo "✅ All tests passed!"
+          echo "🚀 Vercel will auto-deploy frontend"
+          echo "🚀 Railway will auto-deploy ML API"
+          echo "📊 Check deployment status in respective dashboards"
