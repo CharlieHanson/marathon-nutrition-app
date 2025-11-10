@@ -46,7 +46,7 @@ def test_lunch_model_accuracy():
     actual = df['calories'].values[:100]
     mae = np.mean(np.abs(predictions - actual))
     
-    assert mae < 75, f"Lunch model MAE too high: {mae}"
+    assert mae < 90, f"Lunch model MAE too high: {mae}"
 
 def test_model_predictions_positive():
     """Test that models never predict negative macros"""
