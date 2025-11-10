@@ -1,6 +1,6 @@
 // src/components/Auth.js
 import React, { useState } from 'react';
-import { Utensils, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Auth = () => {

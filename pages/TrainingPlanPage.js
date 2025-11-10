@@ -114,3 +114,9 @@ export const TrainingPlanPage = ({ trainingPlan, onUpdate }) => {
     </div>
   );
 };
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+export default TrainingPlanPage;

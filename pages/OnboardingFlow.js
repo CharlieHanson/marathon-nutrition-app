@@ -1,10 +1,10 @@
 // src/pages/OnboardingFlow.js
 import React, { useState } from 'react';
-import { WelcomeStep } from '../components/onboarding/WelcomeStep';
-import { ProfileStep } from '../components/onboarding/ProfileStep';
-import { PreferencesStep } from '../components/onboarding/PreferencesStep';
-import { ProgressIndicator } from '../components/onboarding/ProgressIndicator';
-import { saveUserProfile, saveFoodPreferences } from '../dataClient';
+import { WelcomeStep } from '../src/components/onboarding/WelcomeStep';
+import { ProfileStep } from '../src/components/onboarding/ProfileStep';
+import { PreferencesStep } from '../src/components/onboarding/PreferencesStep';
+import { ProgressIndicator } from '../src/components/onboarding/ProgressIndicator';
+import { saveUserProfile, saveFoodPreferences } from '../src/dataClient';
 
 export const OnboardingFlow = ({ user, onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -102,3 +102,9 @@ export const OnboardingFlow = ({ user, onComplete }) => {
     </div>
   );
 };
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+export default OnboardingFlow;

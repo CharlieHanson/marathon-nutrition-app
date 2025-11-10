@@ -4,16 +4,16 @@ import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 import Auth from './components/Auth';
 import { Layout } from './components/layout/Layout';
-import { ProfilePage } from './pages/ProfilePage';
-import { TrainingPlanPage } from './pages/TrainingPlanPage';
-import { FoodPreferencesPage } from './pages/FoodPreferencesPage';
-import { MealPlanPage } from './pages/MealPlanPage';
+import { ProfilePage } from '../pages/ProfilePage';
+import { TrainingPlanPage } from '../pages/TrainingPlanPage';
+import { FoodPreferencesPage } from '../pages/FoodPreferencesPage';
+import { MealPlanPage } from '../pages/MealPlanPage';
 import { useUserProfile } from './hooks/useUserProfile';
 import { useFoodPreferences } from './hooks/useFoodPreferences';
 import { useTrainingPlan } from './hooks/useTrainingPlan';
 import { useMealPlan } from './hooks/useMealPlan';
 import { checkOnboardingStatus } from './dataClient';
-import { OnboardingFlow } from './pages/OnboardingFlow';
+import { OnboardingFlow } from '../pages/OnboardingFlow';
 
 const App = () => {
   const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();

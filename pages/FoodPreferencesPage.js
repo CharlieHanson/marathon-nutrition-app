@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Card } from '../components/shared/Card';
-import { Button } from '../components/shared/Button';
+import { Card } from '../src/components/shared/Card';
+import { Button } from '../src/components/shared/Button';
 import { Save, Lock } from 'lucide-react';
 
 export const FoodPreferencesPage = ({ 
@@ -117,3 +117,9 @@ export const FoodPreferencesPage = ({
     </div>
   );
 };
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+export default FoodPreferencesPage;

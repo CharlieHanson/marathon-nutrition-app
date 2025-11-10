@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Card } from '../components/shared/Card';
-import { Button } from '../components/shared/Button';
-import { Input } from '../components/shared/Input';
-import { Select } from '../components/shared/Select';
+import { Card } from '../src/components/shared/Card';
+import { Button } from '../src/components/shared/Button';
+import { Input } from '../src/components/shared/Input';
+import { Select } from '../src/components/shared/Select';
 import { Save, Lock } from 'lucide-react';
 
 const GOAL_OPTIONS = [
@@ -248,3 +248,9 @@ const ProfileCompletionCard = ({ profile }) => {
     </Card>
   );
 };
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+export default ProfilePage;

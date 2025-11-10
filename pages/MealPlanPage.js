@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, RotateCcw, Star, ShoppingCart } from 'lucide-react';
-import { Card } from '../components/shared/Card';
-import { Button } from '../components/shared/Button';
-import { RecipeModal } from '../components/modals/RecipeModal';
-import { GroceryModal } from '../components/modals/GroceryModal';
-import { calculateDayMacros } from '../services/mealService';
+import { Card } from '../src/components/shared/Card';
+import { Button } from '../src/components/shared/Button';
+import { RecipeModal } from '../src/components/modals/RecipeModal';
+import { GroceryModal } from '../src/components/modals/GroceryModal';
+import { calculateDayMacros } from '../src/services/mealService';
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 export const MealPlanPage = ({ 
@@ -348,3 +347,9 @@ const MealCard = ({
     </div>
   );
 };
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
+export default MealPlanPage;
