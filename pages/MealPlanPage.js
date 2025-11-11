@@ -5,6 +5,7 @@ import { Button } from '../src/components/shared/Button';
 import { RecipeModal } from '../src/components/modals/RecipeModal';
 import { GroceryModal } from '../src/components/modals/GroceryModal';
 import { calculateDayMacros } from '../src/services/mealService';
+import { MealPlanSkeleton } from '../src/components/shared/LoadingSkeleton';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -144,7 +145,7 @@ export const MealPlanPage = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Card
         title="Weekly Meal Plan"
         headerAction={
@@ -153,7 +154,8 @@ export const MealPlanPage = ({
               onClick={onGenerate}
               disabled={isGenerating}
               icon={Plus}
-              size="sm"
+              size="lg"
+              className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
             >
               {isGenerating ? 'Generating...' : 'Generate Meals'}
             </Button>
@@ -187,73 +189,78 @@ export const MealPlanPage = ({
           </div>
         )}
 
-        <div className="space-y-6">
-          {DAYS.map((day) => {
-            const dayMacros = calculateDayMacros(mealPlan[day]);
-            
-            return (
-              <div key={day} className="border rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-900 capitalize">
-                    {day}
-                  </h3>
-                  
-                  {/* Daily Macro Summary */}
-                  {dayMacros.hasData && (
-                    <div className="flex gap-4 text-sm">
-                      <span className="text-gray-600">
-                        <span className="font-medium">Cal:</span> {dayMacros.calories}
-                      </span>
-                      <span className="text-gray-600">
-                        <span className="font-medium">P:</span> {dayMacros.protein}g
-                      </span>
-                      <span className="text-gray-600">
-                        <span className="font-medium">C:</span> {dayMacros.carbs}g
-                      </span>
-                      <span className="text-gray-600">
-                        <span className="font-medium">F:</span> {dayMacros.fat}g
-                      </span>
-                    </div>
-                  )}
-                </div>
+        {/* Show loading skeleton while generating */}
+        {isGenerating ? (
+          <MealPlanSkeleton />
+        ) : (
+          <div className="space-y-8">
+            {DAYS.map((day) => {
+              const dayMacros = calculateDayMacros(mealPlan[day]);
+              
+              return (
+                <div key={day} className="border rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 capitalize">
+                      {day}
+                    </h3>
+                    
+                    {/* Daily Macro Summary - NOW WITH BADGES */}
+                    {dayMacros.hasData && (
+                      <div className="flex gap-2 text-sm flex-wrap">
+                        <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
+                          Cal: {dayMacros.calories}
+                        </span>
+                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                          P: {dayMacros.protein}g
+                        </span>
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                          C: {dayMacros.carbs}g
+                        </span>
+                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
+                          F: {dayMacros.fat}g
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Main Meals */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  {['breakfast', 'lunch', 'dinner'].map((mealType) => (
-                    <MealCard
-                      key={mealType}
-                      day={day}
-                      mealType={mealType}
-                      meal={mealPlan[day][mealType]}
-                      rating={mealPlan[day][`${mealType}_rating`] || 0}
-                      onUpdate={onUpdate}
-                      onRate={onRate}
-                      onRegenerate={handleRegenerate}
-                      onGetRecipe={getRecipe}
-                    />
-                  ))}
-                </div>
+                  {/* Main Meals */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    {['breakfast', 'lunch', 'dinner'].map((mealType) => (
+                      <MealCard
+                        key={mealType}
+                        day={day}
+                        mealType={mealType}
+                        meal={mealPlan[day][mealType]}
+                        rating={mealPlan[day][`${mealType}_rating`] || 0}
+                        onUpdate={onUpdate}
+                        onRate={onRate}
+                        onRegenerate={handleRegenerate}
+                        onGetRecipe={getRecipe}
+                      />
+                    ))}
+                  </div>
 
-                {/* Snacks & Dessert */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {['snacks', 'dessert'].map((mealType) => (
-                    <MealCard
-                      key={mealType}
-                      day={day}
-                      mealType={mealType}
-                      meal={mealPlan[day][mealType]}
-                      rating={mealPlan[day][`${mealType}_rating`] || 0}
-                      onUpdate={onUpdate}
-                      onRate={onRate}
-                      onRegenerate={handleRegenerate}
-                      onGetRecipe={getRecipe}
-                    />
-                  ))}
+                  {/* Snacks & Dessert */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {['snacks', 'dessert'].map((mealType) => (
+                      <MealCard
+                        key={mealType}
+                        day={day}
+                        mealType={mealType}
+                        meal={mealPlan[day][mealType]}
+                        rating={mealPlan[day][`${mealType}_rating`] || 0}
+                        onUpdate={onUpdate}
+                        onRate={onRate}
+                        onRegenerate={handleRegenerate}
+                        onGetRecipe={getRecipe}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       <RecipeModal
@@ -272,7 +279,7 @@ export const MealPlanPage = ({
   );
 };
 
-// Meal Card Component
+// Meal Card Component with color-coded borders
 const MealCard = ({ 
   day, 
   mealType, 
@@ -283,16 +290,25 @@ const MealCard = ({
   onRegenerate, 
   onGetRecipe 
 }) => {
+  // Color-coded left borders for each meal type
+  const mealColors = {
+    breakfast: 'border-l-4 border-orange-500',
+    lunch: 'border-l-4 border-green-500',
+    dinner: 'border-l-4 border-blue-500',
+    snacks: 'border-l-4 border-yellow-500',
+    dessert: 'border-l-4 border-purple-500'
+  };
+
   return (
-    <div className="space-y-2">
+    <div className={`space-y-3 p-4 rounded-lg bg-gray-50 ${mealColors[mealType]} shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex justify-between items-center">
-        <label className="block text-sm font-medium text-gray-700 capitalize">
+        <label className="block text-sm font-semibold text-gray-700 capitalize">
           {mealType}
         </label>
         {meal && (
           <button
             onClick={() => onRegenerate(day, mealType)}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1"
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
             title="Regenerate this meal"
           >
             <RotateCcw className="w-3 h-3" />
@@ -304,23 +320,23 @@ const MealCard = ({
       <textarea
         value={meal || ''}
         onChange={(e) => onUpdate(day, mealType, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
         rows="3"
         placeholder={`Enter ${mealType}...`}
       />
 
       {meal && (
         <>
-          {/* Star Rating */}
+          {/* Star Rating - larger stars */}
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 onClick={() => onRate(day, mealType, star)}
-                className="focus:outline-none"
+                className="focus:outline-none hover:scale-110 transition-transform"
               >
                 <Star
-                  className={`w-4 h-4 ${
+                  className={`w-5 h-5 ${
                     star <= rating
                       ? 'fill-yellow-400 text-yellow-400'
                       : 'text-gray-300'
@@ -329,16 +345,16 @@ const MealCard = ({
               </button>
             ))}
             {rating > 0 && (
-              <span className="text-xs text-gray-600 ml-2">
+              <span className="text-xs text-gray-600 ml-2 font-medium">
                 ({rating}/5)
               </span>
             )}
           </div>
 
-          {/* Get Recipe Button */}
+          {/* Get Recipe Button - more prominent */}
           <button
             onClick={() => onGetRecipe(day, mealType)}
-            className="w-full text-xs bg-yellow-100 hover:bg-yellow-200 px-2 py-1 rounded text-gray-900 font-medium"
+            className="w-full text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-2 rounded-md text-gray-900 font-medium transition-colors shadow-sm hover:shadow-md"
           >
             Get Recipe
           </button>

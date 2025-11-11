@@ -13,7 +13,7 @@ export const Button = ({
   const baseStyles = 'rounded-md font-medium transition-colors flex items-center gap-2 justify-center';
   
   const variants = {
-    primary: 'bg-primary text-white hover:bg-primary-700 disabled:bg-gray-400',
+    primary: 'bg-primary text-white hover:bg-primary-700 hover:scale-105 disabled:bg-gray-400',
     secondary: 'bg-secondary text-gray-900 hover:bg-secondary-600 disabled:bg-gray-300',
     outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white disabled:border-gray-300 disabled:text-gray-300',
     danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400',

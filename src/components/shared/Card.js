@@ -2,7 +2,7 @@ import React from 'react';
 
 export const Card = ({ children, title, subtitle, className = '', headerAction }) => {
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 ${className}`}>
       {(title || headerAction) && (
         <div className="flex justify-between items-center p-6 border-b">
           <div>
