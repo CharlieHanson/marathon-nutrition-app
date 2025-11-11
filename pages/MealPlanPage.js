@@ -47,7 +47,7 @@ export const MealPlanPage = ({
   };
 
   const getRecipe = async (day, mealType) => {
-    setLocalStatusMessage(`Getting recipe for ${mealPlan[day][mealType]}...`);
+    setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
       const response = await fetch('/api/get-recipe', {
@@ -172,7 +172,8 @@ export const MealPlanPage = ({
           </div>
         }
       >
-        {displayMessage && (
+        {/* ALWAYS show status message when there's activity */}
+        {(displayMessage || isGenerating) && (
           <div className={`mb-4 p-4 rounded-lg border ${
             displayMessage.includes('✅') 
               ? 'bg-green-50 border-green-500 text-green-800'
@@ -181,10 +182,12 @@ export const MealPlanPage = ({
               : 'bg-blue-50 border-blue-500 text-blue-800'
           }`}>
             <div className="flex items-center gap-2">
-              {displayMessage.includes('🔄') && (
+              {(displayMessage.includes('🔄') || isGenerating) && (
                 <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
               )}
-              <span className="font-medium">{displayMessage}</span>
+              <span className="font-medium">
+                {isGenerating && !displayMessage ? '🔄 Generating personalized meal plan...' : displayMessage}
+              </span>
             </div>
           </div>
         )}
@@ -279,7 +282,7 @@ export const MealPlanPage = ({
   );
 };
 
-// Meal Card Component with color-coded borders
+// Meal Card Component - ALL ORANGE NOW
 const MealCard = ({ 
   day, 
   mealType, 
@@ -290,17 +293,8 @@ const MealCard = ({
   onRegenerate, 
   onGetRecipe 
 }) => {
-  // Color-coded left borders for each meal type
-  const mealColors = {
-    breakfast: 'border-l-4 border-orange-500',
-    lunch: 'border-l-4 border-green-500',
-    dinner: 'border-l-4 border-blue-500',
-    snacks: 'border-l-4 border-yellow-500',
-    dessert: 'border-l-4 border-purple-500'
-  };
-
   return (
-    <div className={`space-y-3 p-4 rounded-lg bg-gray-50 ${mealColors[mealType]} shadow-sm hover:shadow-md transition-shadow`}>
+    <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center">
         <label className="block text-sm font-semibold text-gray-700 capitalize">
           {mealType}
