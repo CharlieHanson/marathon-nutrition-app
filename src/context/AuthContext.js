@@ -101,7 +101,6 @@ export const AuthProvider = ({ children }) => {
 
       return { data, error: null };
     } catch (error) {
-      console.error('signUp error:', error);
       return { data: null, error };
     }
   };
@@ -122,7 +121,6 @@ export const AuthProvider = ({ children }) => {
 
       return { data, error: null };
     } catch (error) {
-      console.error('signIn error:', error);
       return { data: null, error };
     }
   };
@@ -133,7 +131,7 @@ export const AuthProvider = ({ children }) => {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) throw error;
     } catch (error) {
-      console.error('Error signing out:', error);
+      // Error signing out - continue with local state reset
     } finally {
       // Hard reset app-side state no matter what
       setUser(null);

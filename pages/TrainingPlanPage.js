@@ -34,17 +34,17 @@ export const TrainingPlanPage = ({ trainingPlan, onUpdate }) => {
 
   return (
     <div className="space-y-8">
+      <h2 className="text-3xl font-bold text-gray-900 text-center mb-6">
+        Weekly Training Schedule
+      </h2>
+      
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Weekly Training Schedule
-        </h2>
-        
         <div className="space-y-6">
           {Object.keys(trainingPlan).map((day) => (
             <div key={day} className="border rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-medium text-gray-900 capitalize flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
+                <h3 className="text-xl font-semibold text-gray-900 capitalize flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
                   {day}
                 </h3>
                 <button
@@ -92,7 +92,7 @@ export const TrainingPlanPage = ({ trainingPlan, onUpdate }) => {
                         max="10"
                         value={workout.intensity}
                         onChange={(e) => updateWorkout(day, index, 'intensity', parseInt(e.target.value))}
-                        className="w-full"
+                        className="w-full intensity-slider"
                       />
                     </div>
 

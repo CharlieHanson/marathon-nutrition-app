@@ -9,15 +9,13 @@ export async function fetchPersonalInfo(userId) {
     ]);
 
     // Don't throw on missing data - that's normal for new users
-    if (upErr && upErr.code !== 'PGRST116') console.error('Profile error:', upErr);
-    if (fpErr && fpErr.code !== 'PGRST116') console.error('Preferences error:', fpErr);
+    // Errors are handled by returning null values
 
     return {
       userProfile: up || null,
       foodPreferences: fp || null,
     };
   } catch (error) {
-    console.error('fetchPersonalInfo error:', error);
     return {
       userProfile: null,
       foodPreferences: null,
@@ -26,8 +24,6 @@ export async function fetchPersonalInfo(userId) {
 }
 
 export async function saveUserProfile(userId, profileData) {
-  console.log('💾 Saving profile:', { userId, profileData });
-  
   const { data, error } = await supabase
     .from('user_profiles')
     .upsert(
@@ -44,23 +40,15 @@ export async function saveUserProfile(userId, profileData) {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: 'user_id' // THIS IS THE FIX!
+        onConflict: 'user_id'
       }
     )
     .select();
-
-  if (error) {
-    console.error('❌ Save profile error:', error);
-  } else {
-    console.log('✅ Profile saved:', data);
-  }
 
   return { data, error };
 }
 
 export async function saveFoodPreferences(userId, prefs) {
-  console.log('💾 Saving preferences:', { userId, prefs });
-  
   const { data, error } = await supabase
     .from('food_preferences')
     .upsert(
@@ -72,23 +60,15 @@ export async function saveFoodPreferences(userId, prefs) {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: 'user_id' // THIS IS THE FIX!
+        onConflict: 'user_id'
       }
     )
     .select();
-
-  if (error) {
-    console.error('❌ Save preferences error:', error);
-  } else {
-    console.log('✅ Preferences saved:', data);
-  }
 
   return { data, error };
 }
 
 export async function saveTrainingPlan(userId, planData) {
-  console.log('💾 Saving training plan:', { userId, planData });
-  
   const { data, error } = await supabase
     .from('training_plans')
     .upsert(
@@ -98,16 +78,10 @@ export async function saveTrainingPlan(userId, planData) {
         updated_at: new Date().toISOString(),
       },
       {
-        onConflict: 'user_id' // THIS IS THE FIX!
+        onConflict: 'user_id'
       }
     )
     .select();
-
-  if (error) {
-    console.error('❌ Save training plan error:', error);
-  } else {
-    console.log('✅ Training plan saved:', data);
-  }
 
   return { data, error };
 }
@@ -121,7 +95,6 @@ export async function fetchTrainingPlan(userId) {
     .maybeSingle(); // Use maybeSingle() instead of single()
 
   if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching training plan:', error);
     return null;
   }
 
@@ -151,7 +124,6 @@ export async function checkOnboardingStatus(userId) {
       hasPreferences: !!preferences,
     };
   } catch (error) {
-    console.error('Error checking onboarding status:', error);
     return {
       hasCompletedOnboarding: false,
       hasProfile: false,

@@ -17,6 +17,7 @@ export default async function handler(req, res) {
 ${meals.join('\n')}
 
 Rules:
+- Each meal is A SINGLE SERVING.
 - List each ingredient only once
 - Estimate total quantity needed for all meals combined
 - Use realistic shopping units

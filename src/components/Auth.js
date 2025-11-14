@@ -1,9 +1,9 @@
 // src/components/Auth.js
 import React, { useState } from 'react';
-import { User } from 'lucide-react';
+import { User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const Auth = () => {
+const Auth = ({ onBack }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,6 +43,15 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-primary mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+        )}
         <div className="text-center mb-6">
           <img src="/alimenta_logo.png" alt="Logo" className="h-14 mx-auto mb-4" />
           <p className="text-gray-600 mt-2">Where nutrition meets performance</p>

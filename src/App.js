@@ -14,14 +14,16 @@ import { useTrainingPlan } from './hooks/useTrainingPlan';
 import { useMealPlan } from './hooks/useMealPlan';
 import { checkOnboardingStatus } from './dataClient';
 import { OnboardingFlow } from '../pages/OnboardingFlow';
+import { LandingPage } from '../pages/LandingPage';
 
 const App = () => {
-  const { user, signOut, loading, isGuest, disableGuestMode } = useAuth();
+  const { user, signOut, loading, isGuest, disableGuestMode, enableGuestMode } = useAuth();
   const [currentView, setCurrentView] = useState('training');
   const [userName, setUserName] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [showAuth, setShowAuth] = useState(false);
 
   const profile = useUserProfile(user, isGuest, reloadKey);
   const preferences = useFoodPreferences(user, isGuest, reloadKey);
@@ -39,15 +41,11 @@ const App = () => {
     let cancelled = false;
 
     const loadUserName = async () => {
-      console.log('Fetching user profile for:', userId);
-
       const { data, error } = await supabase
         .from('user_profiles')
         .select('name')
         .eq('user_id', userId)
         .single();
-
-      console.log('Profile data:', data, 'Error:', error);
 
       if (!cancelled && data && !error) {
         setUserName(data.name);
@@ -78,6 +76,13 @@ const App = () => {
     checkOnboarding();
   }, [user, isGuest]);
 
+  // Reset to training page whenever user logs in
+  useEffect(() => {
+    if (user && !isGuest && !needsOnboarding && !checkingOnboarding) {
+      setCurrentView('training');
+    }
+  }, [user, isGuest, needsOnboarding, checkingOnboarding]);
+
 
   if (loading || checkingOnboarding) {
     return (
@@ -88,7 +93,19 @@ const App = () => {
   }
 
   if (!user && !isGuest) {
-    return <Auth />;
+    if (showAuth) {
+      return <Auth onBack={() => setShowAuth(false)} />;
+    }
+    return (
+      <LandingPage
+        onSignIn={() => setShowAuth(true)}
+        onSignUp={() => setShowAuth(true)}
+        onViewDemo={() => {
+          // Enable guest mode for demo
+          enableGuestMode();
+        }}
+      />
+    );
   }
 
   // Show onboarding for new users

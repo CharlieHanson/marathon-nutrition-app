@@ -3,7 +3,7 @@ import { Card } from '../src/components/shared/Card';
 import { Button } from '../src/components/shared/Button';
 import { Input } from '../src/components/shared/Input';
 import { Select } from '../src/components/shared/Select';
-import { Save, Lock } from 'lucide-react';
+import { Save, Lock, User, Target, FileText, AlertCircle } from 'lucide-react';
 
 const GOAL_OPTIONS = [
   { value: 'lose', label: 'Lose weight' },
@@ -31,11 +31,24 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
   };
 
   return (
-    <div className="space-y-6">
-      <Card
-        title="User Profile"
-        subtitle="Tell us about yourself so we can personalize your nutrition plan."
-      >
+    <div className="space-y-8">
+      <h2 className="text-3xl font-bold text-gray-900 text-center mb-6">
+        User Profile
+      </h2>
+      
+      <Card>
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+              <p className="text-sm text-gray-600">Tell us about yourself so we can personalize your nutrition plan.</p>
+            </div>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Name */}
           <Input
@@ -99,7 +112,17 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
             disabled={isGuest}
           />
 
-          {/* Objective - FULL WIDTH */}
+        </div>
+
+        {/* Training & Goals Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <Target className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Training & Goals</h3>
+          </div>
+          
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Training Objective
@@ -109,17 +132,26 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               value={profile.objective}
               onChange={(e) => onUpdate('objective', e.target.value)}
               disabled={isGuest}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
               }`}
               rows="3"
             />
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500">
               Describe your primary training goal or objective
             </p>
           </div>
+        </div>
 
-          {/* Dietary Restrictions - FULL WIDTH */}
+        {/* Dietary Preferences Section */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Dietary Preferences</h3>
+          </div>
+          
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Dietary Restrictions
@@ -129,37 +161,39 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               value={profile.dietaryRestrictions}
               onChange={(e) => onUpdate('dietaryRestrictions', e.target.value)}
               disabled={isGuest}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
               }`}
               rows="3"
             />
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500">
               Any foods you must avoid due to allergies, intolerances, or dietary choices
             </p>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center gap-4">
+        <div className="mt-8 pt-6 border-t border-gray-200">
           {!isGuest ? (
-            <>
-              <Button onClick={handleSave} disabled={isSaving} icon={Save}>
+            <div className="flex items-center gap-4">
+              <Button onClick={handleSave} disabled={isSaving} icon={Save} size="lg">
                 {isSaving ? 'Saving...' : 'Save Profile'}
               </Button>
 
               {showSaveConfirmation && (
-                <div className="px-4 py-2 bg-green-50 border border-green-500 rounded-md text-green-700 flex items-center gap-2 animate-fade-in">
-                  <span className="text-lg">✓</span>
+                <div className="px-4 py-3 bg-green-50 border border-green-500 rounded-lg text-green-700 flex items-center gap-2 shadow-sm">
+                  <span className="text-xl">✓</span>
                   <span className="font-medium">Profile saved successfully!</span>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <div className="w-full p-4 bg-amber-50 border border-amber-300 rounded-lg flex items-start gap-3">
-              <Lock className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="w-full p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg flex items-start gap-4 shadow-sm">
+              <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Lock className="w-5 h-5 text-amber-600" />
+              </div>
               <div>
-                <p className="font-medium text-amber-900">Guest Mode</p>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="font-semibold text-amber-900 mb-1">Guest Mode</p>
+                <p className="text-sm text-amber-700">
                   You're browsing in guest mode. Create an account or sign in to save your profile and access all features.
                 </p>
               </div>
@@ -199,52 +233,59 @@ const ProfileCompletionCard = ({ profile }) => {
   }
 
   return (
-    <Card className="bg-blue-50 border border-blue-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-blue-900">
-            Profile Completion: {completionPercentage}%
-          </h3>
-          <p className="text-sm text-blue-700 mt-1">
-            Complete your profile for more personalized meal plans
-          </p>
-        </div>
-        <div className="text-3xl font-bold text-blue-600">
-          {completionPercentage}%
-        </div>
-      </div>
-      
-      {/* Progress Bar */}
-      <div className="mt-4 bg-blue-200 rounded-full h-2 overflow-hidden">
-        <div
-          className="bg-blue-600 h-full transition-all duration-500"
-          style={{ width: `${completionPercentage}%` }}
-        />
-      </div>
-
-      {/* Missing Fields */}
-      {completionPercentage < 100 && (
-        <div className="mt-3">
-          <p className="text-xs text-blue-700 font-medium">Missing fields:</p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {requiredFields
-              .filter(
-                (field) =>
-                  !profile[field] || profile[field].toString().trim() === ''
-              )
-              .map((field) => (
-                <span
-                  key={field}
-                  className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
-                >
-                  {field
-                    .replace(/([A-Z])/g, ' $1')
-                    .replace(/^./, (str) => str.toUpperCase())}
-                </span>
-              ))}
+    <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200 shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1">
+          <div className="flex-shrink-0 w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">
+              Profile Completion
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Complete your profile for more personalized meal plans
+            </p>
+            
+            {/* Progress Bar */}
+            <div className="mb-4 bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+              <div
+                className="bg-gradient-to-r from-primary to-orange-600 h-full transition-all duration-500 rounded-full"
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+            
+            {/* Missing Fields */}
+            {completionPercentage < 100 && (
+              <div>
+                <p className="text-xs text-gray-600 font-medium mb-2">Missing fields:</p>
+                <div className="flex flex-wrap gap-2">
+                  {requiredFields
+                    .filter(
+                      (field) =>
+                        !profile[field] || profile[field].toString().trim() === ''
+                    )
+                    .map((field) => (
+                      <span
+                        key={field}
+                        className="text-xs bg-white/80 text-gray-700 px-3 py-1.5 rounded-full border border-orange-200 font-medium"
+                      >
+                        {field
+                          .replace(/([A-Z])/g, ' $1')
+                          .replace(/^./, (str) => str.toUpperCase())}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+        <div className="flex-shrink-0">
+          <div className="text-4xl font-bold bg-gradient-to-r from-primary to-orange-600 bg-clip-text text-transparent">
+            {completionPercentage}%
+          </div>
+        </div>
+      </div>
     </Card>
   );
 };

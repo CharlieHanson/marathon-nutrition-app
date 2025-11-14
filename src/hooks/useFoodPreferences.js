@@ -37,7 +37,7 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
           setPreferences(EMPTY_PREFERENCES);
         }
       } catch (e) {
-        console.error('Load preferences failed:', e);
+        // Error loading preferences - will use empty preferences
       }
     })();
 

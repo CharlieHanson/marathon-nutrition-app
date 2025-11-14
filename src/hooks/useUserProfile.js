@@ -47,7 +47,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
           setProfile(EMPTY_PROFILE);
         }
       } catch (e) {
-        console.error('Load profile failed:', e);
+        // Error loading profile - will use empty profile
       }
     })();
 

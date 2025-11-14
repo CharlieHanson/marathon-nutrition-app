@@ -41,13 +41,11 @@ export const OnboardingFlow = ({ user, onComplete }) => {
       const { error } = await saveUserProfile(user.id, profile);
       if (error) {
         alert('Failed to save profile. Please try again.');
-        console.error(error);
       } else {
         setCurrentStep(3);
       }
     } catch (error) {
       alert('An error occurred. Please try again.');
-      console.error(error);
     } finally {
       setIsSaving(false);
     }
@@ -59,14 +57,12 @@ export const OnboardingFlow = ({ user, onComplete }) => {
       const { error } = await saveFoodPreferences(user.id, preferences);
       if (error) {
         alert('Failed to save preferences. Please try again.');
-        console.error(error);
       } else {
         // Mark onboarding as complete
         onComplete();
       }
     } catch (error) {
       alert('An error occurred. Please try again.');
-      console.error(error);
     } finally {
       setIsSaving(false);
     }

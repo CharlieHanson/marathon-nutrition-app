@@ -37,7 +37,7 @@ export const useTrainingPlan = (user, isGuest) => {
           setPlan(EMPTY_WEEK);
         }
       } catch (e) {
-        console.error('Load training plan failed:', e);
+        // Error loading training plan - will use empty plan
       }
     })();
 

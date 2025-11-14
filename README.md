@@ -1,4 +1,4 @@
-# Marathon Nutrition Planner
+# Alimenta
 
 A personalized meal planning web app designed for marathon runners and athletes. Create an account, input your weekly training schedule, and get AI-powered meal suggestions tailored to your workouts and food preferences - validated by machine learning for nutritional accuracy.
 

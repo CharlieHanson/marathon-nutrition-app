@@ -101,8 +101,6 @@ export const MealPlanPage = ({
         });
       });
 
-      console.log('📋 Meals being sent for grocery list:', allMeals);
-
       if (allMeals.length === 0) {
         setLocalStatusMessage('❌ No meals found. Generate a meal plan first!');
         setTimeout(() => setLocalStatusMessage(''), 5000);
@@ -128,7 +126,6 @@ export const MealPlanPage = ({
         throw new Error(result.error || 'Failed to generate grocery list');
       }
     } catch (error) {
-      console.error('❌ Grocery list generation error:', error);
       setLocalStatusMessage(`❌ Error: ${error.message}`);
     }
 
