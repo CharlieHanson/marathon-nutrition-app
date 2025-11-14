@@ -86,50 +86,65 @@ export default async function handler(req, res) {
       .filter(item => !item.includes('undefined') && !item.includes(' (intensity)'))
       .join('\n');
 
-    const prompt = `You are a sports nutritionist creating a weekly meal plan for an athlete.
+      const prompt = `You are a sports nutritionist creating a weekly meal plan for an athlete.
 
-USER PROFILE:
-- Height: ${userProfile.height || 'Not specified'}
-- Weight: ${userProfile.weight || 'Not specified'}  
-- Goal: ${userProfile.goal || 'maintain weight'}
-- Objective: ${userProfile.objective || 'Not specified'}
-- Activity Level: ${userProfile.activityLevel || 'moderate'}
-- Dietary Restrictions: ${userProfile.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${likedFoods}
-- Dislikes: ${dislikedFoods}
-- Cuisines" ${cuisines}
-
-TRAINING SCHEDULE:
-${trainingSchedule || 'No training plan specified'}
-
-Create a weekly meal plan with breakfast, lunch, dinner, dessert (be creative, not just yogurt variations),
-and snacks (~75% single items, ~25% combos) for each day.
-
-CRITICAL REQUIREMENTS:
-- NEVER include disliked foods: ${dislikedFoods}
-- PRIORITIZE liked foods: ${likedFoods}
-- Tailor nutrition to support each day's training
-- Support weight goal: ${userProfile.goal || 'maintain'}
-
-Format each meal as JUST THE DESCRIPTION:
-"Meal name with main ingredients"
-
-Example: "Scrambled eggs with spinach and avocado"
-
-Respond with ONLY a JSON object in this exact format:
-{
-  "monday": {
-    "breakfast": "meal description",
-    "lunch": "meal description", 
-    "dinner": "meal description",
-    "dessert": "meal description",
-    "snacks": "snack description"
-  },
-  "tuesday": { ... },
-  ... (all 7 days)
-}`;
+      USER PROFILE:
+      - Height: ${userProfile.height || 'Not specified'}
+      - Weight: ${userProfile.weight || 'Not specified'}  
+      - Goal: ${userProfile.goal || 'maintain weight'}
+      - Objective: ${userProfile.objective || 'Not specified'}
+      - Activity Level: ${userProfile.activityLevel || 'moderate'}
+      - Dietary Restrictions: ${userProfile.dietaryRestrictions || 'None'}
+      
+      FOOD PREFERENCES:
+      - Likes: ${likedFoods}
+      - Dislikes: ${dislikedFoods}
+      - Favorite Cuisines: ${cuisines}
+      
+      TRAINING SCHEDULE:
+      ${trainingSchedule || 'No training plan specified'}
+      
+      Create a diverse weekly meal plan with breakfast, lunch, dinner, dessert (be creative with real desserts like cookies, brownies, fruit tarts, ice cream - not just yogurt variations), and snacks (~75% single items like "Banana" or "Almonds", ~25% combos like "Apple with peanut butter") for each day.
+      
+      CRITICAL REQUIREMENTS - FOLLOW THESE EXACTLY:
+      1. ABSOLUTE RULES (must follow):
+         - NEVER include ANY of these disliked foods: ${dislikedFoods}
+         - RESPECT all dietary restrictions: ${userProfile.dietaryRestrictions || 'None'}
+         - Tailor nutrition to support each day's training intensity
+         - Support weight goal: ${userProfile.goal || 'maintain'}
+      
+      2. VARIETY REQUIREMENTS (prevent repetition):
+         - Each liked food should appear MAXIMUM 3-4 times across the ENTIRE week
+         - No ingredient should appear in consecutive meals
+         - Provide diverse meal options across different cuisines
+         - Use liked foods thoughtfully, not in every meal
+      
+      3. LIKED FOODS GUIDANCE:
+         - Liked foods (${likedFoods}) should be used MORE OFTEN than neutral foods
+         - But NOT in every single meal - variety is important
+         - Incorporate them naturally where they fit the meal type
+         - Don't force them into inappropriate meals (e.g., no avocado in desserts)
+      
+      Format each meal as JUST THE DESCRIPTION:
+      "Meal name with main ingredients"
+      
+      Example: "Scrambled eggs with spinach and avocado"
+      Example: "Grilled chicken with quinoa and roasted vegetables"
+      
+      Respond with ONLY a JSON object in this exact format:
+      {
+        "monday": {
+          "breakfast": "meal description",
+          "lunch": "meal description", 
+          "dinner": "meal description",
+          "dessert": "meal description",
+          "snacks": "snack description"
+        },
+        "tuesday": { ... },
+        ... (all 7 days)
+      }
+      
+      DO NOT include anything other than the JSON object in your response.`;
 
     console.log('🤖 Generating meal descriptions with GPT...');
     const response = await openai.chat.completions.create({
