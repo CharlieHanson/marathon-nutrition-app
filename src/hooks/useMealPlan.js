@@ -85,7 +85,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }));
   };
 
-  const rateMeal = (day, mealType, rating) => {
+  const rateMeal = async (day, mealType, rating) => {
+    // Update local state immediately
     setMealPlan((prev) => ({
       ...prev,
       [day]: {
@@ -93,6 +94,31 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         [`${mealType}_rating`]: rating,
       },
     }));
+  
+    // If user is authenticated, save rating with embedding
+    if (user && !isGuest) {
+      try {
+        const mealDescription = mealPlan[day][mealType];
+        
+        // Only send if there's a meal to rate
+        if (mealDescription && mealDescription.trim()) {
+          await fetch('/api/rate-meal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              mealDescription: mealDescription,
+              mealType: mealType,
+              rating: rating,
+              day: day,
+            }),
+          });
+        }
+      } catch (error) {
+        console.error('Error saving rating:', error);
+        // Don't fail - rating still works locally
+      }
+    }
   };
 
   const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
