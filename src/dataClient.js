@@ -131,3 +131,98 @@ export async function checkOnboardingStatus(userId) {
     };
   }
 }
+
+// Meal Plan functions
+export async function saveMealPlan(userId, meals, weekStarting) {
+  // First try to find existing record
+  const { data: existing } = await supabase
+    .from('meal_plans')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('week_starting', weekStarting)
+    .maybeSingle();
+
+  let data, error;
+  
+  if (existing) {
+    // Update existing
+    ({ data, error } = await supabase
+      .from('meal_plans')
+      .update({
+        meals: meals,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select());
+  } else {
+    // Insert new
+    ({ data, error } = await supabase
+      .from('meal_plans')
+      .insert({
+        user_id: userId,
+        meals: meals,
+        week_starting: weekStarting,
+        updated_at: new Date().toISOString(),
+      })
+      .select());
+  }
+
+  return { data, error };
+}
+
+// Get Monday of current week
+function getMondayOfCurrentWeek() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(today);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0]; // Return as YYYY-MM-DD
+}
+
+export async function fetchCurrentWeekMealPlan(userId) {
+  const weekStarting = getMondayOfCurrentWeek();
+  
+  const { data, error } = await supabase
+    .from('meal_plans')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('week_starting', weekStarting)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    return null;
+  }
+
+  return data;
+}
+
+export async function fetchMealPlanByWeek(userId, weekStarting) {
+  const { data, error } = await supabase
+    .from('meal_plans')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('week_starting', weekStarting)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    return null;
+  }
+
+  return data;
+}
+
+export async function fetchAllMealPlans(userId) {
+  const { data, error } = await supabase
+    .from('meal_plans')
+    .select('*')
+    .eq('user_id', userId)
+    .order('week_starting', { ascending: false });
+
+  if (error) {
+    return [];
+  }
+
+  return data || [];
+}

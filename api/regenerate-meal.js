@@ -18,7 +18,6 @@ async function getMacrosFromML(mealDescription, mealType) {
     
     const endpoint = endpointMap[mealType];
     if (!endpoint) {
-      console.log(`No ML model for meal type: ${mealType}`);
       return null;
     }
     
@@ -34,7 +33,7 @@ async function getMacrosFromML(mealDescription, mealType) {
       return mlData.predictions;
     }
   } catch (error) {
-    console.error('ML prediction failed:', error.message);
+    // ML prediction failed - return null to use meal without macros
   }
   
   return null;
@@ -68,7 +67,6 @@ DO NOT include macros - they will be calculated automatically.
 
 Respond with only the meal description, no extra text.`;
 
-    console.log(`🤖 Generating new ${mealType}...`);
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
@@ -79,7 +77,6 @@ Respond with only the meal description, no extra text.`;
     const mealDescription = response.choices[0].message.content.trim();
     
     // Get macros from ML
-    console.log(`🤖 Calculating macros with ML...`);
     const macros = await getMacrosFromML(mealDescription, mealType);
     
     let finalMeal;
@@ -88,8 +85,6 @@ Respond with only the meal description, no extra text.`;
     } else {
       finalMeal = mealDescription;  // Return without macros if ML fails
     }
-    
-    console.log('✅ Regeneration complete');
 
     res.status(200).json({ success: true, meal: finalMeal });
 

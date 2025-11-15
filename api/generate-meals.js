@@ -1,9 +1,26 @@
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const ML_API_URL = 'https://marathon-nutrition-app-production.up.railway.app';
+
+// Get Monday of current week
+function getMondayOfCurrentWeek() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(today);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0]; // Return as YYYY-MM-DD
+}
 
 // Get macros from ML API (no GPT macros needed!)
 async function getMacrosFromML(mealDescription, mealType) {
@@ -18,7 +35,6 @@ async function getMacrosFromML(mealDescription, mealType) {
     
     const endpoint = endpointMap[mealType];
     if (!endpoint) {
-      console.log(`No ML model for meal type: ${mealType}`);
       return null;
     }
     
@@ -34,7 +50,7 @@ async function getMacrosFromML(mealDescription, mealType) {
       return mlData.predictions;
     }
   } catch (error) {
-    console.error('ML prediction failed:', error.message);
+    // ML prediction failed - return null to use meal without macros
   }
   
   return null;
@@ -60,7 +76,7 @@ async function addMacrosToMeals(meals) {
           mealsWithMacros[day][mealType] = mealDescription;
         }
       } catch (error) {
-        console.error(`Failed to add macros for ${day} ${mealType}:`, error.message);
+        // Failed to add macros - keep original description
         mealsWithMacros[day][mealType] = mealDescription;
       }
     }
@@ -75,7 +91,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userProfile, foodPreferences, trainingPlan } = req.body;
+    const { userProfile, foodPreferences, trainingPlan, userId, weekStarting } = req.body;
 
     const likedFoods = foodPreferences.likes || 'No preferences specified';
     const dislikedFoods = foodPreferences.dislikes || 'No dislikes specified';
@@ -158,14 +174,73 @@ export default async function handler(req, res) {
     const mealDescriptions = JSON.parse(aiResponse);
 
     // Get macros from ML API
-    console.log('🤖 Calculating macros with ML API...');
     const mealsWithMacros = await addMacrosToMeals(mealDescriptions);
-    console.log('✅ Meal plan complete');
 
-    res.status(200).json({ success: true, meals: mealsWithMacros });
+    // Save to database if userId is provided
+    let savedMealPlanId = null;
+    if (userId) {
+      console.log('💾 Attempting to save meal plan for user:', userId);
+      try {
+        console.log('📅 Week starting:', weekStarting);
+        
+        // Check if record exists
+        const { data: existing } = await supabase
+          .from('meal_plans')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('week_starting', weekStarting)
+          .maybeSingle();
+
+        console.log('🔍 Existing record:', existing);
+
+        let result;
+        if (existing) {
+          console.log('🔄 Updating existing record...');
+          // Update existing
+          result = await supabase
+            .from('meal_plans')
+            .update({
+              meals: mealsWithMacros,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+            .select();
+        } else {
+          console.log('➕ Inserting new record...');
+          // Insert new
+          result = await supabase
+            .from('meal_plans')
+            .insert({
+              user_id: userId,
+              meals: mealsWithMacros,
+              week_starting: weekStarting,
+            })
+            .select();
+        }
+
+        console.log('💾 Save result:', result);
+
+        if (!result.error && result.data && result.data.length > 0) {
+          savedMealPlanId = result.data[0].id;
+          console.log('✅ Meal plan saved with ID:', savedMealPlanId);
+        } else {
+          console.log('❌ Save failed:', result.error);
+        }
+      } catch (dbError) {
+        console.error('❌ Database error:', dbError);
+        // Don't fail the request if DB save fails
+      }
+    } else {
+      console.log('⚠️ No userId provided, skipping database save');
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      meals: mealsWithMacros,
+      mealPlanId: savedMealPlanId
+    });
 
   } catch (error) {
-    console.error('API Error:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 

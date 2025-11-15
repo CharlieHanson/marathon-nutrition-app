@@ -172,7 +172,12 @@ const App = () => {
             )
           }
           onRegenerate={mealPlan.regenerateMeal}
+          onLoadWeek={mealPlan.loadMealPlanByWeek}
+          onSave={mealPlan.saveCurrentMealPlan}
           isGenerating={mealPlan.isGenerating}
+          isLoading={mealPlan.isLoading}
+          statusMessage={mealPlan.statusMessage}
+          currentWeekStarting={mealPlan.currentWeekStarting}
           userProfile={profile.profile}
           foodPreferences={preferences.preferences}
           trainingPlan={trainingPlan.plan}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, RotateCcw, Star, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '../src/components/shared/Card';
 import { Button } from '../src/components/shared/Button';
 import { RecipeModal } from '../src/components/modals/RecipeModal';
@@ -14,9 +14,13 @@ export const MealPlanPage = ({
   onUpdate, 
   onRate,
   onGenerate, 
-  onRegenerate, 
+  onRegenerate,
+  onLoadWeek,
+  onSave,
   isGenerating,
+  isLoading,
   statusMessage,
+  currentWeekStarting,
   userProfile,
   foodPreferences,
   trainingPlan
@@ -141,11 +145,126 @@ export const MealPlanPage = ({
     )
   );
 
+  // Helper function to get Monday of current week
+  const getMondayOfCurrentWeek = () => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday.toISOString().split('T')[0];
+  };
+
+  // Format week starting date for display
+  const formatWeekDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  // Get previous/next week dates
+  const getPreviousWeek = () => {
+    if (!currentWeekStarting) return null;
+    const date = new Date(currentWeekStarting + 'T00:00:00');
+    date.setDate(date.getDate() - 7);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getNextWeek = () => {
+    if (!currentWeekStarting) return null;
+    const date = new Date(currentWeekStarting + 'T00:00:00');
+    date.setDate(date.getDate() + 7);
+    return date.toISOString().split('T')[0];
+  };
+
+  const handlePreviousWeek = async () => {
+    const prevWeek = getPreviousWeek();
+    if (prevWeek && onLoadWeek) {
+      await onLoadWeek(prevWeek);
+    }
+  };
+
+  const handleNextWeek = async () => {
+    const nextWeek = getNextWeek();
+    if (nextWeek && onLoadWeek) {
+      await onLoadWeek(nextWeek);
+    }
+  };
+
+  const handleCurrentWeek = async () => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+    const weekStarting = monday.toISOString().split('T')[0];
+    if (onLoadWeek) {
+      await onLoadWeek(weekStarting);
+    }
+  };
+
+  //Auto-save meal plan when it changes (debounced)
+  useEffect(() => {
+    if (!currentWeekStarting || !onSave || !hasMeals) return;
+
+    const timeoutId = setTimeout(() => {
+      onSave();
+    }, 2000); // Save 2 seconds after last change
+
+    return () => clearTimeout(timeoutId);
+  }, [mealPlan, currentWeekStarting, onSave, hasMeals]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <MealPlanSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      <Card
-        title="Weekly Meal Plan"
-        headerAction={
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
+            {currentWeekStarting && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePreviousWeek}
+                  className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  disabled={!onLoadWeek}
+                  title="Previous week"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-semibold text-gray-700 px-3">
+                  Week of {formatWeekDate(currentWeekStarting)}
+                </span>
+                <button
+                  onClick={handleNextWeek}
+                  className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  disabled={!onLoadWeek}
+                  title="Next week"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                {currentWeekStarting !== getMondayOfCurrentWeek() && (
+                  <button
+                    onClick={handleCurrentWeek}
+                    className="ml-2 px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20"
+                  >
+                    Go to Current Week
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={onGenerate}
@@ -167,8 +286,8 @@ export const MealPlanPage = ({
               </Button>
             )}
           </div>
-        }
-      >
+        </div>
+
         {/* ALWAYS show status message when there's activity */}
         {(displayMessage || isGenerating) && (
           <div className={`mb-4 p-4 rounded-lg border ${
@@ -192,6 +311,12 @@ export const MealPlanPage = ({
         {/* Show loading skeleton while generating */}
         {isGenerating ? (
           <MealPlanSkeleton />
+        ) : !hasMeals ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">
+              No meal plan generated yet. Click "Generate Meals" to create your personalized weekly meal plan!
+            </p>
+          </div>
         ) : (
           <div className="space-y-8">
             {DAYS.map((day) => {
@@ -261,7 +386,7 @@ export const MealPlanPage = ({
             })}
           </div>
         )}
-      </Card>
+      </div>
 
       <RecipeModal
         isOpen={showRecipeModal}
