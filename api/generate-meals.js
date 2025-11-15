@@ -1,32 +1,42 @@
 // api/generate-meals.js
+// Streams day-by-day generation via Server-Sent Events (SSE)
+
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getPersonalizedPreferences } from '../src/lib/rag.js'; // <-- shared RAG helper
+import { getTopMealsByVector } from '../src/lib/rag.js'; // needs the vector helper we discussed
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ML_API_URL = 'https://marathon-nutrition-app-production.up.railway.app';
+const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
 
-// Get Monday of current week (unused by default but kept)
-function getMondayOfCurrentWeek() {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(today);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().split('T')[0];
+/* ------------------------------- SSE helpers ------------------------------- */
+function sseHeaders(res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // for some proxies
+  res.flushHeaders?.();
 }
 
-// ---- ML Macros helpers ----
+function sendEvent(res, type, payload) {
+  res.write(`event: ${type}\n`);
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function sendStatus(res, message) {
+  sendEvent(res, 'status', { message });
+}
+
+/* ---------------------------- Macro utils (ML) ----------------------------- */
 async function getMacrosFromML(mealDescription, mealType) {
   try {
     const endpointMap = {
@@ -36,105 +46,162 @@ async function getMacrosFromML(mealDescription, mealType) {
       snacks: '/predict-snacks',
       dessert: '/predict-desserts',
     };
-
     const endpoint = endpointMap[mealType];
     if (!endpoint) return null;
 
-    const mlResponse = await fetch(`${ML_API_URL}${endpoint}`, {
+    const resp = await fetch(`${ML_API_URL}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meal: mealDescription }),
+      body: JSON.stringify({ meal: mealDescription })
     });
-
-    const mlData = await mlResponse.json();
-    if (mlData?.success) {
-      return mlData.predictions;
-    }
-  } catch (_e) {
-    // swallow ML errors; fall back to original text
-  }
+    const data = await resp.json();
+    if (data?.success) return data.predictions;
+  } catch {}
   return null;
 }
 
-async function addMacrosToMeals(meals) {
-  const mealsWithMacros = { ...meals };
-
-  for (const [day, dayMeals] of Object.entries(meals)) {
-    for (const [mealType, mealDescription] of Object.entries(dayMeals)) {
-      if (!mealDescription || typeof mealDescription !== 'string') continue;
-
-      try {
-        const macros = await getMacrosFromML(mealDescription, mealType);
-        if (macros) {
-          mealsWithMacros[day][mealType] =
-            `${mealDescription} (Cal: ${Math.round(macros.calories)}, ` +
-            `P: ${Math.round(macros.protein)}g, ` +
-            `C: ${Math.round(macros.carbs)}g, ` +
-            `F: ${Math.round(macros.fat)}g)`;
-        } else {
-          mealsWithMacros[day][mealType] = mealDescription;
-        }
-      } catch (_e) {
-        mealsWithMacros[day][mealType] = mealDescription;
-      }
-    }
-  }
-
-  return mealsWithMacros;
+function attachMacrosText(desc, macros) {
+  if (!macros) return desc;
+  const c = (n) => Math.round(Number(n) || 0);
+  return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
 }
 
-// ---- API route ----
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+function extractMacrosFromText(txt='') {
+  const get = (re) => {
+    const m = txt.match(re);
+    return m ? Number(m[1]) : 0;
+  };
+  return {
+    calories: get(/Cal:\s*(\d+)/i),
+    protein:  get(/P:\s*(\d+)\s*g/i),
+    carbs:    get(/C:\s*(\d+)\s*g/i),
+    fat:      get(/F:\s*(\d+)\s*g/i),
+  };
+}
+
+function sumDayMacros(dayMeals) {
+  const sums = { calories:0, protein:0, carbs:0, fat:0, hasData:false };
+  for (const mt of MEAL_TYPES) {
+    const v = dayMeals[mt];
+    if (!v || typeof v !== 'string') continue;
+    const m = extractMacrosFromText(v);
+    sums.calories += m.calories;
+    sums.protein  += m.protein;
+    sums.carbs    += m.carbs;
+    sums.fat      += m.fat;
+    sums.hasData = true;
   }
+  return sums;
+}
 
-  try {
-    const { userProfile, foodPreferences, trainingPlan, userId, weekStarting } = req.body;
+/* ---------------------- Light target & sanity thresholds ------------------- */
+/** Very lightweight target heuristic.
+ * If weight present, kcal target ≈ 30 * (kg) (+5% if "bulk", -10% if "cut")
+ * Otherwise generic 2200 kcal. Tolerances are intentionally wide (±20%).
+ */
+function targetForDay(userProfile, trainingPlan, day) {
+  const kg = userProfile?.weight ? Number(userProfile.weight) : null; // assume kg if you store kg; adjust if lbs
+  let kcal = kg ? 30 * kg : 2200;
 
-    const likedFoods = foodPreferences?.likes || 'No preferences specified';
-    const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
-    const cuisines = foodPreferences?.cuisines || 'No cuisines specified';
+  const goal = String(userProfile?.goal || '').toLowerCase();
+  if (goal.includes('bulk') || goal.includes('gain')) kcal *= 1.05;
+  if (goal.includes('cut') || goal.includes('lose')) kcal *= 0.90;
 
-    const trainingSchedule = Object.entries(trainingPlan || {})
-      .map(
-        ([day, workout]) =>
-          `${day}: ${workout.type} ${workout.distance} (${workout.intensity} intensity)`
-      )
-      .filter((s) => !s.includes('undefined') && !s.includes(' (intensity)'))
-      .join('\n');
+  const intensity = trainingPlan?.[day]?.intensity ?? 5; // 1..10
+  kcal *= (0.9 + (Number(intensity) || 5) * 0.02); // ±10% swing
 
-    // ---- RAG personalization (no HTTP call; direct function) ----
-    let personalizedContext = '';
-    if (userId) {
-      try {
-        console.log('🧠 Fetching personalized preferences using RAG (lib)...');
+  const min = Math.round(kcal * 0.8);
+  const max = Math.round(kcal * 1.2);
+  return { kcalTarget: Math.round(kcal), minKcal: min, maxKcal: max };
+}
 
-        const prefs = await getPersonalizedPreferences({ userId, limit: 5 });
+/* --------------------------- Prompt composition ---------------------------- */
+function summarizePreviousMeals(soFarWeek) {
+  // Keep it short: only last 2 days to avoid prompt bloat
+  const daysWithMeals = DAYS.filter(d => soFarWeek[d]);
+  const pick = daysWithMeals.slice(-2);
+  if (pick.length === 0) return '';
 
-        if (prefs?.length > 0) {
-          console.log(`✅ Found ${prefs.length} highly-rated meals`);
-          const topMeals = prefs
-            .slice(0, 5)
-            .map((m) => `- ${m.meal_description} (${m.meal_type}, ${m.rating} stars)`)
-            .join('\n');
-
-          personalizedContext = `
-
-PERSONALIZED PREFERENCES (from past ratings):
-The user has highly rated these meals in the past:
-${topMeals}
-
-Generate meals SIMILAR in style and ingredients to these highly-rated options, but with variety.`;
-        }
-      } catch (error) {
-        console.error('Error fetching preferences (lib):', error);
-        // continue without personalization
+  let lines = [];
+  for (const d of pick) {
+    const dayMeals = soFarWeek[d];
+    lines.push(`${d}:`);
+    for (const mt of MEAL_TYPES) {
+      const v = dayMeals[mt];
+      if (v && typeof v === 'string') {
+        // Strip macro suffix to reduce tokens
+        const core = v.replace(/\s*\(Cal:[^)]+\)\s*$/i,'').trim();
+        lines.push(`- ${mt}: ${core}`);
       }
     }
+  }
+  return lines.join('\n');
+}
 
-    // ---- Prompt ----
-    const prompt = `You are a sports nutritionist creating a weekly meal plan for an athlete.
+async function personalizationBulletsPerMeal({
+  userId, mealType, foodPreferences, userProfile, trainingPlan, day
+}) {
+  const likes   = foodPreferences?.likes;
+  const dislikes= foodPreferences?.dislikes;
+  const cuisines= foodPreferences?.cuisines;
+  const goal    = userProfile?.goal;
+
+  const intensityText = (() => {
+    const w = trainingPlan?.[day] || {};
+    const t = w.type ? String(w.type) : 'easy';
+    const d = w.distance ? String(w.distance) : '';
+    const i = (w.intensity != null) ? ` (intensity ${w.intensity})` : '';
+    return `${t} ${d}${i}`.trim();
+  })();
+
+  const recs = userId
+    ? await getTopMealsByVector({
+        userId,
+        mealType,
+        likes,
+        dislikes,
+        cuisines,
+        goal,
+        intensityText,
+        k: 2,                // 2 bullets per meal type
+        candidateLimit: 40,
+        efSearch: 64
+      })
+    : [];
+
+  if (!recs?.length) return '';
+  const bullets = recs.map(r => `- ${r.meal_description} (${r.rating}★)`).join('\n');
+  return `PAST FAVORITES (${mealType}):\n${bullets}\nGenerate a NEW ${mealType} inspired by these (not identical), aligned to today's training and macros.`;
+}
+
+async function buildDayPrompt({
+  day,
+  userProfile,
+  foodPreferences,
+  trainingPlan,
+  dislikedFoods,
+  likedFoods,
+  cuisines,
+  soFarWeek,
+  userId
+}) {
+  const prevSummary = summarizePreviousMeals(soFarWeek);
+
+  // Per-meal RAG bullets
+  const [pB,pL,pD,pS,pDe] = await Promise.all([
+    personalizationBulletsPerMeal({ userId, mealType:'breakfast', foodPreferences, userProfile, trainingPlan, day }),
+    personalizationBulletsPerMeal({ userId, mealType:'lunch',     foodPreferences, userProfile, trainingPlan, day }),
+    personalizationBulletsPerMeal({ userId, mealType:'dinner',    foodPreferences, userProfile, trainingPlan, day }),
+    personalizationBulletsPerMeal({ userId, mealType:'snacks',    foodPreferences, userProfile, trainingPlan, day }),
+    personalizationBulletsPerMeal({ userId, mealType:'dessert',   foodPreferences, userProfile, trainingPlan, day }),
+  ]);
+
+  const perMealContext = [pB,pL,pD,pS,pDe].filter(Boolean).join('\n\n');
+
+  const w = trainingPlan?.[day] || {};
+  const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${w.intensity!=null ? `(intensity ${w.intensity})` : ''}`.trim();
+
+  return `You are a sports nutritionist creating the ${day} plan for an athlete.
 
 USER PROFILE:
 - Height: ${userProfile?.height || 'Not specified'}
@@ -143,145 +210,190 @@ USER PROFILE:
 - Objective: ${userProfile?.objective || 'Not specified'}
 - Activity Level: ${userProfile?.activityLevel || 'moderate'}
 - Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-${personalizedContext}
 
 FOOD PREFERENCES:
 - Likes: ${likedFoods}
 - Dislikes: ${dislikedFoods}
 - Favorite Cuisines: ${cuisines}
 
-TRAINING SCHEDULE:
-${trainingSchedule || 'No training plan specified'}
+TRAINING (today):
+- ${dayTraining}
 
-Create a diverse weekly meal plan with breakfast, lunch, dinner, dessert (be creative with real desserts like cookies, brownies, fruit tarts, ice cream - not just yogurt variations), and snacks (~75% single items like "Banana" or "Almonds", ~25% combos like "Apple with peanut butter") for each day.
+WEEK SO FAR (do NOT repeat dishes / main proteins already used):
+${prevSummary || '(first day or no prior meals)'}
 
-CRITICAL REQUIREMENTS - FOLLOW THESE EXACTLY:
-1. ABSOLUTE RULES (must follow):
-   - NEVER include ANY of these disliked foods: ${dislikedFoods}
-   - RESPECT all dietary restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-   - Tailor nutrition to support each day's training intensity
-   - Support weight goal: ${userProfile?.goal || 'maintain'}
+${perMealContext || ''}
 
-2. VARIETY REQUIREMENTS (prevent repetition):
-   - Each liked food should appear MAXIMUM 3-4 times across the ENTIRE week
-   - No ingredient should appear in consecutive meals
-   - Provide diverse meal options across different cuisines
-   - Use liked foods thoughtfully, not in every meal
+REQUIREMENTS:
+1) Output ONLY JSON for this day in the exact shape below.
+2) Strictly avoid disliked foods and respect restrictions.
+3) Provide varied cuisines across the week; rotate main proteins.
+4) Use liked foods thoughtfully (≤ 3–4 appearances in the whole week).
+5) Return concise meal descriptions (no macros text).
 
-3. LIKED FOODS GUIDANCE:
-   - Liked foods (${likedFoods}) should be used MORE OFTEN than neutral foods
-   - But NOT in every single meal - variety is important
-   - Incorporate them naturally where they fit the meal type
-   - Don't force them into inappropriate meals (e.g., no avocado in desserts)
-
-Format each meal as JUST THE DESCRIPTION:
-"Meal name with main ingredients"
-
-Example: "Scrambled eggs with spinach and avocado"
-Example: "Grilled chicken with quinoa and roasted vegetables"
-
-Respond with ONLY a JSON object in this exact format:
+Respond with JSON ONLY:
 {
-  "monday": {
+  "${day}": {
     "breakfast": "meal description",
     "lunch": "meal description",
     "dinner": "meal description",
     "dessert": "meal description",
     "snacks": "snack description"
-  },
-  "tuesday": { ... },
-  ... (all 7 days)
+  }
+}`;
 }
 
-DO NOT include anything other than the JSON object in your response.`;
+/* ------------------------------ Save progress ------------------------------ */
+async function upsertWeekPartial({ userId, weekStarting, weekObj }) {
+  if (!userId) return;
 
-    console.log('🤖 Generating meal descriptions with GPT...');
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1500,
-      temperature: 0.7,
-    });
+  // Try find existing row
+  const { data: existing } = await supabase
+    .from('meal_plans')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('week_starting', weekStarting)
+    .maybeSingle();
 
-    const aiResponse = response.choices?.[0]?.message?.content ?? '{}';
+  if (existing) {
+    await supabase
+      .from('meal_plans')
+      .update({ meals: weekObj, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+  } else {
+    await supabase
+      .from('meal_plans')
+      .insert({ user_id: userId, meals: weekObj, week_starting: weekStarting });
+  }
+}
 
-    let mealDescriptions;
-    try {
-      mealDescriptions = JSON.parse(aiResponse);
-    } catch (e) {
-      console.error('Failed to parse GPT JSON:', aiResponse);
-      throw new Error('Model returned invalid JSON');
-    }
+/* --------------------------------- Handler -------------------------------- */
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    // For SSE, we still POST, but stream the response.
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-    // Add ML macros per meal
-    const mealsWithMacros = await addMacrosToMeals(mealDescriptions);
+  // Switch response to SSE
+  sseHeaders(res);
 
-    // ---- Save weekly plan (if userId provided) ----
-    let savedMealPlanId = null;
+  const keepAlive = setInterval(() => {
+    res.write(':\n\n'); // comment/ping to keep connection alive
+  }, 15000);
 
-    if (userId) {
-      console.log('💾 Attempting to save meal plan for user:', userId);
+  try {
+    const { userProfile, foodPreferences, trainingPlan, userId, weekStarting } = req.body || {};
+
+    const likedFoods    = foodPreferences?.likes || 'No preferences specified';
+    const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
+    const cuisines      = foodPreferences?.cuisines || 'No cuisines specified';
+
+    const week = {}; // progressively filled { monday:{...}, ... }
+
+    sendStatus(res, 'Starting weekly generation…');
+
+    for (const day of DAYS) {
+      sendStatus(res, `Generating ${day.charAt(0).toUpperCase() + day.slice(1)}…`);
+
+      // 1) Build per-day prompt with RAG bullets + history of last 1–2 days
+      const prompt = await buildDayPrompt({
+        day,
+        userProfile,
+        foodPreferences,
+        trainingPlan,
+        dislikedFoods,
+        likedFoods,
+        cuisines,
+        soFarWeek: week,
+        userId
+      });
+
+      // 2) Call LLM for just this day
+      const llm = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 600,
+      });
+
+      // 3) Parse day JSON
+      let dayObj;
       try {
-        console.log('📅 Week starting:', weekStarting);
-
-        const { data: existing } = await supabase
-          .from('meal_plans')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('week_starting', weekStarting)
-          .maybeSingle();
-
-        console.log('🔍 Existing record:', existing);
-
-        let result;
-        if (existing) {
-          console.log('🔄 Updating existing record...');
-          result = await supabase
-            .from('meal_plans')
-            .update({
-              meals: mealsWithMacros,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id)
-            .select();
-        } else {
-          console.log('➕ Inserting new record...');
-          result = await supabase
-            .from('meal_plans')
-            .insert({
-              user_id: userId,
-              meals: mealsWithMacros,
-              week_starting: weekStarting,
-            })
-            .select();
-        }
-
-        console.log('💾 Save result:', result);
-
-        if (!result.error && result.data?.length > 0) {
-          savedMealPlanId = result.data[0].id;
-          console.log('✅ Meal plan saved with ID:', savedMealPlanId);
-        } else if (result.error) {
-          console.log('❌ Save failed:', result.error);
-        }
-      } catch (dbError) {
-        console.error('❌ Database error:', dbError);
-        // Do not fail the whole request if the save fails
+        const content = llm.choices?.[0]?.message?.content ?? '{}';
+        const parsed = JSON.parse(content);
+        dayObj = parsed?.[day];
+        if (!dayObj) throw new Error('Missing day key');
+      } catch (e) {
+        sendEvent(res, 'error', { day, message: `Invalid JSON for ${day}` });
+        break; // stop the week on hard parse error
       }
-    } else {
-      console.log('⚠️ No userId provided, skipping database save');
+
+      // 4) Add macros for each meal via ML API
+      for (const mt of MEAL_TYPES) {
+        const desc = dayObj[mt];
+        if (!desc) continue;
+        const macros = await getMacrosFromML(desc, mt);
+        dayObj[mt] = attachMacrosText(desc, macros);
+      }
+
+      // 5) Check totals and optionally retry ONCE if way off target
+      const totals = sumDayMacros(dayObj);
+      const { minKcal, maxKcal } = targetForDay(userProfile, trainingPlan, day);
+
+      if (totals.hasData && (totals.calories < minKcal || totals.calories > maxKcal)) {
+        sendStatus(res, `${day}: adjusting macros (one retry)…`);
+        // Simple retry: ask model to tweak choices to hit target range
+        const adjustPrompt = `You produced these meals for ${day}:
+${JSON.stringify(dayObj, null, 2)}
+
+Adjust the meals minimally so that the total daily calories land between ${minKcal} and ${maxKcal}.
+Return ONLY JSON with the same shape for "${day}" (no extra text).`;
+
+        const retry = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: adjustPrompt }],
+          temperature: 0.4,
+          max_tokens: 500,
+        });
+
+        try {
+          const content2 = retry.choices?.[0]?.message?.content ?? '{}';
+          const parsed2 = JSON.parse(content2);
+          const dayObj2 = parsed2?.[day];
+          if (dayObj2) {
+            // Re-attach macros to the adjusted meals
+            for (const mt of MEAL_TYPES) {
+              const desc = dayObj2[mt];
+              if (!desc) continue;
+              const macros = await getMacrosFromML(desc, mt);
+              dayObj2[mt] = attachMacrosText(desc, macros);
+            }
+            dayObj = dayObj2;
+          }
+        } catch {}
+      }
+
+      // 6) Commit the day into the week + persist (logged-in users)
+      week[day] = dayObj;
+
+      if (userId) {
+        try { await upsertWeekPartial({ userId, weekStarting, weekObj: week }); }
+        catch (e) { /* don't fail the stream on DB hiccup */ }
+      }
+
+      // 7) Stream the day to the client
+      sendEvent(res, 'day', { day, meals: dayObj });
+
+      // (Optional) small delay to feel progressive
+      // await new Promise(r => setTimeout(r, 200));
     }
 
-    return res.status(200).json({
-      success: true,
-      meals: mealsWithMacros,
-      mealPlanId: savedMealPlanId,
-    });
+    sendEvent(res, 'done', { success: true, weekStarting, userSaved: Boolean(userId) });
+    clearInterval(keepAlive);
+    res.end();
   } catch (error) {
-    console.error('API Error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    clearInterval(keepAlive);
+    sendEvent(res, 'error', { message: error.message });
+    res.end();
   }
 }

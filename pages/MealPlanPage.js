@@ -308,10 +308,7 @@ export const MealPlanPage = ({
           </div>
         )}
 
-        {/* Show loading skeleton while generating */}
-        {isGenerating ? (
-          <MealPlanSkeleton />
-        ) : !hasMeals ? (
+        {!hasMeals && !isGenerating ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">
               No meal plan generated yet. Click "Generate Meals" to create your personalized weekly meal plan!
