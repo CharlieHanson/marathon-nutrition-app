@@ -41,6 +41,34 @@
   }
 }
 
+/**
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-gradient-animated {
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #fff8f0 15%,
+    #fff0e6 30%,
+    #ffe8d6 45%,
+    #ffd9b3 60%,
+    #ffe8d6 75%,
+    #ffffff 100%
+  );
+  background-size: 300% 300%;
+  animation: gradient-flow 20s ease infinite;
+}
+*/
 .bg-gradient-animated {
   background: linear-gradient(
     -45deg,

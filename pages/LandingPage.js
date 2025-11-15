@@ -33,7 +33,7 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-600"> AI-Powered Nutrition</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Get personalized weekly meal plans that adapt to your training schedule, dietary restrictions, and fitness goals. Powered by advanced AI and validated by machine learning.
+            Get personalized weekly meal plans that adapt to your training schedule, dietary restrictions, and fitness goals. Powered by advanced AI that learns from your ratings and gets smarter with every meal.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <button
@@ -51,20 +51,33 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
             </button>
           </div>
 
-          {/* Stats */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          {/* Stats with RAG */}
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <div className="text-center">
               <div className="text-4xl font-bold text-primary mb-2">24/7</div>
-              <div className="text-gray-600">Personalized Planning</div>
+              <div className="text-gray-600 text-sm">AI Planning</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-primary mb-2">∞</div>
+              <div className="text-gray-600 text-sm">Unique Meal Combinations</div>
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold text-primary mb-2">5</div>
-              <div className="text-gray-600">Specialized AI Models</div>
+              <div className="text-gray-600 text-sm">Specialized ML Models</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">87%</div>
-              <div className="text-gray-600">ML Prediction Accuracy</div>
-            </div>
+          </div>
+
+          {/* Tech Badges */}
+          <div className="mt-12 flex flex-wrap justify-center gap-3">
+            <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
+              🤖 Powered by GPT-4o
+            </span>
+            <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
+              🧠 RAG-Based Learning
+            </span>
+            <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
+              ⚡ Real-Time Generation
+            </span>
           </div>
         </div>
       </section>
@@ -181,7 +194,7 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
                 AI-Generated Meal Plan
               </h2>
               <p className="text-lg text-gray-600 mb-6">
-                Powered by GPT-4.0 for meal generation and validated by 5 specialized machine learning models achieving 87% accuracy.
+                Powered by GPT-4o for meal generation and validated by 5 specialized machine learning models achieving 87% accuracy.
               </p>
               <ul className="space-y-4">
                 <FeaturePoint text="Macro predictions validated by ML (±75 cal, ±3g protein)" />
@@ -214,6 +227,105 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature 4: RAG Learning System */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-block p-3 bg-blue-100 rounded-lg mb-4">
+              <TrendingUp className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Gets Smarter With Every Rating
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Our advanced AI learns from your preferences using semantic search and vector embeddings, creating meal plans that truly match your taste.
+            </p>
+          </div>
+
+          {/* How RAG Works - Visual Flow */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="relative">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">⭐</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                  Rate Your Meals
+                </h3>
+                <p className="text-gray-600 text-center">
+                  Give 4-5 stars to meals you love. Our AI captures the essence of what makes them special.
+                </p>
+              </div>
+              {/* Arrow */}
+              <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                <ArrowRight className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">🧠</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                  AI Learns Patterns
+                </h3>
+                <p className="text-gray-600 text-center">
+                  Advanced machine learning identifies flavor profiles, ingredients, and cooking styles you prefer.
+                </p>
+              </div>
+              {/* Arrow */}
+              <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2 z-10">
+                <ArrowRight className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+
+            <div>
+              <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">✨</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">
+                  Better Recommendations
+                </h3>
+                <p className="text-gray-600 text-center">
+                  Future meal plans feature more foods you actually want to eat, personalized to your unique tastes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Credibility */}
+          <div className="mt-16 max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Powered by Advanced Technology
+              </h3>
+              <p className="text-gray-600">
+                Enterprise-grade AI that adapts to your preferences
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-6 bg-orange-50 rounded-xl">
+                <div className="text-3xl mb-2">🔍</div>
+                <div className="font-bold text-gray-900 mb-1">Semantic Search</div>
+                <div className="text-sm text-gray-600">Vector embeddings find similar meals you'll love</div>
+              </div>
+              <div className="text-center p-6 bg-orange-50 rounded-xl">
+                <div className="text-3xl mb-2">⚖️</div>
+                <div className="font-bold text-gray-900 mb-1">Weighted Scoring</div>
+                <div className="text-sm text-gray-600">Balances similarity, ratings, and recency</div>
+              </div>
+              <div className="text-center p-6 bg-orange-50 rounded-xl">
+                <div className="text-3xl mb-2">🎯</div>
+                <div className="font-bold text-gray-900 mb-1">Context-Aware</div>
+                <div className="text-sm text-gray-600">Adapts to your current training phase</div>
               </div>
             </div>
           </div>

@@ -4,21 +4,27 @@ import { Button } from '../src/components/shared/Button';
 import { Save, Lock, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 const COMMON_FOODS = [
-  'Chicken', 'Salmon', 'Beef', 'Turkey', 'Pork',
-  'Eggs', 'Greek Yogurt', 'Cottage Cheese', 'Milk', 'Cheese',
-  'Quinoa', 'Rice', 'Pasta', 'Oats', 'Bread',
-  'Avocado', 'Banana', 'Berries', 'Apple', 'Spinach',
-  'Broccoli', 'Sweet Potato', 'Carrots', 'Tomatoes', 'Peppers',
-  'Nuts', 'Almonds', 'Peanut Butter', 'Olive Oil', 'Coconut Oil',
-  'Beans', 'Lentils', 'Tofu', 'Tempeh', 'Seitan',
-  'Mushrooms', 'Onions', 'Garlic', 'Ginger', 'Lemon'
+  // Proteins
+  'Chicken', 'Salmon', 'Beef', 'Turkey', 'Pork', 'Shrimp', 'Tuna', 'Cod',
+  // Dairy & Eggs
+  'Eggs', 'Greek Yogurt', 'Cottage Cheese', 'Milk', 'Cheese', 'Mozzarella', 'Feta',
+  // Grains & Carbs
+  'Quinoa', 'Rice', 'Pasta', 'Oats', 'Bread', 'Tortillas', 'Couscous', 'Potatoes',
+  // Fruits
+  'Avocado', 'Banana', 'Berries', 'Apple', 'Orange', 'Mango', 'Strawberries',
+  // Vegetables
+  'Spinach', 'Broccoli', 'Sweet Potato', 'Carrots', 'Tomatoes', 'Peppers', 'Kale', 'Cauliflower', 'Zucchini',
+  // Nuts & Legumes
+  'Nuts', 'Almonds', 'Peanut Butter', 'Beans', 'Lentils', 'Chickpeas',
+  // Other
+  'Tofu', 'Mushrooms', 'Onions', 'Garlic', 'Hummus'
 ];
 
 const COMMON_CUISINES = [
-  'Mediterranean', 'Italian', 'Asian', 'Chinese', 'Japanese',
-  'Thai', 'Indian', 'Mexican', 'American', 'French',
-  'Greek', 'Middle Eastern', 'Spanish', 'Korean', 'Vietnamese',
-  'Caribbean', 'Latin American', 'African', 'Turkish', 'Lebanese'
+  'Mediterranean', 'Italian', 'Mexican', 'Chinese', 'Japanese',
+  'Thai', 'Indian', 'American', 'Greek', 'Korean',
+  'Vietnamese', 'Spanish', 'French', 'Middle Eastern', 'Turkish',
+  'Caribbean', 'Brazilian', 'Hawaiian', 'German', 'Filipino'
 ];
 
 export const FoodPreferencesPage = ({ 

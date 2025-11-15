@@ -18,6 +18,59 @@ const ML_API_URL = 'https://marathon-nutrition-app-production.up.railway.app';
 const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
 
+const DESSERT_CATEGORIES = ['baked', 'frozen', 'chocolate', 'fruit', 'pastry/cream'];
+
+function dayJsonSchema(day) {
+  return {
+    name: "DayPlan",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        day: { type: "string", enum: [day] },
+        meals: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            breakfast: { type: "string" },
+            lunch: { type: "string" },
+            dinner: { type: "string" },
+            dessert: { type: "string" },
+            snacks: { type: "string" }
+          },
+          required: ["breakfast","lunch","dinner","dessert","snacks"]
+        }
+      },
+      required: ["day","meals"]
+    }
+  };
+}
+
+
+function countDessertCategories(weekSoFar) {
+  // weekSoFar is an object like { monday:{dessert:'...'}, ... }
+  const counts = Object.fromEntries(DESSERT_CATEGORIES.map(c => [c, 0]));
+  for (const [day, meals] of Object.entries(weekSoFar || {})) {
+    const d = (meals?.dessert || '').toLowerCase();
+    if (!d) continue;
+    // naive classifier: look for keywords; you can improve later
+    if (/\b(brownie|cake|tart|crumble|cookie|bar|muffin|baked)\b/.test(d)) counts['baked']++;
+    else if (/\b(ice cream|gelato|sorbet|frozen|popsicle|semifreddo)\b/.test(d)) counts['frozen']++;
+    else if (/\b(chocolate|cocoa|ganache|truffle|lava)\b/.test(d)) counts['chocolate']++;
+    else if (/\b(berry|berries|fruit|apple|pear|peach|banana|citrus)\b/.test(d)) counts['fruit']++;
+    else if (/\b(custard|panna cotta|cream|mousse|tiramisu|pastry|cream)\b/.test(d)) counts['pastry/cream']++;
+  }
+  return counts;
+}
+
+function pickNextDessertCategory(weekSoFar) {
+  const counts = countDessertCategories(weekSoFar);
+  // pick first unused category; else the least used
+  const unused = DESSERT_CATEGORIES.find(c => counts[c] === 0);
+  if (unused) return unused;
+  return Object.entries(counts).sort((a,b) => a[1]-b[1])[0][0];
+}
+
 /* ------------------------------- SSE helpers ------------------------------- */
 function sseHeaders(res) {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -198,6 +251,8 @@ async function buildDayPrompt({
 
   const perMealContext = [pB,pL,pD,pS,pDe].filter(Boolean).join('\n\n');
 
+  const dessertCategory = pickNextDessertCategory(soFarWeek);
+
   const w = trainingPlan?.[day] || {};
   const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${w.intensity!=null ? `(intensity ${w.intensity})` : ''}`.trim();
 
@@ -224,23 +279,21 @@ ${prevSummary || '(first day or no prior meals)'}
 
 ${perMealContext || ''}
 
-REQUIREMENTS:
+CRITICAL REQUIREMENTS:
 1) Output ONLY JSON for this day in the exact shape below.
-2) Strictly avoid disliked foods and respect restrictions.
+2) Avoid all foods and ingredients that are not suitable for the user's dietary restrictions.
+2) Strictly avoid disliked foods.
 3) Provide varied cuisines across the week; rotate main proteins.
 4) Use liked foods thoughtfully (≤ 3–4 appearances in the whole week).
 5) Return concise meal descriptions (no macros text).
+6) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
+7) **Dessert must clearly fit the category "${dessertCategory}".** Use a dessert that is representative of this category and differs from earlier days until all categories are covered.
 
-Respond with JSON ONLY:
-{
-  "${day}": {
-    "breakfast": "meal description",
-    "lunch": "meal description",
-    "dinner": "meal description",
-    "dessert": "meal description",
-    "snacks": "snack description"
-  }
-}`;
+Return a JSON object that matches the required schema, with:
+- "day" equal to "${day}"
+- "meals" containing string descriptions for breakfast, lunch, dinner, dessert, and snacks.
+Do not include macros in the strings.
+`;
 }
 
 /* ------------------------------ Save progress ------------------------------ */
@@ -310,23 +363,47 @@ export default async function handler(req, res) {
 
       // 2) Call LLM for just this day
       const llm = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 600,
+        temperature: 0.4,
+        max_tokens: 500,
+        response_format: {
+          type: "json_schema",
+          json_schema: dayJsonSchema(day)
+        }
       });
+      
 
       // 3) Parse day JSON
       let dayObj;
       try {
-        const content = llm.choices?.[0]?.message?.content ?? '{}';
-        const parsed = JSON.parse(content);
-        dayObj = parsed?.[day];
-        if (!dayObj) throw new Error('Missing day key');
+        const raw = llm.choices?.[0]?.message?.content ?? '';
+        // Happy path – should already be valid JSON matching the schema
+        const parsed = JSON.parse(raw);
+        if (parsed?.day === day && parsed?.meals) {
+          dayObj = parsed.meals;
+        } else {
+          throw new Error('Schema shape mismatch');
+        }
       } catch (e) {
-        sendEvent(res, 'error', { day, message: `Invalid JSON for ${day}` });
-        break; // stop the week on hard parse error
+        // Minimal salvage: grab the last {...} block and try again
+        const content = llm.choices?.[0]?.message?.content ?? '';
+        const m = content.match(/\{[\s\S]*\}$/);
+        if (m) {
+          try {
+            const salvage = JSON.parse(m[0]);
+            if (salvage?.day === day && salvage?.meals) {
+              dayObj = salvage.meals;
+            }
+          } catch {}
+        }
+
+        if (!dayObj) {
+          sendEvent(res, 'error', { day, message: `Invalid JSON for ${day}, skipping` });
+          continue; // don't break the whole week
+        }
       }
+
 
       // 4) Add macros for each meal via ML API
       for (const mt of MEAL_TYPES) {
@@ -350,7 +427,7 @@ Adjust the meals minimally so that the total daily calories land between ${minKc
 Return ONLY JSON with the same shape for "${day}" (no extra text).`;
 
         const retry = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o-mini',
           messages: [{ role: 'user', content: adjustPrompt }],
           temperature: 0.4,
           max_tokens: 500,
