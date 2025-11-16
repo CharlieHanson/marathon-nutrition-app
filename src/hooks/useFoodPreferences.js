@@ -44,7 +44,7 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     return () => {
       cancelled = true;
     };
-  }, [user, isGuest, reloadKey]);
+  }, [user?.id, isGuest, reloadKey]);
 
   const updatePreferences = (field, value) => {
     setPreferences((prev) => ({ ...prev, [field]: value }));

@@ -48,8 +48,13 @@ export const FoodPreferencesPage = ({
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
 
-  // Parse existing preferences when component loads or preferences change
+// Parse existing preferences when component loads or preferences change
 useEffect(() => {
+  // Only parse if preferences actually changed (not empty)
+  if (!preferences.likes && !preferences.dislikes && !preferences.cuisineFavorites) {
+    return; // Skip if all empty (prevents overwriting on initial render)
+  }
+
   if (preferences.likes) {
     const likesArray = preferences.likes.split(',').map(f => f.trim()).filter(f => f);
     const commonLikes = likesArray.filter(f => COMMON_FOODS.includes(f));
@@ -57,6 +62,9 @@ useEffect(() => {
     
     setLikedFoods(new Set(commonLikes));
     setOtherLikes(otherLikesList.join(', '));
+  } else {
+    setLikedFoods(new Set());
+    setOtherLikes('');
   }
 
   if (preferences.dislikes) {
@@ -66,6 +74,9 @@ useEffect(() => {
     
     setDislikedFoods(new Set(commonDislikes));
     setOtherDislikes(otherDislikesList.join(', '));
+  } else {
+    setDislikedFoods(new Set());
+    setOtherDislikes('');
   }
 
   if (preferences.cuisineFavorites) {
@@ -75,11 +86,11 @@ useEffect(() => {
     
     setFavoriteCuisines(new Set(commonCuisinesList));
     setOtherCuisines(otherCuisinesList.join(', '));
+  } else {
+    setFavoriteCuisines(new Set());
+    setOtherCuisines('');
   }
-  // REMOVE preferences.likes, preferences.dislikes from dependencies
-  // Only run this on mount to initialize state from saved preferences
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []); // Empty dependency array - only run once on mount
+}, [preferences.likes, preferences.dislikes, preferences.cuisineFavorites]);
 
   // Update preferences whenever local state changes
   useEffect(() => {

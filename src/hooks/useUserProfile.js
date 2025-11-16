@@ -54,7 +54,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
     return () => {
       cancelled = true;
     };
-  }, [user, isGuest, reloadKey]);
+  }, [user?.id, isGuest, reloadKey]);
 
   const updateProfile = (field, value) => {
     setProfile((prev) => ({ ...prev, [field]: value }));

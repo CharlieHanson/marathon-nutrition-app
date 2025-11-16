@@ -54,7 +54,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
           <Input
             label="Name"
             type="text"
-            placeholder="e.g., John Doe"
+            placeholder="name"
             value={profile.name}
             onChange={(e) => onUpdate('name', e.target.value)}
             disabled={isGuest}

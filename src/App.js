@@ -18,7 +18,16 @@ import { LandingPage } from '../pages/LandingPage';
 
 const App = () => {
   const { user, signOut, loading, isGuest, disableGuestMode, enableGuestMode } = useAuth();
-  const [currentView, setCurrentView] = useState('training');
+  
+  // Initialize currentView from URL hash (only on client-side)
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.slice(1);
+      return hash || 'training';
+    }
+    return 'training';
+  });
+  
   const [userName, setUserName] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
@@ -30,7 +39,30 @@ const App = () => {
   const trainingPlan = useTrainingPlan(user, isGuest);
   const mealPlan = useMealPlan(user, isGuest);
 
-  const userId = user?.id; // derive once
+  const userId = user?.id;
+
+  // Listen for hash changes (back/forward buttons, manual hash changes)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        setCurrentView(hash);
+      } else {
+        setCurrentView('training');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Navigation function that updates both state and URL
+  const navigateToView = (view) => {
+    if (typeof window !== 'undefined') {
+      window.location.hash = view;
+    }
+    setCurrentView(view);
+  };
 
   useEffect(() => {
     if (!userId || isGuest) {
@@ -59,6 +91,11 @@ const App = () => {
     };
   }, [userId, isGuest]);
 
+  useEffect(() => {
+    // Force reload of all data when user changes
+    setReloadKey(prev => prev + 1);
+  }, [user?.id]);
+
   // Check if user needs onboarding
   useEffect(() => {
     async function checkOnboarding() {
@@ -77,12 +114,12 @@ const App = () => {
   }, [user, isGuest]);
 
   // Reset to training page whenever user logs in
+  /*
   useEffect(() => {
     if (user && !isGuest && !needsOnboarding && !checkingOnboarding) {
-      setCurrentView('training');
+      navigateToView('training');
     }
-  }, [user, isGuest, needsOnboarding, checkingOnboarding]);
-
+  }, [user, isGuest, needsOnboarding, checkingOnboarding]); */
 
   if (loading || checkingOnboarding) {
     return (
@@ -101,7 +138,6 @@ const App = () => {
         onSignIn={() => setShowAuth(true)}
         onSignUp={() => setShowAuth(true)}
         onViewDemo={() => {
-          // Enable guest mode for demo
           enableGuestMode();
         }}
       />
@@ -116,7 +152,7 @@ const App = () => {
         onComplete={() => {
           setNeedsOnboarding(false);
           setReloadKey(prev => prev + 1);
-          setCurrentView('training'); // Start on training plan page after onboarding
+          navigateToView('training');
         }}
       />
     );
@@ -130,7 +166,7 @@ const App = () => {
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}
       currentView={currentView}
-      onViewChange={setCurrentView}
+      onViewChange={navigateToView}
     >
       {currentView === 'profile' && (
         <ProfilePage
