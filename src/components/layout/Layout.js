@@ -20,6 +20,7 @@ export const Layout = ({
         isGuest={isGuest}
         onSignOut={onSignOut}
         onDisableGuestMode={onDisableGuestMode}
+        onViewChange={onViewChange}  // ← Add this line
       />
       
       <Navigation 

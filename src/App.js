@@ -15,8 +15,18 @@ import { useMealPlan } from './hooks/useMealPlan';
 import { checkOnboardingStatus } from './dataClient';
 import { OnboardingFlow } from '../pages/OnboardingFlow';
 import { LandingPage } from '../pages/LandingPage';
+import { SettingsPage } from '../pages/SettingsPage';
+import { UpdatePasswordPage } from '../pages/UpdatePasswordPage';
 
 const App = () => {
+  // Check for update-password route BEFORE any other rendering logic
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path === '/update-password' || path.includes('update-password')) {
+      return <UpdatePasswordPage />;
+    }
+  }
+
   const { user, signOut, loading, isGuest, disableGuestMode, enableGuestMode } = useAuth();
   
   // Initialize currentView from URL hash (only on client-side)
@@ -218,6 +228,10 @@ const App = () => {
           foodPreferences={preferences.preferences}
           trainingPlan={trainingPlan.plan}
         />
+      )}
+
+      {currentView === 'settings' && (
+        <SettingsPage user={user} />
       )}
     </Layout>
   );

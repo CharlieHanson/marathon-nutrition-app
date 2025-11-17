@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabaseClient';
 
 const Auth = ({ onBack }) => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -10,6 +11,11 @@ const Auth = ({ onBack }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+
+  // Forgot Password
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
 
   const { signIn, signUp, enableGuestMode } = useAuth();
 
@@ -28,7 +34,6 @@ const Auth = ({ onBack }) => {
         const { error } = await signIn(email, password);
         if (error) throw error;
       }
-      // No navigation needed; App will re-render based on user/isGuest
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,8 +41,36 @@ const Auth = ({ onBack }) => {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetMessage('Sending email...');
+
+    try {
+      const redirectUrl = `${window.location.origin}/update-password`;
+
+      const { data, error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      // Debug logs (optional)
+      console.log('Reset email result:', { data, error });
+
+      if (error) throw error;
+
+      setResetMessage('✅ Password reset email sent! Check your inbox (and spam folder).');
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setResetMessage('');
+        setResetEmail('');
+      }, 5000);
+    } catch (err) {
+      console.error('Reset email error:', err);
+      setResetMessage(`❌ Error: ${err.message}`);
+    }
+  };
+
   const handleGuest = () => {
-    enableGuestMode(); // flips context state; App will render main UI
+    enableGuestMode();
   };
 
   return (
@@ -52,6 +85,7 @@ const Auth = ({ onBack }) => {
             Back
           </button>
         )}
+
         <div className="text-center mb-6">
           <img src="/alimenta_logo.png" alt="Logo" className="h-14 mx-auto mb-4" />
           <p className="text-gray-600 mt-2">Where nutrition meets performance</p>
@@ -114,19 +148,68 @@ const Auth = ({ onBack }) => {
             {pending ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
 
-          <div className="text-center text-sm">
+          {/* Forgot Password (only on Sign In) */}
+          {!isSignUp && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(!showForgotPassword)}
+                className="text-sm text-primary hover:text-orange-600 transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
+
+          {showForgotPassword && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-3">Reset Password</h3>
+              <div className="space-y-3">
+                <input
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (resetEmail) handleForgotPassword(e);
+                  }}
+                  className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-400"
+                  disabled={!resetEmail}
+                >
+                  Send Reset Link
+                </button>
+                {resetMessage && (
+                  <p className={`text-sm ${resetMessage.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                    {resetMessage}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="text-center text-sm space-y-2">
             <button
               type="button"
-              onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-primary hover:text-primary-700"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+                setShowForgotPassword(false);
+                setResetMessage('');
+              }}
+              className="text-primary hover:text-primary-700 block w-full"
             >
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
 
             <button
               type="button"
-              onClick={handleGuest}
-              className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors mt-2"
+              onClick={enableGuestMode}
+              className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
             >
               Continue as Guest
             </button>
