@@ -124,3 +124,5 @@ export const SettingsPage = ({ user }) => {
     </div>
   );
 };
+
+export default SettingsPage;
