@@ -19,17 +19,9 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { UpdatePasswordPage } from '../pages/UpdatePasswordPage';
 
 const App = () => {
-  // Check for update-password route BEFORE any other rendering logic
-  if (typeof window !== 'undefined') {
-    const path = window.location.pathname;
-    if (path === '/update-password' || path.includes('update-password')) {
-      return <UpdatePasswordPage />;
-    }
-  }
-
+  // ✅ Always call hooks first, in the same order
   const { user, signOut, loading, isGuest, disableGuestMode, enableGuestMode } = useAuth();
-  
-  // Initialize currentView from URL hash (only on client-side)
+
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.slice(1);
@@ -37,7 +29,8 @@ const App = () => {
     }
     return 'training';
   });
-  
+
+  const [isUpdatePasswordRoute, setIsUpdatePasswordRoute] = useState(false);
   const [userName, setUserName] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
@@ -51,22 +44,26 @@ const App = () => {
 
   const userId = user?.id;
 
-  // Listen for hash changes (back/forward buttons, manual hash changes)
+  // Detect /update-password route after mount (no conditional hooks)
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      setIsUpdatePasswordRoute(path === '/update-password' || path.includes('update-password'));
+    }
+  }, []);
+
+  // Keep currentView synced with hash changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash) {
-        setCurrentView(hash);
-      } else {
-        setCurrentView('training');
-      }
+      setCurrentView(hash || 'training');
     };
-
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Navigation function that updates both state and URL
+  // Simple navigate helper (updates hash + state)
   const navigateToView = (view) => {
     if (typeof window !== 'undefined') {
       window.location.hash = view;
@@ -74,62 +71,49 @@ const App = () => {
     setCurrentView(view);
   };
 
+  // Fetch display name
   useEffect(() => {
     if (!userId || isGuest) {
       setUserName(null);
       return;
     }
-
     let cancelled = false;
-
-    const loadUserName = async () => {
+    (async () => {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('name')
         .eq('user_id', userId)
         .single();
-
-      if (!cancelled && data && !error) {
-        setUserName(data.name);
-      }
-    };
-
-    loadUserName();
-
-    return () => {
-      cancelled = true;
-    };
+      if (!cancelled && data && !error) setUserName(data.name);
+    })();
+    return () => { cancelled = true; };
   }, [userId, isGuest]);
 
+  // Force reload when user changes
   useEffect(() => {
-    // Force reload of all data when user changes
-    setReloadKey(prev => prev + 1);
+    setReloadKey((prev) => prev + 1);
   }, [user?.id]);
 
-  // Check if user needs onboarding
+  // Onboarding check
   useEffect(() => {
-    async function checkOnboarding() {
+    (async () => {
       if (!user || isGuest) {
         setCheckingOnboarding(false);
         setNeedsOnboarding(false);
         return;
       }
-
       const status = await checkOnboardingStatus(user.id);
       setNeedsOnboarding(!status.hasCompletedOnboarding);
       setCheckingOnboarding(false);
-    }
-
-    checkOnboarding();
+    })();
   }, [user, isGuest]);
 
-  // Reset to training page whenever user logs in
-  /*
-  useEffect(() => {
-    if (user && !isGuest && !needsOnboarding && !checkingOnboarding) {
-      navigateToView('training');
-    }
-  }, [user, isGuest, needsOnboarding, checkingOnboarding]); */
+  /* --------------------------- Render branches --------------------------- */
+
+  // Show password update page when on that route
+  if (isUpdatePasswordRoute) {
+    return <UpdatePasswordPage />;
+  }
 
   if (loading || checkingOnboarding) {
     return (
@@ -139,6 +123,7 @@ const App = () => {
     );
   }
 
+  // Not signed in & not guest → Landing or Auth
   if (!user && !isGuest) {
     if (showAuth) {
       return <Auth onBack={() => setShowAuth(false)} />;
@@ -154,20 +139,21 @@ const App = () => {
     );
   }
 
-  // Show onboarding for new users
+  // Onboarding flow
   if (needsOnboarding && !isGuest) {
     return (
       <OnboardingFlow
         user={user}
         onComplete={() => {
           setNeedsOnboarding(false);
-          setReloadKey(prev => prev + 1);
+          setReloadKey((prev) => prev + 1);
           navigateToView('training');
         }}
       />
     );
   }
 
+  // Main app layout
   return (
     <Layout
       user={user}
@@ -230,9 +216,7 @@ const App = () => {
         />
       )}
 
-      {currentView === 'settings' && (
-        <SettingsPage user={user} />
-      )}
+      {currentView === 'settings' && <SettingsPage user={user} />}
     </Layout>
   );
 };

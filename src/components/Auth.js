@@ -69,10 +69,6 @@ const Auth = ({ onBack }) => {
     }
   };
 
-  const handleGuest = () => {
-    enableGuestMode();
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
