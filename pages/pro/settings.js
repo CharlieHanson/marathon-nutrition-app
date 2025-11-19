@@ -2,23 +2,19 @@ import React from 'react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProLayout } from '../../src/views/pro/ProLayout';
-import { NutritionistDashboard } from '../../src/views/pro/NutritionistDashboard';
+import { SettingsPage } from '../../src/views/SettingsPage';
 
-export default function Dashboard() {
+export default function ProSettings() {
   const router = useRouter();
   const { user, loading, getUserRole, signOut } = useAuth();
   const [userRole, setUserRole] = React.useState(null);
-  const [userName, setUserName] = React.useState(null);
 
-  // Fetch role
   React.useEffect(() => {
     if (user) {
       getUserRole().then(setUserRole);
-      setUserName(user.user_metadata?.name);
     }
   }, [user, getUserRole]);
 
-  // Redirect if not logged in or not a nutritionist
   React.useEffect(() => {
     if (!loading && !user) {
       router.push('/pro/login');
@@ -40,8 +36,8 @@ export default function Dashboard() {
   }
 
   return (
-    <ProLayout userName={userName} onSignOut={signOut}>
-      <NutritionistDashboard user={user} />
+    <ProLayout userName={user.user_metadata?.name} onSignOut={signOut}>
+      <SettingsPage user={user} />
     </ProLayout>
   );
 }

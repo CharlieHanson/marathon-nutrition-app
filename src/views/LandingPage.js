@@ -22,11 +22,18 @@ export const LandingPage = () => {
             <div className="flex items-center gap-2">
               <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
             </div>
-            <Link href="/login">
-              <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
-                Sign In
-              </button>
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link href="/pro">
+                <button className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                  For Nutritionists
+                </button>
+              </Link>
+              <Link href="/login">
+                <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
+                  Sign In
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ProLandingPage } from '../../src/views/ProLandingPage';
+import { ProLandingPage } from '../../src/views/pro/ProLandingPage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 
@@ -10,10 +10,17 @@ export default function ProHome() {
 
   // Fetch role
   React.useEffect(() => {
-    if (user) {
-      // Get role from user_profiles
-      // setUserRole(...)
-    }
+    const fetchRole = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        setUserRole(data?.role);
+      }
+    };
+    fetchRole();
   }, [user]);
 
   // Redirect to dashboard if already logged in as nutritionist
