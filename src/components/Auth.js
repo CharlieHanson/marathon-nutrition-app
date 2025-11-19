@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { User, Briefcase, ArrowLeft } from 'lucide-react';
+import { User, Briefcase, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/router';
 import { supabase } from '../supabaseClient';
@@ -14,6 +14,12 @@ const Auth = ({ presetRole }) => {
   const [businessName, setBusinessName] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  
+  // Forgot password modal
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetPending, setResetPending] = useState(false);
 
   const [role, setRole] = useState(presetRole || 'client');
   useEffect(() => {
@@ -44,7 +50,6 @@ const Auth = ({ presetRole }) => {
       if (isSignUp) {
         if (!name.trim()) throw new Error('Please enter your name');
 
-        // Include role in metadata; session will NOT exist after signUp (email confirm flow)
         const metadata =
           role === 'nutritionist' && businessName.trim()
             ? { name, role, is_new_user: true, business_name: businessName }
@@ -58,16 +63,13 @@ const Auth = ({ presetRole }) => {
         }
 
         const nextLogin = role === 'nutritionist' ? '/pro/login' : '/login';
-        // optional: add a flag so you can show a "check your email" banner
         router.replace(`${nextLogin}?created=1`);
         return;
       }
 
-      // ----- SIGN IN -----
       const { error } = await signIn(email, password);
       if (error) throw error;
 
-      // Now we DO have a session → fetch user + role, then redirect
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user after sign in');
 
@@ -85,6 +87,31 @@ const Auth = ({ presetRole }) => {
       setError(err.message);
     } finally {
       setPending(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetMessage('');
+    setResetPending(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
+      
+      if (error) throw error;
+      
+      setResetMessage('✅ Password reset email sent! Check your inbox.');
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setResetEmail('');
+        setResetMessage('');
+      }, 3000);
+    } catch (err) {
+      setResetMessage(`❌ ${err.message}`);
+    } finally {
+      setResetPending(false);
     }
   };
 
@@ -171,6 +198,17 @@ const Auth = ({ presetRole }) => {
               minLength="6"
               required
             />
+            {!isSignUp && (
+              <div className="text-right mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-primary hover:text-primary-700"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -225,6 +263,77 @@ const Auth = ({ presetRole }) => {
           </div>
         </form>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <button
+              onClick={() => {
+                setShowForgotPassword(false);
+                setResetEmail('');
+                setResetMessage('');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Reset Password</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  id="resetEmail"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              {resetMessage && (
+                <div className={`p-3 rounded-md text-sm ${
+                  resetMessage.includes('✅') 
+                    ? 'bg-green-50 text-green-800' 
+                    : 'bg-red-50 text-red-800'
+                }`}>
+                  {resetMessage}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmail('');
+                    setResetMessage('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetPending}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700 transition-colors disabled:bg-gray-400"
+                >
+                  {resetPending ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
