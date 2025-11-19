@@ -2,6 +2,7 @@ import React from 'react';
 import { ProLandingPage } from '../../src/views/pro/ProLandingPage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
+import { supabase } from '../../src/lib/supabaseClient';
 
 export default function ProHome() {
   const router = useRouter();
