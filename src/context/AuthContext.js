@@ -1,3 +1,5 @@
+import { getBaseUrl } from '../lib/baseUrl';
+
 // src/context/AuthContext.js
 import React, {
   createContext,
@@ -79,26 +81,18 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // ----- Auth API -----
-  const signUp = async (email, password, name) => {
+  // in AuthContext.js (or wherever signUp lives)
+  const signUp = async (email, password, name, role = 'client', metadata = {}) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { 
-            name,
-            is_new_user: true, // Flag to trigger onboarding
-          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { name, role, ...metadata }
         },
       });
       if (error) throw error;
-
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('guestMode');
-      }
-      setIsGuest(false);
-
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -123,6 +117,18 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { data: null, error };
     }
+  };
+
+  const getUserRole = async () => {
+    if (!user) return null;
+    
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+    
+    return data?.role || 'client';
   };
 
   const signOut = async () => {
@@ -168,6 +174,7 @@ export const AuthProvider = ({ children }) => {
     signOut,
     enableGuestMode,
     disableGuestMode,
+    getUserRole,
   };
 
   return (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card } from '../src/components/shared/Card';
-import { Button } from '../src/components/shared/Button';
+import { Card } from '../components/shared/Card';
+import { Button } from '../components/shared/Button';
 import { Save, Lock, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 const COMMON_FOODS = [

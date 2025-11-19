@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../src/supabaseClient';
-import { Button } from '../src/components/shared/Button';
-import { Card } from '../src/components/shared/Card';
+import { supabase } from '../supabaseClient';
+import { Button } from '../components/shared/Button';
+import { Card } from '../components/shared/Card';
+
+import { getBaseUrl } from '../lib/baseUrl';
+
+await supabase.auth.resetPasswordForEmail(email, {
+  redirectTo: `${getBaseUrl()}/update-password`,
+});
+
 
 export const UpdatePasswordPage = () => {
   const [newPassword, setNewPassword] = useState('');

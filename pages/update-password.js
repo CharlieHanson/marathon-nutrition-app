@@ -1,2 +1,6 @@
-// pages/update-password.js
-export { default } from './UpdatePasswordPage';
+import React from 'react';
+import { UpdatePasswordPage } from '../src/views/UpdatePasswordPage';
+
+export default function UpdatePassword() {
+  return <UpdatePasswordPage />;
+}

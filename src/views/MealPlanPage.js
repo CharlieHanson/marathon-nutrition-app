@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card } from '../src/components/shared/Card';
-import { Button } from '../src/components/shared/Button';
-import { RecipeModal } from '../src/components/modals/RecipeModal';
-import { GroceryModal } from '../src/components/modals/GroceryModal';
-import { calculateDayMacros } from '../src/services/mealService';
-import { MealPlanSkeleton } from '../src/components/shared/LoadingSkeleton';
+import { Card } from '../components/shared/Card';
+import { Button } from '../components/shared/Button';
+import { RecipeModal } from '../components/modals/RecipeModal';
+import { GroceryModal } from '../components/modals/GroceryModal';
+import { calculateDayMacros } from '../services/mealService';
+import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 

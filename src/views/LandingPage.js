@@ -1,7 +1,17 @@
 import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat } from 'lucide-react';
 
-export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
+export const LandingPage = () => {
+  const router = useRouter();
+  const { enableGuestMode } = useAuth();
+
+  const handleViewDemo = () => {
+    enableGuestMode();
+    router.push('/training');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-orange-50">
@@ -12,12 +22,11 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
             <div className="flex items-center gap-2">
               <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
             </div>
-            <button
-              onClick={onSignIn || (() => {})}
-              className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors"
-            >
-              Sign In
-            </button>
+            <Link href="/login">
+              <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
+                Sign In
+              </button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -36,15 +45,14 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
             Get personalized weekly meal plans that adapt to your training schedule, dietary restrictions, and fitness goals. Powered by advanced AI that learns from your ratings and gets smarter with every meal.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
+            <Link href="/login">
+              <button className="px-8 py-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
+                Get Started Free
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </Link>
             <button
-              onClick={onSignUp || (() => {})}
-              className="px-8 py-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
-            >
-              Get Started Free
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <button
-              onClick={onViewDemo || (() => {})}
+              onClick={handleViewDemo}
               className="px-8 py-4 bg-white text-gray-900 rounded-lg font-semibold text-lg border-2 border-gray-200 hover:border-primary transition-all"
             >
               View Demo
@@ -374,12 +382,11 @@ export const LandingPage = ({ onSignIn, onSignUp, onViewDemo }) => {
           <p className="text-xl text-orange-100 mb-8">
             Join athletes who are fueling their training with intelligent meal planning
           </p>
-          <button
-            onClick={onSignUp || (() => {})}
-            className="px-8 py-4 bg-white text-primary rounded-lg font-semibold text-lg hover:shadow-2xl transition-all transform hover:scale-105"
-          >
-            Start Free Today
-          </button>
+          <Link href="/login">
+            <button className="px-8 py-4 bg-white text-primary rounded-lg font-semibold text-lg hover:shadow-2xl transition-all transform hover:scale-105">
+              Start Free Today
+            </button>
+          </Link>
         </div>
       </section>
 

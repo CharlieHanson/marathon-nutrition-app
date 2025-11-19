@@ -1,8 +1,8 @@
 // pages/SettingsPage.js
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../src/supabaseClient';
-import { Button } from '../src/components/shared/Button';
-import { Card } from '../src/components/shared/Card';
+import { supabase } from '../supabaseClient';
+import { Button } from '../components/shared/Button';
+import { Card } from '../components/shared/Card';
 
 function SettingsPage({ user }) {
   const [newPassword, setNewPassword] = useState('');

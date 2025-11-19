@@ -1,9 +1,9 @@
 import React from 'react';
-import { LandingPage } from '../src/views/LandingPage';
 import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
+import Auth from '../src/components/Auth';
 
-export default function Home() {
+export default function LoginPage() {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
 
@@ -23,9 +23,8 @@ export default function Home() {
   }
 
   if (user || isGuest) {
-    return null; // Redirecting to /training
+    return null; // Redirecting
   }
 
-  // No props needed - LandingPage handles navigation itself
-  return <LandingPage />;
+  return <Auth />;
 }

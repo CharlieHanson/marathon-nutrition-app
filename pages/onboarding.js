@@ -1,18 +1,18 @@
 import React from 'react';
-import { LandingPage } from '../src/views/LandingPage';
 import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
+import { OnboardingFlow } from '../src/views/OnboardingFlow';
 
-export default function Home() {
+export default function Onboarding() {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
+  const [reloadKey, setReloadKey] = React.useState(0);
 
-  // Redirect to app if already logged in
   React.useEffect(() => {
-    if (!loading && (user || isGuest)) {
-      router.push('/training');
+    if (!loading && !user) {
+      router.push('/login');
     }
-  }, [user, loading, isGuest, router]);
+  }, [user, loading, router]);
 
   if (loading) {
     return (
@@ -22,10 +22,17 @@ export default function Home() {
     );
   }
 
-  if (user || isGuest) {
-    return null; // Redirecting to /training
+  if (!user || isGuest) {
+    return null;
   }
 
-  // No props needed - LandingPage handles navigation itself
-  return <LandingPage />;
+  return (
+    <OnboardingFlow
+      user={user}
+      onComplete={() => {
+        setReloadKey((prev) => prev + 1);
+        router.push('/training');
+      }}
+    />
+  );
 }
