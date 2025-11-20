@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { fetchTrainingPlan, saveTrainingPlan } from '../dataClient';
 
+const EMPTY_DAY = { type: '', distance: '', intensity: 5, notes: '' };            // ✅
 const EMPTY_WEEK = {
-  monday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  tuesday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  wednesday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  thursday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  friday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  saturday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
-  sunday: { workouts: [{ type: '', distance: '', intensity: 5, notes: '' }] },
+  monday:   { workouts: [ { ...EMPTY_DAY } ] },
+  tuesday:  { workouts: [ { ...EMPTY_DAY } ] },
+  wednesday:{ workouts: [ { ...EMPTY_DAY } ] },
+  thursday: { workouts: [ { ...EMPTY_DAY } ] },
+  friday:   { workouts: [ { ...EMPTY_DAY } ] },
+  saturday: { workouts: [ { ...EMPTY_DAY } ] },
+  sunday:   { workouts: [ { ...EMPTY_DAY } ] },
 };
 
 export const useTrainingPlan = (user, isGuest) => {
@@ -18,12 +19,9 @@ export const useTrainingPlan = (user, isGuest) => {
   useEffect(() => {
     let cancelled = false;
 
-    // If logged out or guest → clear plan
     if (!user || isGuest) {
       setPlan(EMPTY_WEEK);
-      return () => {
-        cancelled = true;
-      };
+      return () => { cancelled = true; };
     }
 
     (async () => {
@@ -31,31 +29,44 @@ export const useTrainingPlan = (user, isGuest) => {
         const data = await fetchTrainingPlan(user.id);
         if (cancelled) return;
 
-        if (data) {
-          setPlan(data);
+        // ✅ Always merge into EMPTY_WEEK so missing days/fields won’t crash pages
+        if (data && typeof data === 'object') {
+          const merged = { ...EMPTY_WEEK };
+          Object.keys(merged).forEach((day) => {
+            const incoming = data[day];
+            if (incoming && typeof incoming === 'object') {
+              merged[day] = {
+                ...merged[day],
+                ...incoming,
+                workouts: Array.isArray(incoming.workouts) && incoming.workouts.length > 0
+                  ? incoming.workouts
+                  : [ { ...EMPTY_DAY } ],
+              };
+            }
+          });
+          setPlan(merged);
         } else {
           setPlan(EMPTY_WEEK);
         }
-      } catch (e) {
-        // Error loading training plan - will use empty plan
+      } catch {
+        setPlan(EMPTY_WEEK); // ✅ ensure safe fallback
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user?.id, isGuest]);
 
   const updatePlan = (day, field, value) => {
+    // ✅ Guard for unknown day keys
+    if (!day || !(day in plan)) return;
     setPlan((prev) => ({
       ...prev,
-      [day]: { ...prev[day], [field]: value },
+      [day]: { ...(prev[day] ?? { workouts: [ { ...EMPTY_DAY } ] }), [field]: value },  // ✅
     }));
   };
 
   const savePlan = async () => {
     if (!user || isGuest) return { error: 'Not authenticated' };
-
     setIsSaving(true);
     try {
       const { error } = await saveTrainingPlan(user.id, plan);
@@ -65,10 +76,5 @@ export const useTrainingPlan = (user, isGuest) => {
     }
   };
 
-  return {
-    plan,
-    updatePlan,
-    savePlan,
-    isSaving,
-  };
+  return { plan, updatePlan, savePlan, isSaving };
 };

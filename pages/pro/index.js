@@ -12,14 +12,23 @@ export default function ProHome() {
   // Fetch role
   React.useEffect(() => {
     const fetchRole = async () => {
-      if (user) {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-        setUserRole(data?.role);
+      if (!user) {
+        setUserRole(null);
+        return;
       }
+
+      // ✅ CHANGED: read from profiles.type (new schema), not user_profiles.role
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('type')
+        .eq('user_id', user.id)
+        .single();
+
+      // ✅ CHANGED: fallback to auth metadata if profiles row hasn't been created yet
+      const role =
+        (!error && data?.type) ? data.type : (user.user_metadata?.role || null);
+
+      setUserRole(role);
     };
     fetchRole();
   }, [user]);

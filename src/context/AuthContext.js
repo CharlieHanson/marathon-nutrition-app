@@ -1,5 +1,3 @@
-import { getBaseUrl } from '../lib/baseUrl';
-
 // src/context/AuthContext.js
 import React, {
   createContext,
@@ -15,6 +13,34 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+
+  /* === NEW: helper to ensure a row exists in public.profiles for the authed user === */
+  const ensureProfile = async (authedUser) => {
+    try {
+      if (!authedUser) return;
+
+      // We prefer the canonical role in profiles, but use user_metadata to seed it if new
+      const meta = authedUser.user_metadata || {};
+      const seedName = meta.name ?? null;
+      const seedType = meta.role === 'nutritionist' ? 'nutritionist' : 'client';
+
+      // Upsert by id=user.id (your profiles.id is the user_id)
+      await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: authedUser.id,      // profiles primary key = auth user id (per your migration)
+            user_id: authedUser.id, // also stored in user_id column (unique)
+            name: seedName,
+            type: seedType,
+          },
+          { onConflict: 'id' }
+        );
+    } catch (e) {
+      // Non-fatal; app can still run even if this fails due to RLS etc.
+      console.warn('ensureProfile() failed:', e.message);
+    }
+  };
 
   // ----- Initial auth state + auth change listener -----
   useEffect(() => {
@@ -33,6 +59,8 @@ export const AuthProvider = ({ children }) => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('guestMode');
         }
+        /* === NEW: seed/ensure profiles row exists on boot === */
+        await ensureProfile(session.user);
       } else {
         setUser(null);
       }
@@ -43,7 +71,7 @@ export const AuthProvider = ({ children }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
 
       if (session?.user) {
@@ -52,6 +80,8 @@ export const AuthProvider = ({ children }) => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('guestMode');
         }
+        /* === NEW: also ensure profile on any auth change (sign in / refresh) === */
+        await ensureProfile(session.user);
       } else {
         setUser(null);
       }
@@ -81,7 +111,9 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // in AuthContext.js (or wherever signUp lives)
+  // ===== Auth API =====
+
+  /* === CHANGED: signUp now only sets metadata; profiles row will be created by ensureProfile() === */
   const signUp = async (email, password, name, role = 'client', metadata = {}) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -89,7 +121,8 @@ export const AuthProvider = ({ children }) => {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: { name, role, ...metadata }
+          /* === CHANGED: seed name/role in user_metadata (used by ensureProfile) === */
+          data: { name, role, ...metadata },
         },
       });
       if (error) throw error;
@@ -113,33 +146,41 @@ export const AuthProvider = ({ children }) => {
       }
       setIsGuest(false);
 
+      /* === NEW: proactively ensure profile after sign-in, too === */
+      if (data?.user) await ensureProfile(data.user);
+
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
     }
   };
 
+  /* === CHANGED: getUserRole now reads from profiles.type, fallback to user_metadata.role === */
   const getUserRole = async () => {
     if (!user) return null;
-    
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('user_id', user.id)
+
+    // 1) canonical source: profiles.type
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('type')
+      .eq('id', user.id)      // profiles.id = auth.user.id in your schema
       .single();
-    
-    return data?.role || 'client';
+
+    if (prof?.type) return prof.type;
+
+    // 2) fallback: user.user_metadata.role (e.g., right after signup before trigger/ensure completes)
+    const metaRole = user.user_metadata?.role;
+    return metaRole === 'nutritionist' ? 'nutritionist' : 'client';
   };
 
   const signOut = async () => {
     try {
-      // Local-only logout to avoid "Auth session missing" 403 noise
+      // Local-only logout to avoid "Auth session missing" noise
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       if (error) throw error;
     } catch (error) {
-      // Error signing out - continue with local state reset
+      // continue regardless
     } finally {
-      // Hard reset app-side state no matter what
       setUser(null);
       setIsGuest(false);
       if (typeof window !== 'undefined') {
@@ -154,7 +195,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('guestMode', 'true');
     }
     setIsGuest(true);
-    setUser(null); // make sure guest never has a real user object
+    setUser(null);
   };
 
   const disableGuestMode = () => {
@@ -162,7 +203,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('guestMode');
     }
     setIsGuest(false);
-    // user stays null until a real login occurs
   };
 
   const value = {
@@ -174,7 +214,7 @@ export const AuthProvider = ({ children }) => {
     signOut,
     enableGuestMode,
     disableGuestMode,
-    getUserRole,
+    getUserRole, // returns 'client' | 'nutritionist'
   };
 
   return (

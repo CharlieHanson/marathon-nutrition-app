@@ -1,49 +1,121 @@
 import { supabase } from './supabaseClient';
 
-// Load profile + preferences for a user (or null if missing)
+// ================================================
+// Helpers
+// ================================================
+
+/* ✅ NEW: fetch a user's base profile (name + type) from public.profiles */
+async function fetchBaseProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('name, type')
+    .eq('id', userId) // profiles.id == auth.user.id
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') return null;
+  return data || null;
+}
+
+/* ✅ NEW: update the user's display name in public.profiles */
+async function updateProfileName(userId, name) {
+  if (typeof name !== 'string') return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ name })
+    .eq('id', userId)
+    .select()
+    .maybeSingle();
+  return { data, error };
+}
+
+// ================================================
+// Combined personal info loaders/savers
+// ================================================
+
 export async function fetchPersonalInfo(userId) {
   try {
-    const [{ data: up, error: upErr }, { data: fp, error: fpErr }] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('food_preferences').select('*').eq('user_id', userId).maybeSingle(),
+    // ✅ NEW: get base profile (name/type) from profiles
+    const baseProfile = await fetchBaseProfile(userId);
+
+    const [{ data: up }, { data: fp }] = await Promise.all([
+      supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      supabase
+        .from('food_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle(),
     ]);
 
-    // Don't throw on missing data - that's normal for new users
-    // Errors are handled by returning null values
+    // ✅ CHANGED: ensure callers still get a name even though it's now in profiles
+    // If you want to refactor callers later, expose baseProfile separately.
+    const mergedUserProfile = up
+      ? { ...up, name: baseProfile?.name ?? null } // inject name from profiles
+      : (baseProfile ? { name: baseProfile.name } : null);
 
     return {
-      userProfile: up || null,
+      userProfile: mergedUserProfile || null,
       foodPreferences: fp || null,
+      // ✅ NEW: also return base profile for newer code paths
+      baseProfile: baseProfile || null,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       userProfile: null,
       foodPreferences: null,
+      baseProfile: null, // ✅ NEW
     };
   }
 }
 
 export async function saveUserProfile(userId, profileData) {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .upsert(
-      {
-        user_id: userId,
-        name: profileData.name || null,
-        age: profileData.age ? parseInt(profileData.age) : null,
-        height: profileData.height || null,
-        weight: profileData.weight || null,
-        goal: profileData.goal || null,
-        activity_level: profileData.activityLevel || null,
-        objective: profileData.objective || null,
-        dietary_restrictions: profileData.dietaryRestrictions || null,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'user_id'
-      }
-    )
-    .select();
+  // ✅ CHANGED: split writes:
+  //   - profiles.name  <- profileData.name
+  //   - user_profiles  <- client-only fields (no name/role)
+  const writes = [];
+
+  // ✅ write name to profiles
+  if (profileData?.name) {
+    writes.push(updateProfileName(userId, profileData.name));
+  }
+
+  // ✅ write client fields to user_profiles
+  writes.push(
+    supabase
+      .from('user_profiles')
+      .upsert(
+        {
+          user_id: userId,
+          // 🚫 name removed (lives in profiles)
+          // 🚫 role removed (lives in profiles.type)
+          age: profileData.age ? parseInt(profileData.age) : null,
+          height: profileData.height || null,
+          weight: profileData.weight || null,
+          goal: profileData.goal || null,
+          activity_level: profileData.activityLevel || null,
+          objective: profileData.objective || null,
+          dietary_restrictions: profileData.dietaryRestrictions || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+      .select()
+  );
+
+  const results = await Promise.allSettled(writes);
+
+  // ✅ normalize result (prefer user_profiles payload for compatibility)
+  const upResult = results.find(
+    (r) => r.status === 'fulfilled' && r.value?.data && Array.isArray(r.value.data)
+  );
+  const data = upResult?.value?.data ?? null;
+  const error =
+    results.find((r) => r.status === 'fulfilled' && r.value?.error)?.value?.error ||
+    results.find((r) => r.status === 'rejected')?.reason ||
+    null;
 
   return { data, error };
 }
@@ -59,14 +131,16 @@ export async function saveFoodPreferences(userId, prefs) {
         cuisine_favorites: prefs.cuisineFavorites || '',
         updated_at: new Date().toISOString(),
       },
-      {
-        onConflict: 'user_id'
-      }
+      { onConflict: 'user_id' }
     )
     .select();
 
   return { data, error };
 }
+
+// ================================================
+// Training Plan
+// ================================================
 
 export async function saveTrainingPlan(userId, planData) {
   const { data, error } = await supabase
@@ -77,53 +151,53 @@ export async function saveTrainingPlan(userId, planData) {
         plan_data: planData,
         updated_at: new Date().toISOString(),
       },
-      {
-        onConflict: 'user_id'
-      }
+      { onConflict: 'user_id' }
     )
     .select();
 
   return { data, error };
 }
 
-// Training Plan
 export async function fetchTrainingPlan(userId) {
   const { data, error } = await supabase
     .from('training_plans')
     .select('*')
     .eq('user_id', userId)
-    .maybeSingle(); // Use maybeSingle() instead of single()
+    .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
     return null;
   }
-
   return data?.plan_data || null;
 }
 
+// ================================================
+// Onboarding status
+// ================================================
+
 export async function checkOnboardingStatus(userId) {
   try {
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('id, name')
-      .eq('user_id', userId)
+    // ✅ CHANGED: name now lives in profiles
+    const { data: base } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', userId)
       .maybeSingle();
 
-    const { data: preferences, error: prefsError } = await supabase
+    const { data: preferences } = await supabase
       .from('food_preferences')
       .select('id')
       .eq('user_id', userId)
       .maybeSingle();
 
-    // User has completed onboarding if they have both profile and preferences
-    const hasCompletedOnboarding = !!(profile?.name && preferences?.id);
+    const hasCompletedOnboarding = !!(base?.name && preferences?.id);
 
     return {
       hasCompletedOnboarding,
-      hasProfile: !!profile,
+      hasProfile: !!base?.name, // ✅ CHANGED: reflect profiles.name
       hasPreferences: !!preferences,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       hasCompletedOnboarding: false,
       hasProfile: false,
@@ -132,7 +206,10 @@ export async function checkOnboardingStatus(userId) {
   }
 }
 
-// Meal Plan functions
+// ================================================
+// Meal Plans
+// ================================================
+
 export async function saveMealPlan(userId, meals, weekStarting) {
   // First try to find existing record
   const { data: existing } = await supabase
@@ -143,9 +220,8 @@ export async function saveMealPlan(userId, meals, weekStarting) {
     .maybeSingle();
 
   let data, error;
-  
+
   if (existing) {
-    // Update existing
     ({ data, error } = await supabase
       .from('meal_plans')
       .update({
@@ -155,7 +231,6 @@ export async function saveMealPlan(userId, meals, weekStarting) {
       .eq('id', existing.id)
       .select());
   } else {
-    // Insert new
     ({ data, error } = await supabase
       .from('meal_plans')
       .insert({
@@ -174,16 +249,16 @@ export async function saveMealPlan(userId, meals, weekStarting) {
 function getMondayOfCurrentWeek() {
   const today = new Date();
   const day = today.getDay();
-  const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(today);
   monday.setDate(diff);
   monday.setHours(0, 0, 0, 0);
-  return monday.toISOString().split('T')[0]; // Return as YYYY-MM-DD
+  return monday.toISOString().split('T')[0];
 }
 
 export async function fetchCurrentWeekMealPlan(userId) {
   const weekStarting = getMondayOfCurrentWeek();
-  
+
   const { data, error } = await supabase
     .from('meal_plans')
     .select('*')

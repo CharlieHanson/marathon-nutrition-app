@@ -73,16 +73,22 @@ const Auth = ({ presetRole }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user after sign in');
 
-      const { data: profile, error: profErr } = await supabase
-        .from('user_profiles')
-        .select('role')
+      // ✅ CHANGED: read role from the new schema (profiles.type), not user_profiles.role
+      const { data: prof, error: profErr } = await supabase
+        .from('profiles')
+        .select('type')
         .eq('user_id', user.id)
         .single();
 
-      if (profErr) throw profErr;
+      // ✅ CHANGED: robust fallback if profiles row hasn’t been created yet
+      const roleFromDB =
+        (!profErr && prof?.type)
+          ? prof.type
+          : (user.user_metadata?.role || 'client');
 
-      const roleFromDB = profile?.role || 'client';
       router.replace(roleFromDB === 'nutritionist' ? '/pro/dashboard' : '/training');
+      // ✅ END CHANGES
+
     } catch (err) {
       setError(err.message);
     } finally {

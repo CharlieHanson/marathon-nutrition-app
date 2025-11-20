@@ -14,12 +14,9 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
   useEffect(() => {
     let cancelled = false;
 
-    // If logged out or guest → clear preferences
     if (!user || isGuest) {
       setPreferences(EMPTY_PREFERENCES);
-      return () => {
-        cancelled = true;
-      };
+      return () => { cancelled = true; };
     }
 
     (async () => {
@@ -27,23 +24,21 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
         const data = await fetchPersonalInfo(user.id);
         if (cancelled) return;
 
-        if (data.foodPreferences) {
-          setPreferences({
-            likes: data.foodPreferences.likes || '',
-            dislikes: data.foodPreferences.dislikes || '',
-            cuisineFavorites: data.foodPreferences.cuisine_favorites || '',
-          });
-        } else {
-          setPreferences(EMPTY_PREFERENCES);
-        }
-      } catch (e) {
-        // Error loading preferences - will use empty preferences
+        const fp = data?.foodPreferences || null;
+        setPreferences(fp
+          ? {
+              likes: fp.likes || '',
+              dislikes: fp.dislikes || '',
+              cuisineFavorites: fp.cuisine_favorites || '',
+            }
+          : EMPTY_PREFERENCES
+        );
+      } catch {
+        // keep current/empty
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [user?.id, isGuest, reloadKey]);
 
   const updatePreferences = (field, value) => {
@@ -52,7 +47,6 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
 
   const savePreferences = async () => {
     if (!user || isGuest) return { error: 'Not authenticated' };
-
     setIsSaving(true);
     try {
       const { error } = await saveFoodPreferences(user.id, preferences);
@@ -62,10 +56,5 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  return {
-    preferences,
-    updatePreferences,
-    savePreferences,
-    isSaving,
-  };
+  return { preferences, updatePreferences, savePreferences, isSaving };
 };
