@@ -3,6 +3,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProLayout } from '../../src/views/pro/ProLayout';
 import { NutritionistProfile } from '../../src/views/pro/NutritionistProfilePage';
+import { supabase } from '../../src/supabaseClient';
 
 export default function ProfilePage() {
   const router = useRouter();
