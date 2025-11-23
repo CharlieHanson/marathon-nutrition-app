@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ---- ML Macros helpers ----
-const ML_API_URL = 'https://marathon-nutrition-app-production.up.railway.app';
+const ML_API_URL = 'https://alimenta-ml-service.onrender.com';
 
 async function getMacrosFromML(mealDescription, mealType) {
   try {
