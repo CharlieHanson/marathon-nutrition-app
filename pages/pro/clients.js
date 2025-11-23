@@ -2,17 +2,42 @@ import React from 'react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProLayout } from '../../src/views/pro/ProLayout';
+import { ClientListPage } from '../../src/views/pro/ClientListPage';
+import { supabase } from '../../src/supabaseClient';
 
 export default function ClientsPage() {
   const router = useRouter();
   const { user, loading, getUserRole, signOut } = useAuth();
   const [userRole, setUserRole] = React.useState(null);
+  const [userName, setUserName] = React.useState(null);
 
   React.useEffect(() => {
     if (user) {
       getUserRole().then(setUserRole);
     }
   }, [user, getUserRole]);
+
+  // Fetch user name for ProLayout
+  React.useEffect(() => {
+    async function fetchUserName() {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        
+        setUserName(data?.name || user.user_metadata?.name || 'Nutritionist');
+      } catch (error) {
+        console.error('Error fetching user name:', error);
+        setUserName(user.user_metadata?.name || 'Nutritionist');
+      }
+    }
+    
+    fetchUserName();
+  }, [user]);
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -23,7 +48,11 @@ export default function ClientsPage() {
   }, [user, loading, userRole, router]);
 
   if (loading || !userRole) {
-    return <div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   if (!user || userRole !== 'nutritionist') {
@@ -31,13 +60,8 @@ export default function ClientsPage() {
   }
 
   return (
-    <ProLayout userName={user.user_metadata?.name} onSignOut={signOut}>
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">All Clients</h1>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600">Client list coming soon...</p>
-        </div>
-      </div>
+    <ProLayout userName={userName} onSignOut={signOut}>
+      <ClientListPage />
     </ProLayout>
   );
 }

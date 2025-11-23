@@ -1,19 +1,44 @@
+// pages/pro/settings.js
 import React from 'react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProLayout } from '../../src/views/pro/ProLayout';
-import { SettingsPage } from '../../src/views/SettingsPage';
+import { ProSettingsPage } from '../../src/views/pro/ProSettingsPage';
+import { supabase } from '../../src/supabaseClient';
 
 export default function ProSettings() {
   const router = useRouter();
   const { user, loading, getUserRole, signOut } = useAuth();
   const [userRole, setUserRole] = React.useState(null);
+  const [userName, setUserName] = React.useState(null);
 
   React.useEffect(() => {
     if (user) {
       getUserRole().then(setUserRole);
     }
   }, [user, getUserRole]);
+
+  // Fetch user name for ProLayout
+  React.useEffect(() => {
+    async function fetchUserName() {
+      if (!user) return;
+      
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        
+        setUserName(data?.name || user.user_metadata?.name || 'Nutritionist');
+      } catch (error) {
+        console.error('Error fetching user name:', error);
+        setUserName(user.user_metadata?.name || 'Nutritionist');
+      }
+    }
+    
+    fetchUserName();
+  }, [user]);
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -36,8 +61,8 @@ export default function ProSettings() {
   }
 
   return (
-    <ProLayout userName={user.user_metadata?.name} onSignOut={signOut}>
-      <SettingsPage user={user} />
+    <ProLayout userName={userName} onSignOut={signOut}>
+      <ProSettingsPage user={user} />
     </ProLayout>
   );
 }

@@ -26,35 +26,72 @@ export const NutritionistDashboard = ({ user }) => {
         .select('id')
         .eq('user_id', user.id)
         .single();
+      
+      console.log('Nutritionist:', nutritionist);
 
       if (!nutritionist) return;
 
-      // Get total clients
-      const { data: clients, error } = await supabase
+      // Get client connections (without trying to join)
+      const { data: connections, error: connError } = await supabase
         .from('client_nutritionist')
-        .select(`
-          id,
-          client_user_id,
-          created_at,
-          user_profiles!client_nutritionist_client_user_id_fkey (
-            name,
-            user_id
-          )
-        `)
+        .select('client_user_id, created_at')
         .eq('nutritionist_id', nutritionist.id)
-        .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(5);
+        
+      console.log('Connections:', connections);
 
-      if (error) throw error;
+      if (connError) throw connError;
+
+      if (!connections || connections.length === 0) {
+        setStats({
+          totalClients: 0,
+          activeThisWeek: 0,
+          pendingReviews: 0,
+        });
+        setRecentClients([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get total count for stats
+      const { count: totalCount } = await supabase
+        .from('client_nutritionist')
+        .select('*', { count: 'exact', head: true })
+        .eq('nutritionist_id', nutritionist.id);
+
+      console.log('Total Count:', totalCount);
+
+      // Fetch client profiles separately
+      const clientIds = connections.map(c => c.client_user_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', clientIds);
+
+      console.log('Client IDs:', clientIds);  
+      console.log('Profiles:', profiles);
+
+      if (profileError) throw profileError;
+
+      // Combine data
+      const clientsWithProfiles = connections.map(conn => {
+        const profile = profiles.find(p => p.id === conn.client_user_id);
+        return {
+          id: conn.client_user_id,
+          client_user_id: conn.client_user_id,
+          created_at: conn.created_at,
+          name: profile?.name || 'Unknown Client',
+        };
+      });
 
       setStats({
-        totalClients: clients?.length || 0,
+        totalClients: totalCount || 0,
         activeThisWeek: 0, // TODO: Calculate from meal plans
         pendingReviews: 0, // TODO: Calculate from feedback
       });
 
-      setRecentClients(clients || []);
+      setRecentClients(clientsWithProfiles);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -131,11 +168,11 @@ export const NutritionistDashboard = ({ user }) => {
                   <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {client.user_profiles?.name?.charAt(0) || '?'}
+                        {client.name?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {client.user_profiles?.name || 'Unknown'}
+                          {client.name || 'Unknown Client'}
                         </p>
                         <p className="text-sm text-gray-500">
                           Added {new Date(client.created_at).toLocaleDateString()}
