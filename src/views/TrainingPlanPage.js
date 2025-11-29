@@ -84,11 +84,17 @@ export const TrainingPlanPage = ({
   };
 
   const handleDelete = async (planId, planName) => {
-    if (confirm(`Delete "${planName}"? This cannot be undone.`)) {
-      const { error } = await onDeletePlan(planId);
-      if (error) {
-        alert('Failed to delete training plan');
-      }
+    // Use window.confirm to avoid the no-restricted-globals lint error
+    const shouldDelete =
+      typeof window !== 'undefined' &&
+      window.confirm(`Delete "${planName}"? This cannot be undone.`);
+
+    if (!shouldDelete) return;
+
+    const { error } = await onDeletePlan(planId);
+    if (error) {
+      // You can keep this, or later replace it with a prettier toast
+      window.alert('Failed to delete training plan');
     }
   };
 
