@@ -14,32 +14,46 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
-  /* === NEW: helper to ensure a row exists in public.profiles for the authed user === */
   const ensureProfile = async (authedUser) => {
-    try {
-      if (!authedUser) return;
+  try {
+    if (!authedUser) return;
 
-      // We prefer the canonical role in profiles, but use user_metadata to seed it if new
-      const meta = authedUser.user_metadata || {};
-      const seedName = meta.name ?? null;
-      const seedType = meta.role === 'nutritionist' ? 'nutritionist' : 'client';
+    const meta = authedUser.user_metadata || {};
+    const seedName = meta.name ?? null;
+    const seedType = meta.role === 'nutritionist' ? 'nutritionist' : 'client';
 
-      // Upsert by id=user.id (your profiles.id is the user_id)
-      await supabase
-        .from('profiles')
-        .upsert(
-          {
-            id: authedUser.id,      // profiles primary key = auth user id (per your migration)
-            name: seedName,
-            type: seedType,
-          },
-          { onConflict: 'id' }
-        );
-    } catch (e) {
-      // Non-fatal; app can still run even if this fails due to RLS etc.
-      console.warn('ensureProfile() failed:', e.message);
+    // 1) Upsert profiles row (for all users)
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: authedUser.id,
+          name: seedName,
+          type: seedType,
+        },
+        { onConflict: 'id' }
+      );
+
+    // 2) If client, also ensure user_profiles row exists
+    if (seedType === 'client') {
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert({
+          user_id: authedUser.id,
+        })
+        .select()
+        .maybeSingle();
+      
+      // Ignore conflict errors (row already exists)
+      if (error && error.code !== '23505') {
+        console.warn('Failed to create user_profiles:', error.message);
+      }
     }
-  };
+
+  } catch (e) {
+    console.warn('ensureProfile() failed:', e.message);
+  }
+};
 
   // ----- Initial auth state + auth change listener -----
   useEffect(() => {
