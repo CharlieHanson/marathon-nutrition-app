@@ -139,36 +139,127 @@ export async function saveFoodPreferences(userId, prefs) {
 }
 
 // ================================================
-// Training Plan
+// Training Plans (NEW SCHEMA)
 // ================================================
 
-export async function saveTrainingPlan(userId, planData) {
-  const { data, error } = await supabase
-    .from('training_plans')
-    .upsert(
-      {
-        user_id: userId,
-        plan_data: planData,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id' }
-    )
-    .select();
+export async function saveTrainingPlan(userId, planData, name, planId = null) {
+  console.log('💾 Saving training plan:', { userId, name, planId });
 
-  return { data, error };
+  try {
+    // If updating existing plan
+    if (planId) {
+      const { data, error } = await supabase
+        .from('training_plans')
+        .update({
+          name: name,
+          plan_data: planData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', planId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    }
+
+    // Creating new plan - first deactivate all other plans
+    await supabase
+      .from('training_plans')
+      .update({ is_active: false })
+      .eq('user_id', userId);
+
+    // Insert new plan as active
+    const { data, error } = await supabase
+      .from('training_plans')
+      .insert({
+        user_id: userId,
+        name: name,
+        plan_data: planData,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    console.log('✅ Training plan saved:', data);
+    return { data, error: null };
+  } catch (error) {
+    console.error('❌ Save training plan error:', error);
+    return { data: null, error };
+  }
 }
 
-export async function fetchTrainingPlan(userId) {
+export async function fetchActiveTrainingPlan(userId) {
   const { data, error } = await supabase
     .from('training_plans')
     .select('*')
     .eq('user_id', userId)
+    .eq('is_active', true)
     .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching active training plan:', error);
     return null;
   }
-  return data?.plan_data || null;
+
+  return data;
+}
+
+export async function fetchAllTrainingPlans(userId) {
+  const { data, error } = await supabase
+    .from('training_plans')
+    .select('id, name, created_at, is_active')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching all training plans:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function setActiveTrainingPlan(userId, planId) {
+  try {
+    // Deactivate all plans
+    await supabase
+      .from('training_plans')
+      .update({ is_active: false })
+      .eq('user_id', userId);
+
+    // Activate selected plan
+    const { data, error } = await supabase
+      .from('training_plans')
+      .update({ is_active: true })
+      .eq('id', planId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error setting active training plan:', error);
+    return { data: null, error };
+  }
+}
+
+export async function deleteTrainingPlan(userId, planId) {
+  const { error } = await supabase
+    .from('training_plans')
+    .delete()
+    .eq('id', planId)
+    .eq('user_id', userId);
+
+  return { error };
+}
+
+// DEPRECATED - keeping for backwards compatibility during migration
+export async function fetchTrainingPlan(userId) {
+  return fetchActiveTrainingPlan(userId);
 }
 
 // ================================================

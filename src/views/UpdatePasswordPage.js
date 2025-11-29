@@ -9,31 +9,32 @@ export const UpdatePasswordPage = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // On mount, just check if we have a valid session
   useEffect(() => {
-    let unsub;
+    let cancelled = false;
 
     (async () => {
-      // Newer flow: ?code=... in query
-      const code = new URLSearchParams(window.location.search).get('code');
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          setMessage(`❌ Link invalid or expired: ${error.message}`);
-        } else {
-          setMessage('✅ Email verified! Enter your new password below.');
-        }
+      const { data, error } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('getSession error:', error);
+        setMessage('❌ There was a problem validating this link. Please request a new reset email.');
+        return;
       }
 
-      // Legacy/hash flow: #access_token=... triggers this event
-      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setMessage('✅ Email verified! Enter your new password below.');
-        }
-      });
-      unsub = sub.subscription?.unsubscribe;
+      if (!data?.session) {
+        setMessage('❌ This link is invalid or has expired. Please request a new password reset email.');
+      } else {
+        // Optional: show a friendly message, or leave blank if you prefer
+        setMessage('Enter your new password below.');
+      }
     })();
 
-    return () => { unsub?.(); };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleUpdatePassword = async (e) => {
@@ -54,8 +55,11 @@ export const UpdatePasswordPage = () => {
       if (error) throw error;
 
       setMessage('✅ Password updated successfully! Redirecting…');
-      setTimeout(() => { window.location.href = '/'; }, 1500);
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     } catch (err) {
+      console.error('updateUser error:', err);
       setMessage(`❌ Error: ${err.message}`);
     } finally {
       setLoading(false);
@@ -102,9 +106,11 @@ export const UpdatePasswordPage = () => {
         </form>
 
         {message && (
-          <div className={`mt-4 p-4 rounded-lg text-center ${
-            message.includes('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}>
+          <div
+            className={`mt-4 p-4 rounded-lg text-center ${
+              message.includes('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            }`}
+          >
             {message}
           </div>
         )}

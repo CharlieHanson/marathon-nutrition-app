@@ -10,8 +10,11 @@ import { Users, CheckCircle, AlertCircle } from 'lucide-react';
 function SettingsPage({ user }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
   const [email, setEmail] = useState(user?.email ?? '');
+
+  // Inline messages
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
 
   // Nutritionist connection state
   const [inviteCode, setInviteCode] = useState('');
@@ -26,7 +29,7 @@ function SettingsPage({ user }) {
     setEmail(user?.email ?? '');
   }, [user?.email]);
 
-  // Load nutritionist connection on mount
+  // Load nutritionist connection on mount / user change
   useEffect(() => {
     if (user) {
       loadNutritionistConnection();
@@ -35,7 +38,6 @@ function SettingsPage({ user }) {
 
   const loadNutritionistConnection = async () => {
     try {
-      // Check if user has a nutritionist connection
       const { data: connection, error: connError } = await supabase
         .from('client_nutritionist')
         .select('nutritionist_id')
@@ -45,7 +47,6 @@ function SettingsPage({ user }) {
       if (connError) throw connError;
 
       if (connection) {
-        // Fetch nutritionist details using nutritionist_id (which is nutritionists.id)
         const { data: nutritionist, error: nutError } = await supabase
           .from('nutritionists')
           .select('id, name, business_name, website, location, user_id')
@@ -78,7 +79,6 @@ function SettingsPage({ user }) {
     setConnectionMessage('');
 
     try {
-      // Find nutritionist by invite code - get both id and user_id
       const { data: nutritionist, error: nutError } = await supabase
         .from('nutritionists')
         .select('id, user_id, name, business_name, website, location')
@@ -91,7 +91,6 @@ function SettingsPage({ user }) {
         return;
       }
 
-      // Check if already connected
       const { data: existing } = await supabase
         .from('client_nutritionist')
         .select('id')
@@ -99,26 +98,28 @@ function SettingsPage({ user }) {
         .maybeSingle();
 
       if (existing) {
-        setConnectionMessage('❌ You are already connected to a nutritionist. Disconnect first to connect to a new one.');
+        setConnectionMessage(
+          '❌ You are already connected to a nutritionist. Disconnect first to connect to a new one.'
+        );
         setConnectingCode(false);
         return;
       }
 
-      // Create connection using nutritionists.id (not user_id)
       const { error: insertError } = await supabase
         .from('client_nutritionist')
         .insert({
           client_user_id: user.id,
-          nutritionist_id: nutritionist.id,  // Use nutritionists.id, not user_id
+          nutritionist_id: nutritionist.id,
         });
 
       if (insertError) throw insertError;
 
-      setConnectionMessage(`✅ Successfully connected to ${nutritionist.name || 'your nutritionist'}!`);
+      setConnectionMessage(
+        `✅ Successfully connected to ${nutritionist.name || 'your nutritionist'}!`
+      );
       setInviteCode('');
       setConnectedNutritionist(nutritionist);
-      
-      // Clear success message after 3 seconds
+
       setTimeout(() => setConnectionMessage(''), 3000);
     } catch (error) {
       console.error('Error connecting to nutritionist:', error);
@@ -142,18 +143,20 @@ function SettingsPage({ user }) {
       setTimeout(() => setConnectionMessage(''), 3000);
     } catch (error) {
       console.error('Error disconnecting:', error);
-      throw error;
+      setConnectionMessage('❌ Failed to disconnect. Please try again.');
     }
   };
 
   // Change password (logged-in users)
   const handleChangePassword = async () => {
+    setPasswordMessage('');
+
     if (newPassword !== confirmPassword) {
-      setMessage('❌ Passwords do not match');
+      setPasswordMessage('❌ Passwords do not match');
       return;
     }
     if (newPassword.length < 6) {
-      setMessage('❌ Password must be at least 6 characters');
+      setPasswordMessage('❌ Password must be at least 6 characters');
       return;
     }
 
@@ -161,26 +164,15 @@ function SettingsPage({ user }) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      setMessage('✅ Password updated successfully!');
+      setPasswordMessage('✅ Password updated successfully!');
       setNewPassword('');
       setConfirmPassword('');
+
+      setTimeout(() => setPasswordMessage(''), 4000);
     } catch (err) {
-      setMessage(`❌ Error: ${err.message}`);
-    }
-  };
-
-  // Send reset email (for users who forgot)
-  const handleForgotPassword = async () => {
-    try {
-      const redirectTo = `${window.location.origin}/update-password`;
-      const targetEmail = email || user?.email;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, { redirectTo });
-      if (error) throw error;
-
-      setMessage('✅ Password reset email sent! Check your inbox.');
-    } catch (err) {
-      setMessage(`❌ Error: ${err.message}`);
+      console.error('updateUser error:', err);
+      setPasswordMessage(`❌ Error: ${err.message}`);
+      setTimeout(() => setPasswordMessage(''), 5000);
     }
   };
 
@@ -198,7 +190,6 @@ function SettingsPage({ user }) {
         {loadingConnection ? (
           <p className="text-gray-600">Loading...</p>
         ) : connectedNutritionist ? (
-          // Connected state
           <div className="space-y-4">
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -214,22 +205,21 @@ function SettingsPage({ user }) {
               </div>
             </div>
 
-            <Button
-              onClick={() => setShowNutritionistModal(true)}
-              variant="outline"
-            >
+            <Button onClick={() => setShowNutritionistModal(true)} variant="outline">
               View Nutritionist Details
             </Button>
           </div>
         ) : (
-          // Not connected state
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm text-blue-900 font-medium">Not connected to a nutritionist</p>
+                <p className="text-sm text-blue-900 font-medium">
+                  Not connected to a nutritionist
+                </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Enter an invite code from your nutritionist to connect and receive personalized macro guidance.
+                  Enter an invite code from your nutritionist to connect and receive personalized
+                  macro guidance.
                 </p>
               </div>
             </div>
@@ -294,40 +284,23 @@ function SettingsPage({ user }) {
             />
           </div>
 
-          <Button onClick={handleChangePassword}>Update Password</Button>
-        </div>
-      </Card>
+          <div className="flex flex-col gap-2">
+            <Button onClick={handleChangePassword}>Update Password</Button>
 
-      {/* Reset via Email */}
-      <Card>
-        <h3 className="text-xl font-semibold mb-4">Reset via Email</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
-              placeholder="your@email.com"
-            />
+            {passwordMessage && (
+              <div
+                className={`mt-1 p-3 rounded-lg text-sm ${
+                  passwordMessage.includes('✅')
+                    ? 'bg-green-50 text-green-800'
+                    : 'bg-red-50 text-red-800'
+                }`}
+              >
+                {passwordMessage}
+              </div>
+            )}
           </div>
-
-          <Button onClick={handleForgotPassword} variant="secondary">
-            Send Reset Link
-          </Button>
         </div>
       </Card>
-
-      {message && (
-        <div
-          className={`p-4 rounded-lg ${
-            message.includes('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}
-        >
-          {message}
-        </div>
-      )}
 
       {/* Nutritionist Modal */}
       <NutritionistModal

@@ -1,12 +1,11 @@
-// api/generate-meals.js
+// pages/api/generate-meals.js
 // Streams day-by-day generation via Server-Sent Events (SSE)
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getTopMealsByVector } from '../src/lib/rag.js'; // needs the vector helper we discussed
+import { getTopMealsByVector } from '../src/lib/rag.js'; // adjust path if needed
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -20,6 +19,47 @@ const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
 
 const DESSERT_CATEGORIES = ['baked', 'frozen', 'chocolate', 'fruit', 'pastry/cream'];
 
+/* ---------------------- NEW: normalize training plan ---------------------- */
+// training_plans.plan_data → { day: { workouts: [...] }, ... }
+// We flatten that into { day: { type, distance, intensity }, ... }
+function summarizePlanData(planData) {
+  if (!planData || typeof planData !== 'object') return null;
+
+  const summary = {};
+  for (const day of DAYS) {
+    const dayObj = planData[day] || {};
+    const workouts = Array.isArray(dayObj.workouts) ? dayObj.workouts : [];
+
+    if (!workouts.length) {
+      summary[day] = { type: 'Rest', distance: '', intensity: 5 };
+      continue;
+    }
+
+    const nonRest = workouts.filter(
+      (w) => (w.type || '').toLowerCase() !== 'rest'
+    );
+    const chosen = nonRest[0] || workouts[0];
+
+    const intensities = workouts
+      .map((w) => Number(w.intensity) || 0)
+      .filter((n) => n > 0);
+    const intensity = intensities.length
+      ? Math.round(
+          intensities.reduce((a, b) => a + b, 0) / intensities.length
+        )
+      : 5;
+
+    summary[day] = {
+      type: chosen.type || 'Rest',
+      distance: chosen.distance || '',
+      intensity,
+    };
+  }
+
+  return summary;
+}
+
+/* ------------------------------- JSON schema ------------------------------- */
 function dayJsonSchema(day) {
   return {
     name: "DayPlan",
@@ -46,14 +86,11 @@ function dayJsonSchema(day) {
   };
 }
 
-
 function countDessertCategories(weekSoFar) {
-  // weekSoFar is an object like { monday:{dessert:'...'}, ... }
   const counts = Object.fromEntries(DESSERT_CATEGORIES.map(c => [c, 0]));
-  for (const [day, meals] of Object.entries(weekSoFar || {})) {
+  for (const [, meals] of Object.entries(weekSoFar || {})) {
     const d = (meals?.dessert || '').toLowerCase();
     if (!d) continue;
-    // naive classifier: look for keywords; you can improve later
     if (/\b(brownie|cake|tart|crumble|cookie|bar|muffin|baked)\b/.test(d)) counts['baked']++;
     else if (/\b(ice cream|gelato|sorbet|frozen|popsicle|semifreddo)\b/.test(d)) counts['frozen']++;
     else if (/\b(chocolate|cocoa|ganache|truffle|lava)\b/.test(d)) counts['chocolate']++;
@@ -65,7 +102,6 @@ function countDessertCategories(weekSoFar) {
 
 function pickNextDessertCategory(weekSoFar) {
   const counts = countDessertCategories(weekSoFar);
-  // pick first unused category; else the least used
   const unused = DESSERT_CATEGORIES.find(c => counts[c] === 0);
   if (unused) return unused;
   return Object.entries(counts).sort((a,b) => a[1]-b[1])[0][0];
@@ -76,7 +112,7 @@ function sseHeaders(res) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // for some proxies
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 }
 
@@ -147,21 +183,22 @@ function sumDayMacros(dayMeals) {
   return sums;
 }
 
-/* ---------------------- Light target & sanity thresholds ------------------- */
-/** Very lightweight target heuristic.
- * If weight present, kcal target ≈ 30 * (kg) (+5% if "bulk", -10% if "cut")
- * Otherwise generic 2200 kcal. Tolerances are intentionally wide (±20%).
- */
+/* ---------------------- Target & thresholds (uses plan) -------------------- */
 function targetForDay(userProfile, trainingPlan, day) {
-  const kg = userProfile?.weight ? Number(userProfile.weight) : null; // assume kg if you store kg; adjust if lbs
+  // parse weight like "160 lbs" → 160 → kg-ish
+  const rawWeight = userProfile?.weight;
+  const weightNumber = rawWeight ? Number(String(rawWeight).replace(/[^\d.]/g, '')) : null;
+  const kg = weightNumber && weightNumber < 400 ? weightNumber * 0.45 : null;
+
   let kcal = kg ? 30 * kg : 2200;
 
   const goal = String(userProfile?.goal || '').toLowerCase();
   if (goal.includes('bulk') || goal.includes('gain')) kcal *= 1.05;
   if (goal.includes('cut') || goal.includes('lose')) kcal *= 0.90;
 
-  const intensity = trainingPlan?.[day]?.intensity ?? 5; // 1..10
-  kcal *= (0.9 + (Number(intensity) || 5) * 0.02); // ±10% swing
+  const w = trainingPlan?.[day] || {};
+  const intensity = w.intensity != null ? Number(w.intensity) : 5;
+  kcal *= (0.9 + intensity * 0.02); // ±10% swing
 
   const min = Math.round(kcal * 0.8);
   const max = Math.round(kcal * 1.2);
@@ -170,7 +207,6 @@ function targetForDay(userProfile, trainingPlan, day) {
 
 /* --------------------------- Prompt composition ---------------------------- */
 function summarizePreviousMeals(soFarWeek) {
-  // Keep it short: only last 2 days to avoid prompt bloat
   const daysWithMeals = DAYS.filter(d => soFarWeek[d]);
   const pick = daysWithMeals.slice(-2);
   if (pick.length === 0) return '';
@@ -182,7 +218,6 @@ function summarizePreviousMeals(soFarWeek) {
     for (const mt of MEAL_TYPES) {
       const v = dayMeals[mt];
       if (v && typeof v === 'string') {
-        // Strip macro suffix to reduce tokens
         const core = v.replace(/\s*\(Cal:[^)]+\)\s*$/i,'').trim();
         lines.push(`- ${mt}: ${core}`);
       }
@@ -199,13 +234,10 @@ async function personalizationBulletsPerMeal({
   const cuisines= foodPreferences?.cuisines;
   const goal    = userProfile?.goal;
 
-  const intensityText = (() => {
-    const w = trainingPlan?.[day] || {};
-    const t = w.type ? String(w.type) : 'easy';
-    const d = w.distance ? String(w.distance) : '';
-    const i = (w.intensity != null) ? ` (intensity ${w.intensity})` : '';
-    return `${t} ${d}${i}`.trim();
-  })();
+  const w = trainingPlan?.[day] || {};
+  const intensityText = `${w.type || 'easy'} ${w.distance || ''} ${
+    w.intensity != null ? `(intensity ${w.intensity})` : ''
+  }`.trim();
 
   const recs = userId
     ? await getTopMealsByVector({
@@ -216,7 +248,7 @@ async function personalizationBulletsPerMeal({
         cuisines,
         goal,
         intensityText,
-        k: 2,                // 2 bullets per meal type
+        k: 2,
         candidateLimit: 40,
         efSearch: 64
       })
@@ -240,7 +272,6 @@ async function buildDayPrompt({
 }) {
   const prevSummary = summarizePreviousMeals(soFarWeek);
 
-  // Per-meal RAG bullets
   const [pB,pL,pD,pS,pDe] = await Promise.all([
     personalizationBulletsPerMeal({ userId, mealType:'breakfast', foodPreferences, userProfile, trainingPlan, day }),
     personalizationBulletsPerMeal({ userId, mealType:'lunch',     foodPreferences, userProfile, trainingPlan, day }),
@@ -254,7 +285,9 @@ async function buildDayPrompt({
   const dessertCategory = pickNextDessertCategory(soFarWeek);
 
   const w = trainingPlan?.[day] || {};
-  const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${w.intensity!=null ? `(intensity ${w.intensity})` : ''}`.trim();
+  const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${
+    w.intensity != null ? `(intensity ${w.intensity})` : ''
+  }`.trim();
 
   return `You are a sports nutritionist creating the ${day} plan for an athlete.
 
@@ -272,7 +305,7 @@ FOOD PREFERENCES:
 - Favorite Cuisines: ${cuisines}
 
 TRAINING (today):
-- ${dayTraining}
+- ${dayTraining || 'Rest / easy day'}
 
 WEEK SO FAR (do NOT repeat dishes / main proteins already used):
 ${prevSummary || '(first day or no prior meals)'}
@@ -282,25 +315,23 @@ ${perMealContext || ''}
 CRITICAL REQUIREMENTS:
 1) Output ONLY JSON for this day in the exact shape below.
 2) Avoid all foods and ingredients that are not suitable for the user's dietary restrictions.
-2) Strictly avoid disliked foods.
-3) Provide varied cuisines across the week; rotate main proteins.
-4) Use liked foods thoughtfully (≤ 3–4 appearances in the whole week).
-5) Return concise meal descriptions (no macros text).
-6) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
-7) **Dessert must clearly fit the category "${dessertCategory}".** Use a dessert that is representative of this category and differs from earlier days until all categories are covered.
+3) Strictly avoid disliked foods.
+4) Provide varied cuisines across the week; rotate main proteins.
+5) Use liked foods thoughtfully (≤ 3–4 appearances in the whole week).
+6) Return concise meal descriptions (no macros text).
+7) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
+8) Dessert must clearly fit the category "${dessertCategory}" and differ from earlier days until all categories are covered.
 
 Return a JSON object that matches the required schema, with:
 - "day" equal to "${day}"
 - "meals" containing string descriptions for breakfast, lunch, dinner, dessert, and snacks.
-Do not include macros in the strings.
-`;
+Do not include macros in the strings.`;
 }
 
 /* ------------------------------ Save progress ------------------------------ */
 async function upsertWeekPartial({ userId, weekStarting, weekObj }) {
   if (!userId) return;
 
-  // Try find existing row
   const { data: existing } = await supabase
     .from('meal_plans')
     .select('id')
@@ -323,32 +354,50 @@ async function upsertWeekPartial({ userId, weekStarting, weekObj }) {
 /* --------------------------------- Handler -------------------------------- */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    // For SSE, we still POST, but stream the response.
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Switch response to SSE
   sseHeaders(res);
 
   const keepAlive = setInterval(() => {
-    res.write(':\n\n'); // comment/ping to keep connection alive
+    res.write(':\n\n');
   }, 15000);
 
   try {
-    const { userProfile, foodPreferences, trainingPlan, userId, weekStarting } = req.body || {};
+    const { userProfile, foodPreferences, trainingPlan: clientTrainingPlan, userId, weekStarting } = req.body || {};
 
     const likedFoods    = foodPreferences?.likes || 'No preferences specified';
     const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
     const cuisines      = foodPreferences?.cuisines || 'No cuisines specified';
 
-    const week = {}; // progressively filled { monday:{...}, ... }
+    // 🔥 NEW: prefer active training plan from DB
+    let trainingPlan = null;
+
+    if (userId) {
+      const { data: activePlan, error } = await supabase
+        .from('training_plans')
+        .select('plan_data')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!error && activePlan?.plan_data) {
+        trainingPlan = summarizePlanData(activePlan.plan_data);
+      }
+    }
+
+    // fallback to what client sends (e.g. guests)
+    if (!trainingPlan && clientTrainingPlan) {
+      trainingPlan = summarizePlanData(clientTrainingPlan) || null;
+    }
+
+    const week = {};
 
     sendStatus(res, 'Starting weekly generation…');
 
     for (const day of DAYS) {
       sendStatus(res, `Generating ${day.charAt(0).toUpperCase() + day.slice(1)}…`);
 
-      // 1) Build per-day prompt with RAG bullets + history of last 1–2 days
       const prompt = await buildDayPrompt({
         day,
         userProfile,
@@ -361,7 +410,6 @@ export default async function handler(req, res) {
         userId
       });
 
-      // 2) Call LLM for just this day
       const llm = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
@@ -372,21 +420,17 @@ export default async function handler(req, res) {
           json_schema: dayJsonSchema(day)
         }
       });
-      
 
-      // 3) Parse day JSON
       let dayObj;
       try {
         const raw = llm.choices?.[0]?.message?.content ?? '';
-        // Happy path – should already be valid JSON matching the schema
         const parsed = JSON.parse(raw);
         if (parsed?.day === day && parsed?.meals) {
           dayObj = parsed.meals;
         } else {
           throw new Error('Schema shape mismatch');
         }
-      } catch (e) {
-        // Minimal salvage: grab the last {...} block and try again
+      } catch {
         const content = llm.choices?.[0]?.message?.content ?? '';
         const m = content.match(/\{[\s\S]*\}$/);
         if (m) {
@@ -400,12 +444,11 @@ export default async function handler(req, res) {
 
         if (!dayObj) {
           sendEvent(res, 'error', { day, message: `Invalid JSON for ${day}, skipping` });
-          continue; // don't break the whole week
+          continue;
         }
       }
 
-
-      // 4) Add macros for each meal via ML API
+      // attach macros
       for (const mt of MEAL_TYPES) {
         const desc = dayObj[mt];
         if (!desc) continue;
@@ -413,18 +456,19 @@ export default async function handler(req, res) {
         dayObj[mt] = attachMacrosText(desc, macros);
       }
 
-      // 5) Check totals and optionally retry ONCE if way off target
+      // kcal sanity vs training-aware target
       const totals = sumDayMacros(dayObj);
       const { minKcal, maxKcal } = targetForDay(userProfile, trainingPlan, day);
 
       if (totals.hasData && (totals.calories < minKcal || totals.calories > maxKcal)) {
         sendStatus(res, `${day}: adjusting macros (one retry)…`);
-        // Simple retry: ask model to tweak choices to hit target range
+
         const adjustPrompt = `You produced these meals for ${day}:
 ${JSON.stringify(dayObj, null, 2)}
 
 Adjust the meals minimally so that the total daily calories land between ${minKcal} and ${maxKcal}.
-Return ONLY JSON with the same shape for "${day}" (no extra text).`;
+Return ONLY JSON with the same shape for this day:
+{ "day": "${day}", "meals": { ... } }`;
 
         const retry = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -436,9 +480,8 @@ Return ONLY JSON with the same shape for "${day}" (no extra text).`;
         try {
           const content2 = retry.choices?.[0]?.message?.content ?? '{}';
           const parsed2 = JSON.parse(content2);
-          const dayObj2 = parsed2?.[day];
-          if (dayObj2) {
-            // Re-attach macros to the adjusted meals
+          if (parsed2?.day === day && parsed2?.meals) {
+            const dayObj2 = parsed2.meals;
             for (const mt of MEAL_TYPES) {
               const desc = dayObj2[mt];
               if (!desc) continue;
@@ -447,22 +490,20 @@ Return ONLY JSON with the same shape for "${day}" (no extra text).`;
             }
             dayObj = dayObj2;
           }
-        } catch {}
+        } catch {
+          // keep original if retry fails
+        }
       }
 
-      // 6) Commit the day into the week + persist (logged-in users)
       week[day] = dayObj;
 
       if (userId) {
-        try { await upsertWeekPartial({ userId, weekStarting, weekObj: week }); }
-        catch (e) { /* don't fail the stream on DB hiccup */ }
+        try {
+          await upsertWeekPartial({ userId, weekStarting, weekObj: week });
+        } catch {}
       }
 
-      // 7) Stream the day to the client
       sendEvent(res, 'day', { day, meals: dayObj });
-
-      // (Optional) small delay to feel progressive
-      // await new Promise(r => setTimeout(r, 200));
     }
 
     sendEvent(res, 'done', { success: true, weekStarting, userSaved: Boolean(userId) });
