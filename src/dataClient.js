@@ -270,7 +270,7 @@ export async function checkOnboardingStatus(userId) {
     // 1) Core profile fields from user_profiles
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('age, height, weight, objective')
+      .select('age, height, weight, goal')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -283,7 +283,7 @@ export async function checkOnboardingStatus(userId) {
       profile.age != null &&
       profile.height &&
       profile.weight &&
-      profile.objective;
+      profile.goal;
 
     const hasCompletedOnboarding = hasCoreProfile;
 
