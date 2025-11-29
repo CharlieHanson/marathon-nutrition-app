@@ -36,7 +36,6 @@ export const ProfileStep = ({ profile, onUpdate, onNext, onBack, isSaving }) => 
           <Input
             label="Name"
             type="text"
-            placeholder="e.g., John Doe"
             value={profile.name}
             onChange={(e) => onUpdate('name', e.target.value)}
             required

@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
+import { checkOnboardingStatus } from '../../src/dataClient'; 
 
 export default function AuthRedirect() {
   const router = useRouter();
@@ -23,12 +24,22 @@ export default function AuthRedirect() {
         if (cancelled) return;
 
         if (role === 'nutritionist') {
+          // nutritionists always go to pro dashboard
           router.replace('/pro/dashboard');
+          return;
+        }
+
+        // client: check onboarding completeness
+        const status = await checkOnboardingStatus(user.id);
+        if (cancelled) return;
+
+        if (!status?.hasCompletedOnboarding) {
+          router.replace('/onboarding');
         } else {
           router.replace('/training');
         }
       } catch (e) {
-        console.error('AuthRedirect: error getting role', e);
+        console.error('AuthRedirect: error getting role/onboarding status', e);
         router.replace('/login');
       }
     };
@@ -37,7 +48,7 @@ export default function AuthRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [user, loading, getUserRole, router]);
+  }, [user?.id, loading, getUserRole, router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
@@ -45,3 +56,4 @@ export default function AuthRedirect() {
     </div>
   );
 }
+

@@ -265,30 +265,48 @@ export async function fetchTrainingPlan(userId) {
 // ================================================
 // Onboarding status
 // ================================================
-
 export async function checkOnboardingStatus(userId) {
   try {
-    // ✅ CHANGED: name now lives in profiles
-    const { data: base } = await supabase
-      .from('profiles')
-      .select('name')
-      .eq('id', userId)
+    // 1) Core profile fields from user_profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('age, height, weight, objective')
+      .eq('user_id', userId)
       .maybeSingle();
 
-    const { data: preferences } = await supabase
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('checkOnboardingStatus: user_profiles error:', profileError);
+    }
+
+    const hasCoreProfile =
+      !!profile &&
+      profile.age != null &&
+      profile.height &&
+      profile.weight &&
+      profile.objective;
+
+    // 2) Preferences exist?
+    const { data: preferences, error: prefsError } = await supabase
       .from('food_preferences')
       .select('id')
       .eq('user_id', userId)
       .maybeSingle();
 
-    const hasCompletedOnboarding = !!(base?.name && preferences?.id);
+    if (prefsError && prefsError.code !== 'PGRST116') {
+      console.error('checkOnboardingStatus: food_preferences error:', prefsError);
+    }
+
+    const hasPreferences = !!preferences?.id;
+
+    const hasCompletedOnboarding = hasCoreProfile && hasPreferences;
 
     return {
       hasCompletedOnboarding,
-      hasProfile: !!base?.name, // ✅ CHANGED: reflect profiles.name
-      hasPreferences: !!preferences,
+      hasProfile: hasCoreProfile,   // keep this key for backward compat
+      hasPreferences,
     };
-  } catch (_error) {
+  } catch (error) {
+    console.error('checkOnboardingStatus: unexpected error:', error);
     return {
       hasCompletedOnboarding: false,
       hasProfile: false,
@@ -296,6 +314,7 @@ export async function checkOnboardingStatus(userId) {
     };
   }
 }
+
 
 // ================================================
 // Meal Plans
