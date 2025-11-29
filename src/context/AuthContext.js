@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }) => {
         .upsert(
           {
             id: authedUser.id,      // profiles primary key = auth user id (per your migration)
-            user_id: authedUser.id, // also stored in user_id column (unique)
             name: seedName,
             type: seedType,
           },
@@ -174,20 +173,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
+    console.log('AuthContext: signOut called');
     try {
-      // Local-only logout to avoid "Auth session missing" noise
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
-      if (error) throw error;
+      // Supabase signOut, but don't let it hang forever
+      const signOutPromise = supabase.auth.signOut();
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('signOut timeout')), 3000)
+      );
+
+      await Promise.race([signOutPromise, timeoutPromise]);
     } catch (error) {
-      // continue regardless
+      console.warn('AuthContext: signOut error (ignored)', error);
+      // we still clear local state
     } finally {
       setUser(null);
       setIsGuest(false);
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guestMode');
       }
+      console.log('AuthContext: signOut finished, user cleared');
     }
   };
+
 
   // ----- Guest Mode -----
   const enableGuestMode = () => {

@@ -22,7 +22,7 @@ export default function MealsPage() {
     if (!loading && !user && !isGuest) {
       router.push('/login');
     }
-  }, [user, loading, isGuest, router]);
+  }, [user, loading, isGuest, router, router.asPath]);
 
   if (loading) {
     return (

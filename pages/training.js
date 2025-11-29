@@ -15,7 +15,7 @@ export default function TrainingPage() {
     if (!loading && !user && !isGuest) {
       router.push('/login');
     }
-  }, [user, loading, isGuest, router]);
+  }, [user, loading, isGuest, router, router.asPath]);
 
   // Show loading state
   if (loading) {

@@ -1,46 +1,59 @@
+// pages/pro/index.js
 import React from 'react';
 import { ProLandingPage } from '../../src/views/pro/ProLandingPage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
-import { supabase } from '../../src/supabaseClient';
 
 export default function ProHome() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, getUserRole } = useAuth();
   const [userRole, setUserRole] = React.useState(null);
+  const [checkingRole, setCheckingRole] = React.useState(true);
 
-  // Fetch role
+  // Resolve role for logged-in users
   React.useEffect(() => {
-    const fetchRole = async () => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (loading) return;
+
       if (!user) {
-        setUserRole(null);
+        if (!cancelled) {
+          setUserRole(null);
+          setCheckingRole(false);
+        }
         return;
       }
 
-      // ✅ CHANGED: read from profiles.type (new schema), not user_profiles.role
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('type')
-        .eq('user_id', user.id)
-        .single();
-
-      // ✅ CHANGED: fallback to auth metadata if profiles row hasn't been created yet
-      const role =
-        (!error && data?.type) ? data.type : (user.user_metadata?.role || null);
-
-      setUserRole(role);
+      try {
+        const role = await getUserRole();
+        if (cancelled) return;
+        setUserRole(role);
+      } catch (e) {
+        console.warn('ProHome: getUserRole failed, treating as non-nutritionist', e);
+        if (!cancelled) {
+          setUserRole(null);
+        }
+      } finally {
+        if (!cancelled) setCheckingRole(false);
+      }
     };
-    fetchRole();
-  }, [user]);
 
-  // Redirect to dashboard if already logged in as nutritionist
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, loading, getUserRole]);
+
+  // If already a nutritionist, send them straight to dashboard
   React.useEffect(() => {
-    if (!loading && user && userRole === 'nutritionist') {
-      router.push('/pro/dashboard');
+    if (loading || checkingRole) return;
+    if (user && userRole === 'nutritionist') {
+      router.replace('/pro/dashboard');
     }
-  }, [user, loading, userRole, router]);
+  }, [user, userRole, loading, checkingRole, router]);
 
-  if (loading) {
+  if (loading || checkingRole) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
         <p className="text-primary font-semibold">Loading...</p>
@@ -49,7 +62,8 @@ export default function ProHome() {
   }
 
   if (user && userRole === 'nutritionist') {
-    return null; // Redirecting
+    // Redirecting to /pro/dashboard
+    return null;
   }
 
   return <ProLandingPage />;

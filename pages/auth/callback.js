@@ -11,43 +11,37 @@ export default function AuthCallback() {
     const run = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');                 // magic-link / reset
-        const tokenHash = params.get('token_hash');      // signup confirm
-        const type = params.get('type');                 // e.g. 'signup', 'recovery'
+        const code = params.get('code');            // magic-link / recovery (PKCE)
+        const tokenHash = params.get('token_hash'); // email confirmation
+        const type = params.get('type');            // e.g. 'signup', 'recovery'
         const errDesc = params.get('error_description');
 
         if (errDesc) throw new Error(errDesc);
 
         if (code) {
-          // New PKCE-style flow (magic link / recovery)
+          // Magic link / recovery code
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
         } else if (tokenHash) {
-          // Email confirmation flow (signup)
+          // Email confirmation flow
           const { error } = await supabase.auth.verifyOtp({
-            type: (type || 'signup'),
+            type: type || 'signup',
             token_hash: tokenHash,
           });
           if (error) throw error;
         }
+
         // At this point we should have a session (or we already had one)
-        const { data: { session }, error: sErr } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error: sErr,
+        } = await supabase.auth.getSession();
+
         if (sErr) throw sErr;
         if (!session) throw new Error('No session after verification');
 
-        // Route by role
-        const { data: profile, error: pErr } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (pErr) {
-          // fallback to client app
-          router.replace('/training');
-          return;
-        }
-        router.replace(profile?.role === 'nutritionist' ? '/pro/dashboard' : '/training');
+        // ✅ Don't decide route here; let /auth/redirect handle role + routing
+        router.replace('/auth/redirect');
       } catch (e) {
         console.error('[auth/callback] verify error:', e);
         setMsg('Verification failed. Redirecting to login…');

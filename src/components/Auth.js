@@ -67,27 +67,13 @@ const Auth = ({ presetRole }) => {
         return;
       }
 
+      // 🔽 LOGIN PATH (NEW)
       const { error } = await signIn(email, password);
       if (error) throw error;
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user after sign in');
-
-      // ✅ CHANGED: read role from the new schema (profiles.type), not user_profiles.role
-      const { data: prof, error: profErr } = await supabase
-        .from('profiles')
-        .select('type')
-        .eq('user_id', user.id)
-        .single();
-
-      // ✅ CHANGED: robust fallback if profiles row hasn’t been created yet
-      const roleFromDB =
-        (!profErr && prof?.type)
-          ? prof.type
-          : (user.user_metadata?.role || 'client');
-
-      router.replace(roleFromDB === 'nutritionist' ? '/pro/dashboard' : '/training');
-      // ✅ END CHANGES
+      console.log('Auth: signIn successful, sending to /auth/redirect');
+      router.replace('/auth/redirect');
+      return;
 
     } catch (err) {
       setError(err.message);
@@ -95,6 +81,7 @@ const Auth = ({ presetRole }) => {
       setPending(false);
     }
   };
+
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();

@@ -21,7 +21,7 @@ export default function ClientDetailPage() {
     } else if (!loading && user && userRole && userRole !== 'nutritionist') {
       router.push('/training');
     }
-  }, [user, loading, userRole, router]);
+  }, [user, loading, userRole, router, router.asPath]);
 
   if (loading || !userRole) {
     return <div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>;

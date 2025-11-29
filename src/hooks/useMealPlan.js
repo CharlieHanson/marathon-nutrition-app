@@ -1,7 +1,19 @@
+// src/hooks/useMealPlan.js
 import { useState, useEffect } from 'react';
-import { fetchCurrentWeekMealPlan, saveMealPlan, fetchMealPlanByWeek } from '../dataClient';
 
-const EMPTY_DAY = { breakfast: '', lunch: '', dinner: '', dessert: '', snacks: '', rating: 0 };  // ✅
+const EMPTY_DAY = {
+  breakfast: '',
+  lunch: '',
+  dinner: '',
+  dessert: '',
+  snacks: '',
+  breakfast_rating: 0,
+  lunch_rating: 0,
+  dinner_rating: 0,
+  dessert_rating: 0,
+  snacks_rating: 0,
+};
+
 const EMPTY_WEEK = {
   monday:    { ...EMPTY_DAY },
   tuesday:   { ...EMPTY_DAY },
@@ -14,7 +26,7 @@ const EMPTY_WEEK = {
 
 const getMondayOfCurrentWeek = () => {
   const today = new Date();
-  const day = today.getDay();
+  const day = today.getDay(); // 0=Sun, 1=Mon,...
   const diff = today.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(today);
   monday.setDate(diff);
@@ -26,54 +38,96 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
   const [mealPlan, setMealPlan] = useState(EMPTY_WEEK);
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [currentWeekStarting, setCurrentWeekStarting] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentWeekStarting, setCurrentWeekStarting] = useState(getMondayOfCurrentWeek());
+  const [isLoading, setIsLoading] = useState(false);
 
+  // -------- INITIAL / CURRENT WEEK LOAD --------
   useEffect(() => {
     let cancelled = false;
 
     if (!user || isGuest) {
+      console.log('useMealPlan: no user or guest → reset & stop');
       setMealPlan(EMPTY_WEEK);
       setCurrentWeekStarting(getMondayOfCurrentWeek());
       setIsLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     (async () => {
       try {
         setIsLoading(true);
-        const data = await fetchCurrentWeekMealPlan(user.id);
+        const week = getMondayOfCurrentWeek();
 
+        console.log('useMealPlan: fetching current week via /api/meal-plan', {
+          userId: user.id,
+          weekStarting: week,
+        });
+
+        const res = await fetch(
+          `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
+            week
+          )}`
+        );
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status} ${text}`);
+        }
+
+        const data = await res.json();
+        console.log('useMealPlan: /api/meal-plan GET data', data);
         if (cancelled) return;
 
-        if (data && data.meals) {
+        // 🔧 Support both shapes:
+        // 1) { success, mealPlan: { week_starting, meals } }
+        // 2) { success, week_starting, meals }
+        const rawMeals =
+          (data.mealPlan && data.mealPlan.meals) ||
+          data.meals ||
+          null;
+
+        const weekFromData =
+          (data.mealPlan && data.mealPlan.week_starting) ||
+          data.week_starting ||
+          week;
+
+        if (data.success && rawMeals) {
           const merged = { ...EMPTY_WEEK };
-          Object.keys(data.meals).forEach((day) => {
+          Object.keys(rawMeals).forEach((day) => {
             if (merged[day]) {
-              merged[day] = { ...merged[day], ...data.meals[day] };
+              merged[day] = { ...merged[day], ...rawMeals[day] };
             }
           });
           setMealPlan(merged);
-          setCurrentWeekStarting(data.week_starting);
+          setCurrentWeekStarting(weekFromData);
         } else {
+          console.log('useMealPlan: no existing mealPlan row → empty week');
           setMealPlan(EMPTY_WEEK);
-          setCurrentWeekStarting(getMondayOfCurrentWeek());
+          setCurrentWeekStarting(week);
         }
-      } catch {
+      } catch (err) {
+        console.error('useMealPlan: error loading meal plan', err);
         if (!cancelled) {
           setMealPlan(EMPTY_WEEK);
           setCurrentWeekStarting(getMondayOfCurrentWeek());
         }
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, isGuest, reloadKey]);
 
+  // -------- LOCAL MUTATORS --------
   const updateMeal = (day, mealType, value) => {
-    if (!day || !(day in mealPlan)) return;                          // ✅
+    if (!day || !(day in mealPlan)) return;
     setMealPlan((prev) => ({
       ...prev,
       [day]: { ...prev[day], [mealType]: value },
@@ -81,7 +135,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
   };
 
   const rateMeal = async (day, mealType, rating) => {
-    if (!day || !(day in mealPlan)) return;                          // ✅
+    if (!day || !(day in mealPlan)) return;
     setMealPlan((prev) => ({
       ...prev,
       [day]: { ...prev[day], [`${mealType}_rating`]: rating },
@@ -94,7 +148,13 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           await fetch('/api/rate-meal', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id, mealDescription, mealType, rating, day }),
+            body: JSON.stringify({
+              userId: user.id,
+              mealDescription,
+              mealType,
+              rating,
+              day,
+            }),
           });
         }
       } catch {
@@ -103,6 +163,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
+  // -------- GENERATE / REGENERATE --------
   const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
     const weekStarting = currentWeekStarting || getMondayOfCurrentWeek();
 
@@ -134,7 +195,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+      const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
       while (true) {
         const { value, done } = await reader.read();
@@ -158,7 +219,10 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           } else if (evt === 'day') {
             const { day, meals } = data;
             if (!DAYS.includes(day)) continue;
-            setMealPlan((prev) => ({ ...prev, [day]: { ...prev[day], ...meals } }));
+            setMealPlan((prev) => ({
+              ...prev,
+              [day]: { ...prev[day], ...meals },
+            }));
           } else if (evt === 'error') {
             setStatusMessage(`❌ ${data.message || 'Generation error'}`);
           } else if (evt === 'done') {
@@ -178,43 +242,6 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  const loadMealPlanByWeek = async (weekStarting) => {
-    if (!user || isGuest) {
-      return { success: false, error: 'Guests cannot browse other weeks' };
-    }
-    try {
-      const data = await fetchMealPlanByWeek(user.id, weekStarting);
-      if (data && data.meals) {
-        const merged = { ...EMPTY_WEEK };
-        Object.keys(data.meals).forEach((day) => {
-          if (merged[day]) merged[day] = { ...merged[day], ...data.meals[day] };
-        });
-        setMealPlan(merged);
-        setCurrentWeekStarting(data.week_starting);
-        return { success: true };
-      } else {
-        setMealPlan(EMPTY_WEEK);
-        setCurrentWeekStarting(weekStarting);
-        return { success: false, error: 'No meal plan found for this week' };
-      }
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const saveCurrentMealPlan = async () => {
-    if (!user || isGuest || !currentWeekStarting) {
-      return { success: false, error: 'Cannot save meal plan' };
-    }
-    try {
-      const { error } = await saveMealPlan(user.id, mealPlan, currentWeekStarting);
-      if (error) return { success: false, error: error.message };
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
   const regenerateMeal = async (day, mealType, reason, context) => {
     setStatusMessage(`🔄 Regenerating ${mealType} for ${day}...`);
     try {
@@ -226,7 +253,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           day,
           mealType,
           reason,
-          currentMeal: mealPlan[day]?.[mealType] || '',          // ✅ defensively read
+          currentMeal: mealPlan[day]?.[mealType] || '',
         }),
       });
 
@@ -241,6 +268,95 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     } catch (error) {
       setStatusMessage(`❌ Error: ${error.message}`);
       setTimeout(() => setStatusMessage(''), 5000);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // -------- WEEK NAVIGATION / SAVE --------
+  const loadMealPlanByWeek = async (weekStarting) => {
+    if (!user || isGuest) {
+      return { success: false, error: 'Guests cannot browse other weeks' };
+    }
+    try {
+      setIsLoading(true);
+
+      console.log('useMealPlan: loadMealPlanByWeek via /api/meal-plan', {
+        userId: user.id,
+        weekStarting,
+      });
+
+      const res = await fetch(
+        `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
+          weekStarting
+        )}`
+      );
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${text}`);
+      }
+
+      const data = await res.json();
+      console.log('useMealPlan: /api/meal-plan GET by week data', data);
+
+      const rawMeals =
+        (data.mealPlan && data.mealPlan.meals) ||
+        data.meals ||
+        null;
+
+      const weekFromData =
+        (data.mealPlan && data.mealPlan.week_starting) ||
+        data.week_starting ||
+        weekStarting;
+
+      if (data.success && rawMeals) {
+        const merged = { ...EMPTY_WEEK };
+        Object.keys(rawMeals).forEach((day) => {
+          if (merged[day]) merged[day] = { ...merged[day], ...rawMeals[day] };
+        });
+        setMealPlan(merged);
+        setCurrentWeekStarting(weekFromData);
+        return { success: true };
+      } else {
+        setMealPlan(EMPTY_WEEK);
+        setCurrentWeekStarting(weekStarting);
+        return { success: false, error: 'No meal plan found for this week' };
+      }
+    } catch (error) {
+      console.error('useMealPlan: error loading week', error);
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveCurrentMealPlan = async () => {
+    if (!user || isGuest || !currentWeekStarting) {
+      return { success: false, error: 'Cannot save meal plan' };
+    }
+    try {
+      console.log('useMealPlan: saving meal plan via /api/meal-plan', {
+        userId: user.id,
+        weekStarting: currentWeekStarting,
+      });
+
+      const res = await fetch('/api/meal-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          weekStarting: currentWeekStarting,
+          meals: mealPlan,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('useMealPlan: error saving meal plan', error);
       return { success: false, error: error.message };
     }
   };

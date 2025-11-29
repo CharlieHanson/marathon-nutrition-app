@@ -12,7 +12,7 @@ export default function Onboarding() {
     if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, router.asPath]);
 
   if (loading) {
     return (

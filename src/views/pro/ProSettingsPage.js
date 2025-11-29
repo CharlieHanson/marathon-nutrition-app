@@ -4,16 +4,26 @@ import { supabase } from '../../supabaseClient';
 import { Button } from '../../components/shared/Button';
 import { Card } from '../../components/shared/Card';
 
-export const ProSettingsPage = ({ user }) => {
+export const ProSettingsPage = ({ currentUser }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [email, setEmail] = useState(user?.email ?? '');
+  const [email, setEmail] = useState(currentUser?.email ?? '');
 
-  // Keep email field in sync if user changes
+  console.log('ProSettingsPage render', {
+    hasUser: !!currentUser,
+    userId: currentUser?.id,
+    email,
+  });
+
+  // Keep email field in sync if currentUser changes
   useEffect(() => {
-    setEmail(user?.email ?? '');
-  }, [user?.email]);
+    console.log(
+      'ProSettingsPage useEffect: syncing email from currentUser',
+      currentUser?.email
+    );
+    setEmail(currentUser?.email ?? '');
+  }, [currentUser?.email]);
 
   // Change password (logged-in users)
   const handleChangePassword = async () => {
@@ -27,13 +37,20 @@ export const ProSettingsPage = ({ user }) => {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      console.log('ProSettingsPage: updating password for currentUser', {
+        userId: currentUser?.id,
+      });
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
       if (error) throw error;
 
       setMessage('✅ Password updated successfully!');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
+      console.error('ProSettingsPage: error updating password', err);
       setMessage(`❌ Error: ${err.message}`);
     }
   };
@@ -42,13 +59,22 @@ export const ProSettingsPage = ({ user }) => {
   const handleForgotPassword = async () => {
     try {
       const redirectTo = `${window.location.origin}/pro/update-password`;
-      const targetEmail = email || user?.email;
+      const targetEmail = email || currentUser?.email;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, { redirectTo });
+      console.log('ProSettingsPage: sending reset email', {
+        targetEmail,
+        redirectTo,
+      });
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        targetEmail,
+        { redirectTo }
+      );
       if (error) throw error;
 
       setMessage('✅ Password reset email sent! Check your inbox.');
     } catch (err) {
+      console.error('ProSettingsPage: error sending reset email', err);
       setMessage(`❌ Error: ${err.message}`);
     }
   };
@@ -57,7 +83,9 @@ export const ProSettingsPage = ({ user }) => {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p className="text-gray-600 mt-2">Manage your account security and preferences</p>
+        <p className="text-gray-600 mt-2">
+          Manage your account security and preferences
+        </p>
       </div>
 
       {/* Change Password */}
@@ -65,7 +93,9 @@ export const ProSettingsPage = ({ user }) => {
         <h3 className="text-xl font-semibold mb-4">Change Password</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">New Password</label>
+            <label className="block text-sm font-medium mb-2">
+              New Password
+            </label>
             <input
               type="password"
               value={newPassword}
@@ -76,7 +106,9 @@ export const ProSettingsPage = ({ user }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Confirm Password</label>
+            <label className="block text-sm font-medium mb-2">
+              Confirm Password
+            </label>
             <input
               type="password"
               value={confirmPassword}
@@ -114,7 +146,9 @@ export const ProSettingsPage = ({ user }) => {
       {message && (
         <div
           className={`p-4 rounded-lg ${
-            message.includes('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            message.includes('✅')
+              ? 'bg-green-50 text-green-800'
+              : 'bg-red-50 text-red-800'
           }`}
         >
           {message}

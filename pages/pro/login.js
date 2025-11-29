@@ -6,8 +6,8 @@ export default function ProLogin() {
 
   React.useEffect(() => {
     // Redirect to /login with role parameter
-    router.push('/login?role=nutritionist');
-  }, [router]);
+    router.replace('/login?role=nutritionist');
+  }, [router]); // remove router.asPath
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">

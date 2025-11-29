@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Users, TrendingUp, Calendar, ArrowRight, User } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
 
-export const NutritionistDashboard = ({ user }) => {
+export const NutritionistDashboard = ({ currentUser }) => {
   const [stats, setStats] = useState({
     totalClients: 0,
     activeThisWeek: 0,
@@ -12,94 +11,90 @@ export const NutritionistDashboard = ({ user }) => {
   const [recentClients, setRecentClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
+  console.log('NutritionistDashboard render', {
+    loading,
+    stats,
+    recentClientsLen: recentClients.length,
+    hasUser: !!currentUser,
+    userId: currentUser?.id,
+  });
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    console.log('NutritionistDashboard: fetchDashboardData START');
+    setLoading(true);
+
     try {
-      // Get nutritionist ID
-      const { data: nutritionist } = await supabase
-        .from('nutritionists')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      console.log('Nutritionist:', nutritionist);
-
-      if (!nutritionist) return;
-
-      // Get client connections (without trying to join)
-      const { data: connections, error: connError } = await supabase
-        .from('client_nutritionist')
-        .select('client_user_id, created_at')
-        .eq('nutritionist_id', nutritionist.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-        
-      console.log('Connections:', connections);
-
-      if (connError) throw connError;
-
-      if (!connections || connections.length === 0) {
+      if (!currentUser) {
+        console.warn(
+          'NutritionistDashboard: no currentUser, clearing stats/clients'
+        );
         setStats({
           totalClients: 0,
           activeThisWeek: 0,
           pendingReviews: 0,
         });
         setRecentClients([]);
-        setLoading(false);
         return;
       }
 
-      // Get total count for stats
-      const { count: totalCount } = await supabase
-        .from('client_nutritionist')
-        .select('*', { count: 'exact', head: true })
-        .eq('nutritionist_id', nutritionist.id);
+      const userId = currentUser.id;
+      console.log(
+        'NutritionistDashboard: calling /api/pro/dashboard for',
+        userId
+      );
 
-      console.log('Total Count:', totalCount);
+      const res = await fetch(
+        `/api/pro/dashboard?userId=${encodeURIComponent(userId)}`
+      );
 
-      // Fetch client profiles separately
-      const clientIds = connections.map(c => c.client_user_id);
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', clientIds);
+      if (!res.ok) {
+        console.error(
+          'NutritionistDashboard: API /pro/dashboard not ok',
+          res.status
+        );
+        setStats({
+          totalClients: 0,
+          activeThisWeek: 0,
+          pendingReviews: 0,
+        });
+        setRecentClients([]);
+        return;
+      }
 
-      console.log('Client IDs:', clientIds);  
-      console.log('Profiles:', profiles);
-
-      if (profileError) throw profileError;
-
-      // Combine data
-      const clientsWithProfiles = connections.map(conn => {
-        const profile = profiles.find(p => p.id === conn.client_user_id);
-        return {
-          id: conn.client_user_id,
-          client_user_id: conn.client_user_id,
-          created_at: conn.created_at,
-          name: profile?.name || 'Unknown Client',
-        };
-      });
+      const json = await res.json();
+      console.log('NutritionistDashboard: API response', json);
 
       setStats({
-        totalClients: totalCount || 0,
-        activeThisWeek: 0, // TODO: Calculate from meal plans
-        pendingReviews: 0, // TODO: Calculate from feedback
+        totalClients: json.stats?.totalClients ?? 0,
+        activeThisWeek: json.stats?.activeThisWeek ?? 0,
+        pendingReviews: json.stats?.pendingReviews ?? 0,
       });
 
-      setRecentClients(clientsWithProfiles);
+      setRecentClients(json.recentClients || []);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('NutritionistDashboard: UNCAUGHT error', error);
+      setStats({
+        totalClients: 0,
+        activeThisWeek: 0,
+        pendingReviews: 0,
+      });
+      setRecentClients([]);
     } finally {
+      console.log('NutritionistDashboard: fetchDashboardData FINISH');
       setLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    console.log(
+      'NutritionistDashboard useEffect: calling fetchDashboardData with user',
+      currentUser?.id
+    );
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
+    console.log('NutritionistDashboard: showing "Loading dashboard..."');
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-gray-600">Loading dashboard...</p>
@@ -112,7 +107,9 @@ export const NutritionistDashboard = ({ user }) => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Manage your clients and track their progress</p>
+        <p className="text-gray-600 mt-1">
+          Manage your clients and track their progress
+        </p>
       </div>
 
       {/* Stats Cards */}
@@ -142,7 +139,9 @@ export const NutritionistDashboard = ({ user }) => {
         {/* Recent Clients */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Clients</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Recent Clients
+            </h2>
             <Link href="/pro/clients">
               <button className="text-primary hover:text-primary-700 text-sm font-medium flex items-center gap-1">
                 View All
@@ -164,7 +163,10 @@ export const NutritionistDashboard = ({ user }) => {
           ) : (
             <div className="space-y-3">
               {recentClients.map((client) => (
-                <Link key={client.id} href={`/pro/clients/${client.client_user_id}`}>
+                <Link
+                  key={client.id}
+                  href={`/pro/clients/${client.client_user_id}`}
+                >
                   <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-semibold">
@@ -175,7 +177,8 @@ export const NutritionistDashboard = ({ user }) => {
                           {client.name || 'Unknown Client'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          Added {new Date(client.created_at).toLocaleDateString()}
+                          Added{' '}
+                          {new Date(client.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -189,7 +192,9 @@ export const NutritionistDashboard = ({ user }) => {
 
         {/* Quick Links */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
           <div className="space-y-3">
             <QuickLink
               href="/pro/clients"

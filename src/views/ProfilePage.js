@@ -111,7 +111,6 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
             helperText="Your daily activity excluding structured workouts"
             disabled={isGuest}
           />
-
         </div>
 
         {/* Training & Goals Section */}
@@ -289,9 +288,3 @@ const ProfileCompletionCard = ({ profile }) => {
     </Card>
   );
 };
-
-export async function getServerSideProps() {
-  return { props: {} };
-}
-
-export default ProfilePage;

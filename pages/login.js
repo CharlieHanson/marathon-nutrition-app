@@ -1,3 +1,4 @@
+// pages/login.js
 import React from 'react';
 import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
@@ -7,12 +8,13 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
 
-  // Redirect to app if already logged in
+  // ✅ Only redirect guests -> /training
+  //    Do NOT redirect logged-in users here; Auth + /auth/redirect handles that.
   React.useEffect(() => {
-    if (!loading && (user || isGuest)) {
+    if (!loading && isGuest) {
       router.push('/training');
     }
-  }, [user, loading, isGuest, router]);
+  }, [loading, isGuest, router]);
 
   if (loading) {
     return (
@@ -22,9 +24,15 @@ export default function LoginPage() {
     );
   }
 
-  if (user || isGuest) {
-    return null; // Redirecting
+  // While guest is being redirected, render nothing
+  if (isGuest) {
+    return null;
   }
 
+  // For:
+  // - normal login
+  // - already-logged-in users who happen to hit /login
+  // Auth's submit handler will call router.replace('/auth/redirect')
+  // and /auth/redirect will route by role (client vs nutritionist)
   return <Auth />;
 }

@@ -37,6 +37,21 @@ export const MealPlanPage = ({
   // Use either the passed statusMessage or local one
   const displayMessage = statusMessage || localStatusMessage;
 
+  // --- Safety: log what’s going on when it “hangs” ---
+  console.log('MealPlanPage render', {
+    isLoading,
+    hasMealsDebug: mealPlan && Object.values(mealPlan).some(day =>
+      day &&
+      Object.entries(day).some(([mealType, meal]) =>
+        !mealType.includes('_rating') &&
+        meal &&
+        typeof meal === 'string' &&
+        meal.trim()
+      )
+    ),
+    currentWeekStarting,
+  });
+
   const handleRegenerate = async (day, mealType) => {
     const reason = prompt(
       "Why would you like to regenerate this meal? (e.g., 'don't like salmon', 'too many carbs', 'prefer vegetarian option')"
@@ -87,18 +102,14 @@ export const MealPlanPage = ({
     try {
       const allMeals = [];
       
-      // Iterate through each day and meal type
-      Object.entries(mealPlan).forEach(([day, meals]) => {
-        Object.entries(meals).forEach(([mealType, meal]) => {
-          // Skip if:
-          // - meal is empty/null/undefined
-          // - meal is not a string (could be a number for ratings)
-          // - mealType contains '_rating' (that's a rating field, not a meal)
-          // - meal string is empty after trimming
-          if (!meal || 
-              typeof meal !== 'string' || 
-              mealType.includes('_rating') || 
-              meal.trim() === '') {
+      Object.entries(mealPlan || {}).forEach(([day, meals]) => {
+        Object.entries(meals || {}).forEach(([mealType, meal]) => {
+          if (
+            !meal ||
+            typeof meal !== 'string' ||
+            mealType.includes('_rating') ||
+            meal.trim() === ''
+          ) {
             return;
           }
           allMeals.push(meal);
@@ -136,7 +147,8 @@ export const MealPlanPage = ({
     setTimeout(() => setLocalStatusMessage(''), 5000);
   };
 
-  const hasMeals = Object.values(mealPlan).some(day =>
+  const hasMeals = mealPlan && Object.values(mealPlan).some(day =>
+    day &&
     Object.entries(day).some(([mealType, meal]) => 
       !mealType.includes('_rating') && 
       meal && 
@@ -155,7 +167,6 @@ export const MealPlanPage = ({
     return monday.toISOString().split('T')[0];
   };
 
-  // Format week starting date for display
   const formatWeekDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
@@ -166,7 +177,6 @@ export const MealPlanPage = ({
     });
   };
 
-  // Get previous/next week dates
   const getPreviousWeek = () => {
     if (!currentWeekStarting) return null;
     const date = new Date(currentWeekStarting + 'T00:00:00');
@@ -208,18 +218,19 @@ export const MealPlanPage = ({
     }
   };
 
-  //Auto-save meal plan when it changes (debounced)
+  // Auto-save meal plan when it changes (debounced)
   useEffect(() => {
     if (!currentWeekStarting || !onSave || !hasMeals) return;
 
     const timeoutId = setTimeout(() => {
       onSave();
-    }, 2000); // Save 2 seconds after last change
+    }, 2000);
 
     return () => clearTimeout(timeoutId);
   }, [mealPlan, currentWeekStarting, onSave, hasMeals]);
 
-  if (isLoading) {
+  // ✅ Only show skeleton if loading AND we *don’t* have meals yet
+  if (isLoading && !hasMeals) {
     return (
       <div className="space-y-8">
         <MealPlanSkeleton />
@@ -288,7 +299,6 @@ export const MealPlanPage = ({
           </div>
         </div>
 
-        {/* ALWAYS show status message when there's activity */}
         {(displayMessage || isGenerating) && (
           <div className={`mb-4 p-4 rounded-lg border ${
             displayMessage.includes('✅') 
@@ -326,7 +336,6 @@ export const MealPlanPage = ({
                       {day}
                     </h3>
                     
-                    {/* Daily Macro Summary - NOW WITH BADGES */}
                     {dayMacros.hasData && (
                       <div className="flex gap-2 text-sm flex-wrap">
                         <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
@@ -345,7 +354,6 @@ export const MealPlanPage = ({
                     )}
                   </div>
 
-                  {/* Main Meals */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     {['breakfast', 'lunch', 'dinner'].map((mealType) => (
                       <MealCard
@@ -362,7 +370,6 @@ export const MealPlanPage = ({
                     ))}
                   </div>
 
-                  {/* Snacks & Dessert */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {['snacks', 'dessert'].map((mealType) => (
                       <MealCard
@@ -401,7 +408,6 @@ export const MealPlanPage = ({
   );
 };
 
-// Meal Card Component - ALL ORANGE NOW
 const MealCard = ({ 
   day, 
   mealType, 
@@ -440,7 +446,6 @@ const MealCard = ({
 
       {meal && (
         <>
-          {/* Star Rating - larger stars */}
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -464,7 +469,6 @@ const MealCard = ({
             )}
           </div>
 
-          {/* Get Recipe Button - more prominent */}
           <button
             onClick={() => onGetRecipe(day, mealType)}
             className="w-full text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-2 rounded-md text-gray-900 font-medium transition-colors shadow-sm hover:shadow-md"

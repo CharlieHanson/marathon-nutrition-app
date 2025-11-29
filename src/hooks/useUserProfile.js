@@ -1,5 +1,5 @@
+// src/hooks/useUserProfile.js
 import { useState, useEffect } from 'react';
-import { fetchPersonalInfo, saveUserProfile } from '../dataClient';
 
 const EMPTY_PROFILE = {
   name: '',
@@ -15,65 +15,74 @@ const EMPTY_PROFILE = {
 export const useUserProfile = (user, isGuest, reloadKey = 0) => {
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [isSaving, setIsSaving] = useState(false);
-  const [profileType, setProfileType] = useState(null); // ✅ NEW: keep track of profiles.type (client/nutritionist)
+  const [profileType, setProfileType] = useState(null); // if you want it later
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    // If logged out or guest → clear profile
     if (!user || isGuest) {
       setProfile(EMPTY_PROFILE);
-      setProfileType(null); // ✅ NEW
+      setProfileType(null);
+      setLoadingProfile(false);
       return () => {
         cancelled = true;
       };
     }
 
-    (async () => {
+    const load = async () => {
+      setLoadingProfile(true);
       try {
-        // ✅ CHANGED: fetch now returns { userProfile, foodPreferences, baseProfile }
-        const data = await fetchPersonalInfo(user.id);
-        if (cancelled) return;
-
-        const base = data?.baseProfile || null; // { name, type } from public.profiles
-        const up = data?.userProfile || null;   // client-only row (we inject name there in dataClient, but we prefer base)
-
-        // ✅ NEW: remember profile type to let UI react if needed
-        setProfileType(base?.type ?? null);
-
-        // Build the UI profile shape:
-        // - name from profiles
-        // - client fields from user_profiles
-        // - if nutritionist (no client row), keep client fields empty
-        const next = {
-          name: base?.name || '',
-          age: (up && up.age) || '',
-          height: (up && up.height) || '',
-          weight: (up && up.weight) || '',
-          goal: (up && up.goal) || '',
-          activityLevel: (up && up.activity_level) || '',
-          objective: (up && up.objective) || '',
-          dietaryRestrictions: (up && up.dietary_restrictions) || '',
-        };
-
-        // ✅ NEW: if this is a nutritionist account, zero out client-only fields to avoid confusion
-        if (base?.type === 'nutritionist') {
-          next.age = '';
-          next.height = '';
-          next.weight = '';
-          next.goal = '';
-          next.activityLevel = '';
-          next.objective = '';
-          next.dietaryRestrictions = '';
+        const res = await fetch(
+          `/api/profile?userId=${encodeURIComponent(user.id)}`
+        );
+        if (!res.ok) {
+          console.error('useUserProfile: /api/profile GET not ok', res.status);
+          if (!cancelled) {
+            setProfile(EMPTY_PROFILE);
+            setProfileType(null);
+          }
+          return;
         }
 
+        const data = await res.json();
+        console.log('useUserProfile: /api/profile GET data', data);
+
+        if (cancelled) return;
+        if (!data.success) {
+          setProfile(EMPTY_PROFILE);
+          setProfileType(null);
+          return;
+        }
+
+        setProfileType(data.type ?? null);
+
+        const next = {
+          name: data.name || '',
+          age: data.age || '',
+          height: data.height || '',
+          weight: data.weight || '',
+          goal: data.goal || '',
+          activityLevel: data.activityLevel || '',
+          objective: data.objective || '',
+          dietaryRestrictions: data.dietaryRestrictions || '',
+        };
+
         setProfile(next);
-      } catch {
-        // Error loading profile - use empty
-        setProfile(EMPTY_PROFILE);           // ✅ CHANGED: ensure clean state on failure
-        setProfileType(null);                // ✅ NEW
+      } catch (e) {
+        console.error('useUserProfile: error fetching profile', e);
+        if (!cancelled) {
+          setProfile(EMPTY_PROFILE);
+          setProfileType(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingProfile(false);
+        }
       }
-    })();
+    };
+
+    load();
 
     return () => {
       cancelled = true;
@@ -89,11 +98,32 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
 
     setIsSaving(true);
     try {
-      // ✅ CHANGED: saveUserProfile now splits the write:
-      // - profiles.name (if provided)
-      // - user_profiles (client-only fields)
-      const { error } = await saveUserProfile(user.id, profile);
-      return { error };
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          profile,
+        }),
+      });
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        // ignore json parse errors
+      }
+
+      if (!res.ok || !data.success) {
+        const msg = data?.message || `Request failed with status ${res.status}`;
+        console.error('useUserProfile: /api/profile POST error', msg);
+        return { error: msg };
+      }
+
+      return { error: null };
+    } catch (e) {
+      console.error('useUserProfile: save error', e);
+      return { error: e.message || 'Unknown error' };
     } finally {
       setIsSaving(false);
     }
@@ -104,6 +134,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
     updateProfile,
     saveProfile,
     isSaving,
-    profileType, // ✅ NEW: expose type if your UI wants it (safe to ignore elsewhere)
+    profileType,
+    loadingProfile,
   };
 };

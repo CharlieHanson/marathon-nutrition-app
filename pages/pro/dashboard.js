@@ -6,28 +6,68 @@ import { NutritionistDashboard } from '../../src/views/pro/NutritionistDashboard
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, loading, getUserRole, signOut } = useAuth();
-  const [userRole, setUserRole] = React.useState(null);
+  const { user, loading, signOut } = useAuth();
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
+  const [isNutritionist, setIsNutritionist] = React.useState(false);
   const [userName, setUserName] = React.useState(null);
 
-  // Fetch role
-  React.useEffect(() => {
-    if (user) {
-      getUserRole().then(setUserRole);
-      setUserName(user.user_metadata?.name);
-    }
-  }, [user, getUserRole]);
+  console.log('Dashboard render', {
+    loading,
+    hasUser: !!user,
+    checkingAuth,
+    isNutritionist,
+    userName,
+    path: router.asPath,
+    meta: user?.user_metadata,
+  });
 
-  // Redirect if not logged in or not a nutritionist
   React.useEffect(() => {
-    if (!loading && !user) {
-      router.push('/pro/login');
-    } else if (!loading && user && userRole && userRole !== 'nutritionist') {
-      router.push('/training');
-    }
-  }, [user, loading, userRole, router]);
+    console.log('Dashboard useEffect fired', {
+      loading,
+      hasUser: !!user,
+      path: router.asPath,
+    });
 
-  if (loading || !userRole) {
+    if (loading) {
+      console.log('Dashboard: still loading auth, skipping auth check');
+      return;
+    }
+
+    if (!user) {
+      console.log('Dashboard: no user, redirecting to /pro/login');
+      setCheckingAuth(false);
+      router.replace('/pro/login');
+      return;
+    }
+
+    const role = user.user_metadata?.role || 'client';
+    const name = user.user_metadata?.name || 'Nutritionist';
+
+    console.log('Dashboard: resolved role/name from metadata', { role, name });
+
+    setUserName(name);
+
+    if (role !== 'nutritionist') {
+      console.log(
+        'Dashboard: user is not nutritionist (role =',
+        role,
+        '), redirecting to /training'
+      );
+      setCheckingAuth(false);
+      router.replace('/training');
+      return;
+    }
+
+    console.log('Dashboard: user is nutritionist, allowing access');
+    setIsNutritionist(true);
+    setCheckingAuth(false);
+  }, [user, loading, router]);
+
+  if (loading || checkingAuth) {
+    console.log('Dashboard: showing top-level Loading screen', {
+      loading,
+      checkingAuth,
+    });
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
         <p className="text-primary font-semibold">Loading...</p>
@@ -35,13 +75,16 @@ export default function Dashboard() {
     );
   }
 
-  if (!user || userRole !== 'nutritionist') {
+  if (!isNutritionist) {
+    console.log('Dashboard: not nutritionist or mid-redirect, rendering null');
     return null;
   }
 
+  console.log('Dashboard: rendering ProLayout + NutritionistDashboard');
+
   return (
     <ProLayout userName={userName} onSignOut={signOut}>
-      <NutritionistDashboard user={user} />
+      <NutritionistDashboard currentUser={user} />
     </ProLayout>
   );
 }

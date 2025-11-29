@@ -1,125 +1,98 @@
-import React, { useState, useEffect } from 'react';
+// src/views/pro/ClientListPage.js
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
-import { Input } from '../../components/shared/Input';
 import { Users, Search, UserPlus, Calendar, Mail, ArrowRight } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
 
-export const ClientListPage = () => {
+// currentUser is passed from ClientsPage (AuthContext.user)
+export const ClientListPage = ({ currentUser }) => {
   const router = useRouter();
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadClients();
-  }, []);
+  console.log('ClientListPage render', {
+    loading,
+    clientsLen: clients.length,
+    filteredLen: filteredClients.length,
+    path: router.asPath,
+    hasUser: !!currentUser,
+    userId: currentUser?.id,
+  });
+
+  const loadClients = useCallback(async () => {
+    console.log('ClientListPage: loadClients START');
+    setLoading(true);
+
+    try {
+      if (!currentUser) {
+        console.warn('ClientListPage: no currentUser, clearing clients');
+        setClients([]);
+        setFilteredClients([]);
+        return;
+      }
+
+      const userId = currentUser.id;
+
+      console.log('ClientListPage: fetching via /api/pro/clients for', userId);
+      const res = await fetch(`/api/pro/clients?userId=${encodeURIComponent(userId)}`);
+
+      if (!res.ok) {
+        console.error('ClientListPage: API /pro/clients not ok', res.status);
+        setClients([]);
+        setFilteredClients([]);
+        return;
+      }
+
+      const json = await res.json();
+      console.log('ClientListPage: API /pro/clients response', json);
+
+      const clientsData = json.clients || [];
+      setClients(clientsData);
+      setFilteredClients(clientsData);
+    } catch (err) {
+      console.error('ClientListPage: UNCAUGHT error in loadClients', err);
+      setClients([]);
+      setFilteredClients([]);
+    } finally {
+      console.log('ClientListPage: loadClients FINISH (setLoading(false))');
+      setLoading(false);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
-    // Filter clients based on search query
+    console.log(
+      'ClientListPage useEffect: calling loadClients for path',
+      router.asPath,
+      'with currentUser',
+      currentUser?.id
+    );
+    loadClients();
+  }, [loadClients, router.asPath, currentUser?.id]);
+
+  useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredClients(clients);
     } else {
       const query = searchQuery.toLowerCase();
-      const filtered = clients.filter(client => 
-        client.name?.toLowerCase().includes(query) ||
-        client.email?.toLowerCase().includes(query)
+      const filtered = clients.filter(
+        (client) =>
+          client.name?.toLowerCase().includes(query) ||
+          client.email?.toLowerCase().includes(query)
       );
       setFilteredClients(filtered);
     }
   }, [searchQuery, clients]);
 
-  const loadClients = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get nutritionist's id from nutritionists table
-      const { data: nutritionist, error: nutError } = await supabase
-        .from('nutritionists')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (nutError) throw nutError;
-
-      // Get all client connections for this nutritionist
-      const { data: connections, error: connError } = await supabase
-        .from('client_nutritionist')
-        .select(`
-          client_user_id,
-          created_at,
-          kcal_min,
-          kcal_max,
-          protein_min,
-          protein_max
-        `)
-        .eq('nutritionist_id', nutritionist.id)
-        .order('created_at', { ascending: false });
-
-      if (connError) throw connError;
-
-      if (!connections || connections.length === 0) {
-        setClients([]);
-        setFilteredClients([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch profile data for each client
-      const clientIds = connections.map(c => c.client_user_id);
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', clientIds);
-
-      if (profileError) throw profileError;
-
-      // Fetch user_profiles for additional info
-      const { data: userProfiles, error: upError } = await supabase
-        .from('user_profiles')
-        .select('user_id, age, goal')
-        .in('user_id', clientIds);
-
-      if (upError) throw upError;
-
-      // Fetch auth users for email (requires service role or RPC)
-      // For now, we'll skip email unless you have a way to get it
-
-      // Combine data
-      const clientsData = connections.map(conn => {
-        const profile = profiles.find(p => p.id === conn.client_user_id);
-        const userProfile = userProfiles.find(up => up.user_id === conn.client_user_id);
-        
-        return {
-          id: conn.client_user_id,
-          name: profile?.name || 'Unknown Client',
-          email: null, // We'll add this later if needed
-          age: userProfile?.age,
-          goal: userProfile?.goal,
-          connected_at: conn.created_at,
-          has_macro_bounds: !!(conn.kcal_min && conn.kcal_max),
-        };
-      });
-
-      setClients(clientsData);
-      setFilteredClients(clientsData);
-    } catch (error) {
-      console.error('Error loading clients:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
@@ -128,6 +101,7 @@ export const ClientListPage = () => {
   };
 
   if (loading) {
+    console.log('ClientListPage: showing "Loading clients..."');
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-600">Loading clients...</div>
@@ -135,6 +109,7 @@ export const ClientListPage = () => {
     );
   }
 
+  // ---- UI unchanged below ----
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -167,14 +142,12 @@ export const ClientListPage = () => {
                 No clients yet
               </h3>
               <p className="text-gray-600 max-w-md mx-auto">
-                Share your invite code with clients to get started. Once they connect, 
-                they'll appear here and you can manage their nutrition plans.
+                Share your invite code with clients to get started. Once they
+                connect, they'll appear here and you can manage their nutrition
+                plans.
               </p>
             </div>
-            <Button
-              onClick={() => router.push('/pro/profile')}
-              className="mt-4"
-            >
+            <Button onClick={() => router.push('/pro/profile')} className="mt-4">
               View My Invite Code
             </Button>
           </div>
@@ -227,7 +200,7 @@ export const ClientListPage = () => {
                   </thead>
                   <tbody>
                     {filteredClients.map((client) => (
-                      <tr 
+                      <tr
                         key={client.id}
                         className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => handleViewClient(client.id)}
@@ -240,7 +213,9 @@ export const ClientListPage = () => {
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{client.name}</p>
+                              <p className="font-medium text-gray-900">
+                                {client.name}
+                              </p>
                               {client.email && (
                                 <p className="text-sm text-gray-500 flex items-center gap-1">
                                   <Mail className="w-3 h-3" />

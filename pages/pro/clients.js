@@ -1,53 +1,77 @@
+// pages/pro/clients.js
 import React from 'react';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProLayout } from '../../src/views/pro/ProLayout';
 import { ClientListPage } from '../../src/views/pro/ClientListPage';
-import { supabase } from '../../src/supabaseClient';
 
 export default function ClientsPage() {
   const router = useRouter();
-  const { user, loading, getUserRole, signOut } = useAuth();
-  const [userRole, setUserRole] = React.useState(null);
+  const { user, loading, signOut } = useAuth();
   const [userName, setUserName] = React.useState(null);
+  const [isNutritionist, setIsNutritionist] = React.useState(false);
+  const [checkingAuth, setCheckingAuth] = React.useState(true);
+
+  console.log('ClientsPage render', {
+    loading,
+    hasUser: !!user,
+    checkingAuth,
+    isNutritionist,
+    userName,
+    path: router.asPath,
+    meta: user?.user_metadata,
+  });
 
   React.useEffect(() => {
-    if (user) {
-      getUserRole().then(setUserRole);
-    }
-  }, [user, getUserRole]);
+    console.log('ClientsPage useEffect fired', {
+      loading,
+      hasUser: !!user,
+      path: router.asPath,
+    });
 
-  // Fetch user name for ProLayout
-  React.useEffect(() => {
-    async function fetchUserName() {
-      if (!user) return;
-      
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-        
-        setUserName(data?.name || user.user_metadata?.name || 'Nutritionist');
-      } catch (error) {
-        console.error('Error fetching user name:', error);
-        setUserName(user.user_metadata?.name || 'Nutritionist');
-      }
+    if (loading) {
+      console.log('ClientsPage: still loading auth, skipping checkAuth');
+      return;
     }
-    
-    fetchUserName();
-  }, [user]);
 
-  React.useEffect(() => {
-    if (!loading && !user) {
-      router.push('/pro/login');
-    } else if (!loading && user && userRole && userRole !== 'nutritionist') {
-      router.push('/training');
+    if (!user) {
+      console.log('ClientsPage: no user, redirecting to /pro/login');
+      setCheckingAuth(false);
+      router.replace('/pro/login');
+      return;
     }
-  }, [user, loading, userRole, router]);
 
-  if (loading || !userRole) {
+    const role = user.user_metadata?.role || 'client';
+    const name = user.user_metadata?.name || 'Nutritionist';
+
+    console.log('ClientsPage: resolved role/name from metadata', {
+      role,
+      name,
+    });
+
+    setUserName(name);
+
+    if (role !== 'nutritionist') {
+      console.log(
+        'ClientsPage: user is not nutritionist (role =',
+        role,
+        '), redirecting to /training'
+      );
+      setCheckingAuth(false);
+      router.replace('/training');
+      return;
+    }
+
+    console.log('ClientsPage: user is nutritionist, allowing access');
+    setIsNutritionist(true);
+    setCheckingAuth(false);
+  }, [user, loading, router]);
+
+  if (loading || checkingAuth) {
+    console.log('ClientsPage: showing top-level Loading screen', {
+      loading,
+      checkingAuth,
+    });
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Loading...</p>
@@ -55,13 +79,19 @@ export default function ClientsPage() {
     );
   }
 
-  if (!user || userRole !== 'nutritionist') {
+  if (!isNutritionist) {
+    console.log(
+      'ClientsPage: not nutritionist or redirect in progress, rendering null'
+    );
     return null;
   }
 
+  console.log('ClientsPage: rendering ProLayout + ClientListPage');
+
   return (
     <ProLayout userName={userName} onSignOut={signOut}>
-      <ClientListPage />
+      {/* ✅ pass the current user down instead of calling supabase.auth.getUser() inside */}
+      <ClientListPage currentUser={user} />
     </ProLayout>
   );
 }

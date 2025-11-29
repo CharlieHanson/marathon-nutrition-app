@@ -13,6 +13,22 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
     { label: 'Profile', href: '/pro/profile', icon: User },
   ];
 
+  const handleSignOutClick = async () => {
+    console.log('ProLayout: logout button clicked');
+    try {
+      if (onSignOut) {
+        await onSignOut(); // actually clear Supabase + context
+      } else {
+        console.warn('ProLayout: onSignOut prop is missing');
+      }
+    } catch (e) {
+      console.warn('ProLayout: error during onSignOut', e);
+    } finally {
+      console.log('ProLayout: redirecting to /pro/login after signOut');
+      router.replace('/pro/login'); // which immediately pushes to /login?role=nutritionist
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -31,7 +47,9 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
+                const isActive =
+                  currentPath === item.href ||
+                  currentPath.startsWith(item.href + '/');
                 return (
                   <Link key={item.href} href={item.href}>
                     <button
@@ -60,7 +78,7 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
                 </button>
               </Link>
               <button
-                onClick={onSignOut}
+                onClick={handleSignOutClick}
                 className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <LogOut className="w-5 h-5" />
@@ -74,7 +92,9 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
           <div className="flex justify-around py-2">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
+              const isActive =
+                currentPath === item.href ||
+                currentPath.startsWith(item.href + '/');
               return (
                 <Link key={item.href} href={item.href}>
                   <button
