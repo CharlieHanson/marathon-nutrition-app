@@ -285,32 +285,17 @@ export async function checkOnboardingStatus(userId) {
       profile.weight &&
       profile.objective;
 
-    // 2) Preferences exist?
-    const { data: preferences, error: prefsError } = await supabase
-      .from('food_preferences')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (prefsError && prefsError.code !== 'PGRST116') {
-      console.error('checkOnboardingStatus: food_preferences error:', prefsError);
-    }
-
-    const hasPreferences = !!preferences?.id;
-
-    const hasCompletedOnboarding = hasCoreProfile && hasPreferences;
+    const hasCompletedOnboarding = hasCoreProfile;
 
     return {
       hasCompletedOnboarding,
-      hasProfile: hasCoreProfile,   // keep this key for backward compat
-      hasPreferences,
+      hasProfile: hasCoreProfile
     };
   } catch (error) {
     console.error('checkOnboardingStatus: unexpected error:', error);
     return {
       hasCompletedOnboarding: false,
-      hasProfile: false,
-      hasPreferences: false,
+      hasProfile: false
     };
   }
 }
