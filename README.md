@@ -1,197 +1,169 @@
 # Alimenta
 
-A personalized meal planning web app designed for marathon runners and athletes. Create an account, input your weekly training schedule, and get AI-powered meal suggestions tailored to your workouts and food preferences - validated by machine learning for nutritional accuracy. 
+AI-powered nutrition planning for athletes, with machine learning validation and personalized recommendations.
 
-[Link to Website](https://marathon-nutrition-app.vercel.app/)
-
-## Features
-
-- **AI-Powered Meal Generation**: GPT-3.5 creates personalized weekly meal plans based on training schedule, dietary restrictions, and fitness goals
-- **ML Validation System**: 5 specialized machine learning models (breakfast, lunch, dinner, snacks, desserts) validate macro predictions with 87% average accuracy
-- **User Authentication**: Secure account creation and login with Supabase authentication
-- **Training Plan Integration**: Weekly workout schedule input with exercise type, distance, and intensity
-- **Smart Regeneration**: Replace any meal with custom reasoning (e.g., "prefer vegetarian option")
-- **Recipe Generation**: Detailed cooking instructions with ingredients and steps for any meal
-- **Auto Grocery Lists**: Organized shopping lists by category, with download capability
-- **Data Persistence**: PostgreSQL database with Row-Level Security for user data protection
-- **Responsive Design**: Modern UI built with Tailwind CSS, works on desktop and mobile
+[Live Demo](https://marathon-nutrition-app.vercel.app/) • [Architecture](#architecture) • [ML Pipeline](#machine-learning-pipeline)
 
 ---
 
-| Model | Calories | Protein | Carbs | Fat | **Average** |
-|-------|----------|---------|-------|-----|-------------|
-| Breakfast | 91.5% | 90.0% | 86.6% | 82.0% | 87.5% |
-| Lunch | 91.4% | 89.4% | 85.5% | 86.3% | 88.2% |
-| Dinner | 93.1% | 88.9% | 88.2% | 87.3% | 89.4% |
-| Snacks | 76.4% | 89.7% | 74.5% | 87.9% | 82.1% |
-| Desserts | 89.2% | 98.4% | 85.7% | 85.7% | 89.8% |
-| **Overall** | **88.3%** | **91.3%** | **84.1%** | **85.8%** | **87.4%** |
+## Highlights
 
-*Accuracy = % of predictions within acceptable thresholds (±75 cal, ±3g protein, ±10g carbs, ±4g fat)*
+- **ML-Validated Nutrition**: 5 specialized models predict macros with 87% accuracy, reducing GPT estimation error by 40%
+- **RAG Personalization**: pgvector embeddings learn from meal ratings to improve recommendations over time
+- **Real-time Streaming**: Server-sent events deliver meal plans progressively for better UX
+- **Production Security**: Row-level security, input sanitization, and role-based access control
+- **B2B Architecture**: Multi-tenant system supporting nutritionist-client relationships (in development)
 
 ---
 
-## Tech Stack
+## What It Does
 
-**Frontend**
-- React 18 with Hooks
-- Next.js 14 for server-side rendering
-- Tailwind CSS for styling
-- Vercel serverless functions
+Athletes input their training schedule, dietary preferences, and goals. Alimenta generates a personalized weekly meal plan using GPT-4o, then validates every macro prediction through specialized ML models trained on USDA nutritional data. The system learns from user feedback: when you rate meals, those preferences feed into a RAG pipeline that improves future recommendations.
 
-**Backend**
-- Node.js serverless API (Vercel)
-- Flask API for ML predictions (Railway)
-- Supabase (PostgreSQL + Authentication)
+Here is what the meal plan page looks like:
 
-**AI & Machine Learning**
-- OpenAI GPT-3.5 API for meal generation
-- Python with scikit-learn (RandomForest, GradientBoosting)
-- TF-IDF vectorization for feature extraction
-- pandas, NumPy, joblib for data processing
-
-**DevOps**
-- GitHub Actions CI/CD pipeline
-- Automated testing (pytest, vitest)
-- Railway deployment for ML API
-- Vercel deployment for frontend
+<p align="center">
+  <img src="docs/screenshots/meals-page.png" alt="Weekly meal plan with ML-validated macros" width="700">
+</p>
 
 ---
 
 ## Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │              React Frontend (Next.js 14)                │
-│       Components | Hooks | Pages | Context              │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     ↓
-┌────────────────────────────────────────────────────────┐
-│          Vercel Serverless Functions (Node.js)         │
-│  • generate-meal-plan.js  • regenerate-meal.js         │
-│  • get-recipe.js          • generate-grocery-list.js   │
-└───────┬─────────────────────────────┬──────────────────┘
+│         Streaming UI • Custom Hooks • Tailwind          │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│            Vercel Serverless Functions                  │
+│   SSE Streaming • Auth Middleware • Rate Limiting       │
+└───────┬─────────────────────────────┬───────────────────┘
         │                             │
-        ↓                             ↓
-┌──────────────────┐       ┌──────────────────────────────┐
-│  OpenAI API      │       │  ML Validation API (Flask)   │
-│  GPT-3.5 Turbo   │       │  Railway Deployment          │
-│  (Descriptions)  │       │  5 Specialized Models        │
-└──────────────────┘       └──────────────────────────────┘
-        │
-        ↓
-┌──────────────────────────────────────────────────────┐
-│          Supabase (PostgreSQL + Auth)                │
-│  • user_profiles    • food_preferences               │
-│  • training_plans   • meal_plans                     │
-│  Row-Level Security policies                         │
-└──────────────────────────────────────────────────────┘
+        ▼                             ▼
+┌───────────────────┐     ┌───────────────────────────────┐
+│    OpenAI API     │     │   ML Validation API (Flask)   │
+│   GPT-4o Nano     │     │   5 Specialized Models        │
+└───────────────────┘     └───────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────────────────────┐
+│              Supabase (PostgreSQL)                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
+│  │ Auth + RLS  │  │ User Data   │  │ pgvector (RAG)  │  │
+│  └─────────────┘  └─────────────┘  └─────────────────┘  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Machine Learning Pipeline
 
-### Training Process
-1. **Data Collection**: 371 real foods from USDA FoodData Central API
-2. **Synthetic Generation**: 5,000+ realistic meal combinations (1,000 per meal type)
-3. **Feature Engineering**: TF-IDF vectorization of meal descriptions (200 features)
-4. **Model Training**: Ensemble methods (RandomForest + GradientBoosting)
-5. **Validation**: 80/20 train-test split with cross-validation
-6. **Deployment**: Flask REST API on Railway
+### The Problem
+GPT generates creative, contextual meal suggestions but estimates macros poorly—often 30-50% off for complex meals.
 
-### Why 5 Separate Models?
-Different meal types have distinct patterns:
-- **Breakfast**: Typically 300-700 cal, higher carbs (oats, fruit)
-- **Lunch**: 350-750 cal, balanced macros (sandwiches, salads)
-- **Dinner**: 450-900 cal, higher protein (larger portions)
-- **Snacks**: 100-400 cal, variable composition
-- **Desserts**: 100-600 cal, higher carbs and fats
+### The Solution
+Five specialized models trained on distinct meal patterns:
 
-Specialized models achieve **40% error reduction** vs. ChatGPT's predictions.
+| Model | Calories | Protein | Carbs | Fat | Average |
+|-------|----------|---------|-------|-----|---------|
+| Breakfast | 91.5% | 90.0% | 86.6% | 82.0% | **87.5%** |
+| Lunch | 91.4% | 89.4% | 85.5% | 86.3% | **88.2%** |
+| Dinner | 93.1% | 88.9% | 88.2% | 87.3% | **89.4%** |
+| Snacks | 76.4% | 89.7% | 74.5% | 87.9% | **82.1%** |
+| Desserts | 89.2% | 98.4% | 85.7% | 85.7% | **89.8%** |
 
----
+*Accuracy = predictions within ±75 cal, ±3g protein, ±10g carbs, ±4g fat*
 
-## File Structure
-```
-marathon-nutrition-app/
-├── .github/workflows/
-│   └── ci-cd.yml                 # GitHub Actions CI/CD pipeline
-├── api/                          # Serverless API functions (Node.js)
-│   ├── generate-grocery-list.js  # AI-generated shopping lists
-│   ├── generate-meals.js         # Main meal plan generation endpoint
-│   ├── get-recipe.js             # Recipe generation for specific meals
-│   └── regenerate-meal.js        # Individual meal regeneration
-├── ml-service/                   # Python ML service
-│   ├── archive/                  # Previous single model
-│   ├── breakfast/                # Breakfast-specific models
-│   ├── lunch/                    # Lunch-specific models
-│   ├── dinner/                   # Dinner-specific models
-│   ├── snacks/                   # Snacks-specific models
-│   ├── desserts/                 # Desserts-specific models
-│   ├── tests/                    # Pytest test suite
-│   ├── app.py                    # Flask API
-│   ├── requirements.txt          # Python dependencies
-│   └── Procfile                  # Railway deployment
-├── public/                       # Static assets
-│   ├── favicon.ico               # App icon
-│   ├── alimenta_logo.png         # Website logo
-│   ├── index.html                # HTML template
-│   ├── manifest.json             # PWA manifest
-│   └── robots.txt                # SEO robots file
-├── src/                          # React source code
-│   ├── components/               # Reusable React components
-│   ├── context/                  # React Context providers
-│   ├── hooks/                    # Custom React hooks
-│   ├── services/                 # Services needed
-│   ├── App.css                   # Component styles
-│   ├── App.js                    # Main application component
-│   ├── App.test.js               # Test file
-│   ├── index.css                 # Tailwind CSS imports
-│   ├── index.js                  # React app entry point
-│   ├── reportWebVitals.js        # Performance monitoring
-│   ├── setupTests.js             # Test configuration
-│   └── supabaseClient.js         # Supabase client configuration
-├── tests/                        # Frontend tests (vitest)
-├── .env.local                    # Environment variables (not committed)
-├── .gitignore                    # Git ignore rules
-├── package-lock.json             # Dependency lock file
-├── package.json                  # Dependencies and scripts
-├── postcss.config.js             # PostCSS configuration for Tailwind
-├── README.md                     # Project documentation
-└── tailwind.config.js            # Tailwind CSS configuration
-```
+### Why Separate Models?
+Meal types have distinct nutritional patterns. Breakfast skews high-carb (oats, fruit), dinner skews high-protein (larger portions). A single model averaging across these patterns underperforms specialized ones by ~15%.
+
+### Training Pipeline
+1. **Data**: 371 foods from USDA FoodData Central
+2. **Augmentation**: 5,000+ synthetic meal combinations
+3. **Features**: TF-IDF vectorization (200 features, unigrams + bigrams)
+4. **Models**: Ensemble of RandomForest + GradientBoosting
+5. **Validation**: 80/20 split with cross-validation
 
 ---
 
-## Database Schema
+## RAG Personalization
 
-### Supabase Tables
+The system improves recommendations through a feedback loop:
 
-**profiles**
-- `id` (uuid, primary key)
-- `email` (text)
-- `created_at` (timestamp)
+1. User rates generated meals (out of 5 stars)
+2. Ratings stored with meal embeddings in pgvector
+3. Future meal generation queries similar positive-rated meals
+4. Prompt includes relevant user preferences as context
 
-**user_profiles**
-- `user_id` (uuid, foreign key)
-- `height`, `weight` (text)
-- `goal`, `activity_level` (text)
-- `dietary_restrictions` (text)
+This outperforms simple preference matching because it learns from *actual behavior* rather than stated preferences.
 
-**food_preferences**
-- `user_id` (uuid, foreign key)
-- `likes`, `dislikes` (text)
+---
 
-**training_plans**
-- `user_id` (uuid, foreign key)
-- `plan` (jsonb) - weekly workout schedule
+## B2B Platform (In Development)
 
-**meal_plans**
-- `user_id` (uuid, foreign key)
-- `meals` (jsonb) - weekly meal plan
+Evolving from individual athlete tool → platform for sports nutritionists:
 
-All tables use Row-Level Security (RLS) policies.
+- **Nutritionist Dashboard**: Manage multiple client meal plans from one interface
+- **Client Onboarding**: Invitation-based system with role separation
+- **Macro Boundaries**: Nutritionists set limits; AI generates within constraints
+- **Separate Views**: Role-based UI adapts to nutritionist vs. client context
+
+Current status: Authentication and basic role separation implemented. Client management features in progress.
+
+This is what the nutritionist dashboard currently looks like:
+
+<p align="center">
+  <img src="docs/screenshots/nutrition-dashboard.png" alt="Nutritionist dashboard for managing clients" width="700">
+</p>
+
+---
+
+## Tech Stack
+
+**Frontend**: React 18, Next.js 14, Tailwind CSS, Server-Sent Events
+
+**Backend**: Node.js serverless (Vercel), Flask ML API (Railway → Render)
+
+**Database**: Supabase PostgreSQL, pgvector for embeddings, Row-Level Security
+
+**ML**: scikit-learn, TF-IDF, RandomForest/GradientBoosting ensembles
+
+**DevOps**: GitHub Actions CI/CD, pytest + vitest, automated deployment
+
+---
+
+## Project Structure
+
+```
+alimenta/
+├── _api/                     # Serverless endpoints
+│   ├── generate-meals.js     # Main generation + streaming
+│   ├── regenerate-meal.js
+│   ├── get-recipe.js
+│   ├── generate-grocery-list.js
+│   ├── rate-meal.js
+│   └── get-personalized-preferences.js
+├── ml-service/               # Python ML API
+│   ├── breakfast/            # Meal-specific models
+│   ├── lunch/
+│   ├── dinner/
+│   ├── snacks/
+│   ├── desserts/
+│   ├── app.py                # Flask API
+│   └── tests/
+├── pages/
+│   ├── pro/                  # nutritionist view pages
+│   └── all other pages       # client/user view pages 
+├── src/
+│   ├── components/           # React components
+│   ├── hooks/                # Custom hooks (data management)
+│   ├── context/              # Auth, user state
+│   └── services/             # API clients
+└── tests/                    # Frontend tests
+```
 
 ---
 
@@ -205,18 +177,11 @@ All tables use Row-Level Security (RLS) policies.
 
 ### Installation
 
-1. **Clone the repository**
 ```bash
 git clone https://github.com/CharlieHanson/marathon-nutrition-app.git
 cd marathon-nutrition-app
-```
-
-2. **Install frontend dependencies**
-```bash
 npm install
 ```
-
-3. **Set up environment variables**
 
 Create `.env.local`:
 ```env
@@ -225,89 +190,44 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 OPENAI_API_KEY=your_openai_key
 ```
 
-4. **Start development server**
 ```bash
 npm run dev
 ```
 
-### ML Service (Optional - for local development)
+### ML Service (Optional)
 ```bash
 cd ml-service
 python -m venv venv
-source venv/Scripts/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-python app.py  # Runs on http://localhost:5000
+python app.py
 ```
 
 ---
 
 ## Testing
 
-### Run all tests
 ```bash
-# Frontend tests
-npm test
-
-# ML API tests
-cd ml-service
-python -m pytest tests/ -v
+npm test                         # Frontend (vitest)
+cd ml-service && pytest tests/   # ML API (pytest)
 ```
 
-### CI/CD Pipeline
-Every push to `main` triggers:
-- ✅ Python ML model tests (15 tests)
-- ✅ Frontend tests (8 tests)
-- ✅ Model file validation
-- ✅ Auto-deployment to Vercel & Railway
-
----
-
-## Deployment
-
-### Frontend (Vercel)
-1. Push to GitHub
-2. Import repo in Vercel
-3. Add environment variables
-4. Auto-deploys on push to `main`
-
-### ML API (Railway)
-1. Connect GitHub repo
-2. Set root directory to `ml-service`
-3. Add `requirements.txt` detected automatically
-4. Auto-deploys via `Procfile`
+CI pipeline runs 23 tests on every push, validates model files, and auto-deploys to Vercel + Railway.
 
 ---
 
 ## Roadmap
 
-**Current Status**: Private beta with athletes ✅
+**Current**: Core platform live, B2B features in development
 
-### Near-term (Q1 2026)
-- **B2B Pivot**: Transform into nutritionist management platform
-  - Multi-client dashboards for nutritionists
-  - Invitation-based client onboarding
-  - Custom AI personalities per nutritionist
-  - Bulk meal plan generation
-- **Monetization**: Subscription tiers and payment processing
+**Next**: Security hardening, nutritionist dashboard completion, beta launch with pilot nutritionists
 
-### Long-term (2026+)
-- Mobile app (React Native)
-- Fitness tracker integrations (Strava, Apple Health)
-- Advanced analytics and reporting
-- API access for third-party tools
-
-**Strategic Direction**: Evolving from B2C athlete tool → B2B platform for nutritionists to manage clients at scale, combining professional expertise with AI automation.
-
----
-
-## Contributing
-
-This is a personal project built for marathon training nutrition planning. Feel free to fork and adapt for your own needs!
+**Future**: Mobile app, fitness tracker integrations (Strava, Apple Health), analytics dashboard
 
 ---
 
 ## Author
 
-**Charlie Hanson** - Lehigh University Computer Science
-- [LinkedIn](https://linkedin.com/in/charliehanson27)
-- [GitHub](https://github.com/CharlieHanson)
+**Charlie Hanson** – CS & Business @ Lehigh University
+
+[LinkedIn](https://linkedin.com/in/charliehanson27) • [GitHub](https://github.com/CharlieHanson)
