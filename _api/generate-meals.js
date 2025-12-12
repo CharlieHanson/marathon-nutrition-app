@@ -351,6 +351,113 @@ async function upsertWeekPartial({ userId, weekStarting, weekObj }) {
   }
 }
 
+/* ------------------- JSON schema for partial day generation --------------- */
+function dayJsonSchemaPartial(day, mealTypes) {
+  const properties = {};
+  for (const mt of mealTypes) {
+    properties[mt] = { type: "string" };
+  }
+  
+  return {
+    name: "DayPlan",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        day: { type: "string", enum: [day] },
+        meals: {
+          type: "object",
+          additionalProperties: false,
+          properties,
+          required: mealTypes
+        }
+      },
+      required: ["day", "meals"]
+    }
+  };
+}
+
+/* ------------------- Build prompt with existing meals context -------------- */
+async function buildDayPromptWithExisting({
+  day,
+  userProfile,
+  foodPreferences,
+  trainingPlan,
+  dislikedFoods,
+  likedFoods,
+  cuisines,
+  soFarWeek,
+  userId,
+  existingMealsForDay,
+  missingMealTypes
+}) {
+  const prevSummary = summarizePreviousMeals(soFarWeek);
+
+  // Get personalization only for missing meal types
+  const personalizationPromises = missingMealTypes.map(mt =>
+    personalizationBulletsPerMeal({ userId, mealType: mt, foodPreferences, userProfile, trainingPlan, day })
+  );
+  const personalizationResults = await Promise.all(personalizationPromises);
+  const perMealContext = personalizationResults.filter(Boolean).join('\n\n');
+
+  const dessertCategory = missingMealTypes.includes('dessert') 
+    ? pickNextDessertCategory(soFarWeek) 
+    : null;
+
+  const w = trainingPlan?.[day] || {};
+  const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${
+    w.intensity != null ? `(intensity ${w.intensity})` : ''
+  }`.trim();
+
+  // Format existing meals for context
+  const existingMealsContext = Object.entries(existingMealsForDay)
+    .filter(([mt, meal]) => meal && typeof meal === 'string' && meal.trim())
+    .map(([mt, meal]) => {
+      const cleanMeal = meal.replace(/\s*\(Cal:[^)]+\)\s*$/i, '').trim();
+      return `- ${mt}: ${cleanMeal}`;
+    })
+    .join('\n');
+
+  return `You are a sports nutritionist creating ONLY the missing meals for ${day}.
+
+USER PROFILE:
+- Height: ${userProfile?.height || 'Not specified'}
+- Weight: ${userProfile?.weight || 'Not specified'}
+- Goal: ${userProfile?.goal || 'maintain weight'}
+- Objective: ${userProfile?.objective || 'Not specified'}
+- Activity Level: ${userProfile?.activityLevel || 'moderate'}
+- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
+
+FOOD PREFERENCES:
+- Likes: ${likedFoods}
+- Dislikes: ${dislikedFoods}
+- Favorite Cuisines: ${cuisines}
+
+TRAINING (today):
+- ${dayTraining || 'Rest / easy day'}
+
+ALREADY PLANNED FOR TODAY (complement these with balanced nutrition):
+${existingMealsContext || '(none)'}
+
+WEEK SO FAR (do NOT repeat dishes / main proteins already used):
+${prevSummary || '(first day or no prior meals)'}
+
+${perMealContext || ''}
+
+CRITICAL REQUIREMENTS:
+1) Output ONLY JSON for these missing meals: ${missingMealTypes.join(', ')}
+2) Complement the existing meals with balanced nutrition for the day
+3) Avoid all foods and ingredients that are not suitable for the user's dietary restrictions
+4) Strictly avoid disliked foods
+5) Return concise meal descriptions (no macros text)
+${dessertCategory ? `6) Dessert must clearly fit the category "${dessertCategory}"` : ''}
+
+Return a JSON object with:
+- "day" equal to "${day}"
+- "meals" containing string descriptions for: ${missingMealTypes.join(', ')}
+Do not include macros in the strings.`;
+}
+
 /* --------------------------------- Handler -------------------------------- */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -364,7 +471,14 @@ export default async function handler(req, res) {
   }, 15000);
 
   try {
-    const { userProfile, foodPreferences, trainingPlan: clientTrainingPlan, userId, weekStarting } = req.body || {};
+    const { 
+      userProfile, 
+      foodPreferences, 
+      trainingPlan: clientTrainingPlan, 
+      userId, 
+      weekStarting,
+      existingMeals  // NEW: accept existing meals
+    } = req.body || {};
 
     const likedFoods    = foodPreferences?.likes || 'No preferences specified';
     const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
@@ -391,14 +505,64 @@ export default async function handler(req, res) {
       trainingPlan = summarizePlanData(clientTrainingPlan) || null;
     }
 
+    // Start with existing meals or empty object
     const week = {};
+    
+    // Helper to check if a meal slot is filled
+    const isMealFilled = (day, mealType) => {
+      const meal = existingMeals?.[day]?.[mealType];
+      return meal && typeof meal === 'string' && meal.trim().length > 0;
+    };
 
-    sendStatus(res, 'Starting weekly generation…');
+    // Helper to get missing meal types for a day
+    const getMissingMealTypes = (day) => {
+      return MEAL_TYPES.filter(mt => !isMealFilled(day, mt));
+    };
+
+    // Count total missing meals
+    let totalMissing = 0;
+    for (const day of DAYS) {
+      totalMissing += getMissingMealTypes(day).length;
+    }
+
+    // If all meals exist, just return them
+    if (totalMissing === 0) {
+      sendEvent(res, 'done', { 
+        success: true, 
+        weekStarting, 
+        userSaved: Boolean(userId),
+        message: 'All meals already filled'
+      });
+      clearInterval(keepAlive);
+      res.end();
+      return;
+    }
+
+    const hasExisting = existingMeals && Object.keys(existingMeals).length > 0;
+    sendStatus(res, hasExisting 
+      ? `Generating ${totalMissing} remaining meals…` 
+      : 'Starting weekly generation…'
+    );
 
     for (const day of DAYS) {
-      sendStatus(res, `Generating ${day.charAt(0).toUpperCase() + day.slice(1)}…`);
+      const missingMealTypes = getMissingMealTypes(day);
+      
+      // If all meals exist for this day, copy them and skip generation
+      if (missingMealTypes.length === 0) {
+        week[day] = { ...existingMeals[day] };
+        sendEvent(res, 'day', { day, meals: week[day], skipped: true });
+        continue;
+      }
 
-      const prompt = await buildDayPrompt({
+      // If some meals exist, start with those
+      if (existingMeals?.[day]) {
+        week[day] = { ...existingMeals[day] };
+      }
+
+      sendStatus(res, `Generating ${day.charAt(0).toUpperCase() + day.slice(1)}… (${missingMealTypes.join(', ')})`);
+
+      // Build prompt that includes existing meals for context
+      const prompt = await buildDayPromptWithExisting({
         day,
         userProfile,
         foodPreferences,
@@ -407,7 +571,9 @@ export default async function handler(req, res) {
         likedFoods,
         cuisines,
         soFarWeek: week,
-        userId
+        userId,
+        existingMealsForDay: existingMeals?.[day] || {},
+        missingMealTypes
       });
 
       const llm = await openai.chat.completions.create({
@@ -417,16 +583,21 @@ export default async function handler(req, res) {
         max_tokens: 500,
         response_format: {
           type: "json_schema",
-          json_schema: dayJsonSchema(day)
+          json_schema: dayJsonSchemaPartial(day, missingMealTypes)
         }
       });
 
-      let dayObj;
+      let dayObj = week[day] || {};
       try {
         const raw = llm.choices?.[0]?.message?.content ?? '';
         const parsed = JSON.parse(raw);
         if (parsed?.day === day && parsed?.meals) {
-          dayObj = parsed.meals;
+          // Only take the missing meals from the response
+          for (const mt of missingMealTypes) {
+            if (parsed.meals[mt]) {
+              dayObj[mt] = parsed.meals[mt];
+            }
+          }
         } else {
           throw new Error('Schema shape mismatch');
         }
@@ -437,19 +608,24 @@ export default async function handler(req, res) {
           try {
             const salvage = JSON.parse(m[0]);
             if (salvage?.day === day && salvage?.meals) {
-              dayObj = salvage.meals;
+              for (const mt of missingMealTypes) {
+                if (salvage.meals[mt]) {
+                  dayObj[mt] = salvage.meals[mt];
+                }
+              }
             }
           } catch {}
         }
 
-        if (!dayObj) {
+        if (missingMealTypes.every(mt => !dayObj[mt])) {
           sendEvent(res, 'error', { day, message: `Invalid JSON for ${day}, skipping` });
+          week[day] = dayObj;
           continue;
         }
       }
 
-      // attach macros
-      for (const mt of MEAL_TYPES) {
+      // Attach macros only to newly generated meals
+      for (const mt of missingMealTypes) {
         const desc = dayObj[mt];
         if (!desc) continue;
         const macros = await getMacrosFromML(desc, mt);
@@ -466,9 +642,9 @@ export default async function handler(req, res) {
         const adjustPrompt = `You produced these meals for ${day}:
 ${JSON.stringify(dayObj, null, 2)}
 
-Adjust the meals minimally so that the total daily calories land between ${minKcal} and ${maxKcal}.
+Adjust ONLY these meal types minimally so that the total daily calories land between ${minKcal} and ${maxKcal}: ${missingMealTypes.join(', ')}
 Return ONLY JSON with the same shape for this day:
-{ "day": "${day}", "meals": { ... } }`;
+{ "day": "${day}", "meals": { ${missingMealTypes.map(mt => `"${mt}": "..."`).join(', ')} } }`;
 
         const retry = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -481,14 +657,12 @@ Return ONLY JSON with the same shape for this day:
           const content2 = retry.choices?.[0]?.message?.content ?? '{}';
           const parsed2 = JSON.parse(content2);
           if (parsed2?.day === day && parsed2?.meals) {
-            const dayObj2 = parsed2.meals;
-            for (const mt of MEAL_TYPES) {
-              const desc = dayObj2[mt];
+            for (const mt of missingMealTypes) {
+              const desc = parsed2.meals[mt];
               if (!desc) continue;
               const macros = await getMacrosFromML(desc, mt);
-              dayObj2[mt] = attachMacrosText(desc, macros);
+              dayObj[mt] = attachMacrosText(desc, macros);
             }
-            dayObj = dayObj2;
           }
         } catch {
           // keep original if retry fails

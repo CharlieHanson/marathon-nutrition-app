@@ -396,3 +396,116 @@ export async function fetchAllMealPlans(userId) {
 
   return data || [];
 }
+
+// ============== SAVED MEALS ==============
+
+export async function fetchSavedMeals(userId) {
+  const { data, error } = await supabase
+    .from('saved_meals')
+    .select('*')
+    .eq('user_id', userId)
+    .order('times_used', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching saved meals:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function fetchSavedMealsByType(userId, mealType) {
+  const { data, error } = await supabase
+    .from('saved_meals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('meal_type', mealType)
+    .order('times_used', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching saved meals by type:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function saveMeal(userId, mealData) {
+  console.log('💾 Saving meal:', { userId, mealData });
+
+  // Extract macros from description if present
+  const macros = extractMacrosFromDescription(mealData.fullDescription || '');
+
+  const { data, error } = await supabase
+    .from('saved_meals')
+    .insert({
+      user_id: userId,
+      meal_type: mealData.mealType,
+      name: mealData.name,
+      full_description: mealData.fullDescription,
+      calories: macros.calories || null,
+      protein: macros.protein || null,
+      carbs: macros.carbs || null,
+      fat: macros.fat || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ Save meal error:', error);
+    return { data: null, error };
+  }
+
+  console.log('✅ Meal saved:', data);
+  return { data, error: null };
+}
+
+export async function deleteSavedMeal(userId, mealId) {
+  const { error } = await supabase
+    .from('saved_meals')
+    .delete()
+    .eq('id', mealId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('❌ Delete meal error:', error);
+    return { error };
+  }
+
+  console.log('✅ Meal deleted');
+  return { error: null };
+}
+
+export async function incrementMealUsage(mealId) {
+  const { error } = await supabase.rpc('increment_meal_usage', { meal_id: mealId });
+  
+  // Fallback if RPC doesn't exist
+  if (error) {
+    const { data } = await supabase
+      .from('saved_meals')
+      .select('times_used')
+      .eq('id', mealId)
+      .single();
+    
+    if (data) {
+      await supabase
+        .from('saved_meals')
+        .update({ times_used: (data.times_used || 0) + 1 })
+        .eq('id', mealId);
+    }
+  }
+}
+
+// Helper to extract macros from meal description string
+function extractMacrosFromDescription(description) {
+  const get = (re) => {
+    const m = description.match(re);
+    return m ? Number(m[1]) : 0;
+  };
+  return {
+    calories: get(/Cal:\s*(\d+)/i),
+    protein: get(/P:\s*(\d+)\s*g/i),
+    carbs: get(/C:\s*(\d+)\s*g/i),
+    fat: get(/F:\s*(\d+)\s*g/i),
+  };
+}

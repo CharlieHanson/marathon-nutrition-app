@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed } from 'lucide-react';
+import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { RecipeModal } from '../components/modals/RecipeModal';
@@ -9,6 +9,7 @@ import { LogMealModal } from '../components/modals/LogMealModal';
 import { calculateDayMacros } from '../services/mealService';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
 import { Tooltip } from '../components/shared/Tooltip';
+import { MealPrepModal } from '../components/modals/MealPrepModal';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -26,7 +27,13 @@ export const MealPlanPage = ({
   currentWeekStarting,
   userProfile,
   foodPreferences,
-  trainingPlan
+  trainingPlan,
+  onSaveMeal,
+  isMealSaved,
+  isGuest,
+  savedMeals,
+  onUseSavedMeal,
+  onDeleteSavedMeal
 }) => {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState('');
@@ -46,6 +53,7 @@ export const MealPlanPage = ({
   const [localStatusMessage, setLocalStatusMessage] = useState('');
 
   const [loadingRecipe, setLoadingRecipe] = useState(null);
+  const [showMealPrepModal, setShowMealPrepModal] = useState(false);
 
   // Use either the passed statusMessage or local one
   const displayMessage = statusMessage || localStatusMessage;
@@ -97,6 +105,27 @@ export const MealPlanPage = ({
     setLocalStatusMessage(`✅ Logged ${mealType} for ${day}!`);
     setTimeout(() => setLocalStatusMessage(''), 3000);
   };
+
+  // Count how many meals are filled vs total
+  const countMeals = () => {
+    let filled = 0;
+    let total = 0;
+    const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+    
+    DAYS.forEach(day => {
+      mealTypes.forEach(mt => {
+        total++;
+        const meal = mealPlan?.[day]?.[mt];
+        if (meal && typeof meal === 'string' && meal.trim()) {
+          filled++;
+        }
+      });
+    });
+    
+    return { filled, total, hasPartial: filled > 0 && filled < total };
+  };
+
+  const { filled, total, hasPartial } = countMeals();
 
   const getRecipe = async (day, mealType) => {
     setLoadingRecipe({ day, mealType }); // Add this line
@@ -276,69 +305,74 @@ export const MealPlanPage = ({
   return (
     <div className="space-y-8">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
-            {currentWeekStarting && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePreviousWeek}
-                  className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                  disabled={!onLoadWeek}
-                  title="Previous week"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-semibold text-gray-700 px-3">
-                  Week of {formatWeekDate(currentWeekStarting)}
-                </span>
-                <button
-                  onClick={handleNextWeek}
-                  className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                  disabled={!onLoadWeek}
-                  title="Next week"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                {currentWeekStarting !== getMondayOfCurrentWeek() && (
+        <div className="mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            {/* Left: Title + Week controls underneath */}
+            <div className="min-w-0">
+              <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
+
+              {currentWeekStarting && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
-                    onClick={handleCurrentWeek}
-                    className="ml-2 px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20"
+                    onClick={handlePreviousWeek}
+                    className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                    disabled={!onLoadWeek}
+                    title="Previous week"
                   >
-                    Go to Current Week
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              onClick={onGenerate}
-              disabled={isGenerating}
-              icon={Plus}
-              size="lg"
-              className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-            >
-              {isGenerating ? 'Generating...' : 'Generate Meals'}
-            </Button>
-            <Button
-              onClick={() => handleLogClick()}
-              variant="outline"
-              icon={UtensilsCrossed}
-              size="sm"
-            >
-              Log Meal
-            </Button>
-            {hasMeals && (
+
+                  <span className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
+                    Week of {formatWeekDate(currentWeekStarting)}
+                  </span>
+
+                  <button
+                    onClick={handleNextWeek}
+                    className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                    disabled={!onLoadWeek}
+                    title="Next week"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+
+                  {currentWeekStarting !== getMondayOfCurrentWeek() && (
+                    <button
+                      onClick={handleCurrentWeek}
+                      className="px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20 whitespace-nowrap"
+                    >
+                      Go to Current Week
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Action buttons (top row) */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 lg:justify-end">
               <Button
-                onClick={generateGroceryList}
-                variant="secondary"
-                icon={ShoppingCart}
-                size="sm"
+                onClick={onGenerate}
+                disabled={isGenerating}
+                icon={Plus}
+                size="lg"
+                className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
               >
-                Grocery List
+                {isGenerating ? 'Generating...' : hasPartial ? 'Generate Remaining' : 'Generate Meals'}
               </Button>
-            )}
+
+              <Button onClick={() => setShowMealPrepModal(true)} variant="outline" icon={ChefHat} size="sm">
+                Meal Prep
+              </Button>
+
+              <Button onClick={() => handleLogClick()} variant="outline" icon={UtensilsCrossed} size="sm">
+                Log Meal
+              </Button>
+
+              {hasMeals && (
+                <Button onClick={generateGroceryList} variant="secondary" icon={ShoppingCart} size="sm">
+                  Grocery List
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -412,6 +446,9 @@ export const MealPlanPage = ({
                         onCopy={handleCopyClick}
                         onLogClick={handleLogClick}
                         loadingRecipe={loadingRecipe}
+                        onSaveMeal={onSaveMeal}
+                        isMealSaved={isMealSaved}
+                        isGuest={isGuest}
                       />
                     ))}
                   </div>
@@ -431,6 +468,9 @@ export const MealPlanPage = ({
                         onCopy={handleCopyClick}
                         onLogClick={handleLogClick}
                         loadingRecipe={loadingRecipe}
+                        onSaveMeal={onSaveMeal}
+                        isMealSaved={isMealSaved}
+                        isGuest={isGuest}
                       />
                     ))}
                   </div>
@@ -463,12 +503,26 @@ export const MealPlanPage = ({
         onCopy={handleCopyMeal}
       />
 
+      <MealPrepModal
+        isOpen={showMealPrepModal}
+        onClose={() => setShowMealPrepModal(false)}
+        onApply={onUpdate}
+        onSaveMeal={onSaveMeal}
+        userProfile={userProfile}
+        foodPreferences={foodPreferences}
+        isGuest={isGuest}
+      />
+
       <LogMealModal
         isOpen={showLogModal}
         onClose={() => setShowLogModal(false)}
         onLog={handleLogMeal}
         defaultDay={logMealDefaults.day}
         defaultMealType={logMealDefaults.mealType}
+        savedMeals={savedMeals}              // Add
+        onUseSavedMeal={onUseSavedMeal}      // Add
+        onDeleteSavedMeal={onDeleteSavedMeal} // Add
+        isGuest={isGuest}                     // Add
       />
     </div>
   );
@@ -485,9 +539,18 @@ const MealCard = ({
   onGetRecipe,
   onCopy,
   onLogClick,
-  loadingRecipe  // Add this prop
+  loadingRecipe,
+  onSaveMeal,
+  isMealSaved,
+  isGuest
 }) => {
   const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
+  const isSaved = isMealSaved?.(mealType, meal);
+
+  const handleSave = async () => {
+    if (!meal || isGuest) return;
+    await onSaveMeal(mealType, meal);
+  };
 
   return (
     <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
@@ -498,6 +561,23 @@ const MealCard = ({
         <div className="flex gap-1">
           {meal ? (
             <>
+              {/* Save/Heart Button */}
+              {!isGuest && (
+                <Tooltip text={isSaved ? "Saved!" : "Save meal"}>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaved}
+                    className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
+                      isSaved
+                        ? 'bg-red-100 text-red-500 cursor-default'
+                        : 'bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500'
+                    }`}
+                  >
+                    <Heart className={`w-3 h-3 ${isSaved ? 'fill-red-500' : ''}`} />
+                  </button>
+                </Tooltip>
+              )}
+
               <Tooltip text="Copy meal">
                 <button
                   onClick={() => onCopy(day, mealType, meal)}

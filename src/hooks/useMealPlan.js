@@ -163,71 +163,88 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  // -------- GENERATE / REGENERATE --------
   const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
-    const weekStarting = currentWeekStarting || getMondayOfCurrentWeek();
+    if (!user && !isGuest) {
+      return { success: false, error: 'Not authenticated' };
+    }
 
     setIsGenerating(true);
-    setStatusMessage('🔄 Generating personalized meal plan…');
+    
+    // Check if we have existing meals
+    const hasExistingMeals = Object.values(mealPlan).some(day =>
+      day && Object.entries(day).some(([mealType, meal]) =>
+        !mealType.includes('_rating') &&
+        meal &&
+        typeof meal === 'string' &&
+        meal.trim()
+      )
+    );
+    
+    setStatusMessage(hasExistingMeals 
+      ? '🔄 Generating remaining meals...' 
+      : '🔄 Generating personalized meal plan...'
+    );
 
     try {
-      const resp = await fetch('/api/generate-meals', {
+      const response = await fetch('/api/generate-meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userProfile,
-          foodPreferences,
+        body: JSON.stringify({ 
+          userProfile, 
+          foodPreferences, 
           trainingPlan,
-          userId: user && !isGuest ? user.id : null,
-          weekStarting,
+          userId: user?.id,
+          weekStarting: currentWeekStarting,
+          existingMeals: mealPlan  // Pass current meals
         }),
       });
 
-      if (!resp.ok || !resp.body) {
-        const errText = await resp.text().catch(() => 'Unknown error');
-        throw new Error(`Request failed: ${errText}`);
-      }
-
-      setMealPlan(EMPTY_WEEK);
-      setCurrentWeekStarting(weekStarting);
-
-      const reader = resp.body.getReader();
+      // Handle SSE response
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
-      const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
       while (true) {
-        const { value, done } = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const chunks = buffer.split('\n\n');
-        buffer = chunks.pop() || '';
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-        for (const chunk of chunks) {
-          const lines = chunk.split('\n');
-          const evtLine = lines.find((l) => l.startsWith('event: '));
-          const dataLine = lines.find((l) => l.startsWith('data: '));
-          if (!evtLine || !dataLine) continue;
-
-          const evt = evtLine.replace('event: ', '').trim();
-          const data = JSON.parse(dataLine.replace('data: ', ''));
-
-          if (evt === 'status') {
-            setStatusMessage(`🔄 ${data.message}`);
-          } else if (evt === 'day') {
-            const { day, meals } = data;
-            if (!DAYS.includes(day)) continue;
-            setMealPlan((prev) => ({
-              ...prev,
-              [day]: { ...prev[day], ...meals },
-            }));
-          } else if (evt === 'error') {
-            setStatusMessage(`❌ ${data.message || 'Generation error'}`);
-          } else if (evt === 'done') {
-            setStatusMessage('✅ Meal plan generated!');
-            setTimeout(() => setStatusMessage(''), 3000);
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const eventType = line.slice(7).trim();
+            continue;
+          }
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.day && data.meals) {
+                // Update meal plan as each day comes in
+                setMealPlan(prev => ({
+                  ...prev,
+                  [data.day]: { ...prev[data.day], ...data.meals }
+                }));
+              }
+              
+              if (data.message) {
+                setStatusMessage(`🔄 ${data.message}`);
+              }
+              
+              if (data.success !== undefined) {
+                // Done event
+                setStatusMessage('✅ Meal plan generated successfully!');
+                setTimeout(() => setStatusMessage(''), 3000);
+              }
+              
+              if (data.error) {
+                console.error('Generation error:', data.error);
+              }
+            } catch (e) {
+              // Ignore parse errors for keepalive comments
+            }
           }
         }
       }

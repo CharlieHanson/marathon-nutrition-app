@@ -6,6 +6,7 @@ import { useUserProfile } from '../src/hooks/useUserProfile';
 import { useFoodPreferences } from '../src/hooks/useFoodPreferences';
 import { useTrainingPlan } from '../src/hooks/useTrainingPlan';
 import { useMealPlan } from '../src/hooks/useMealPlan';
+import { useSavedMeals } from '../src/hooks/useSavedMeals';
 import { Layout } from '../src/components/layout/Layout';
 
 export default function MealsPage() {
@@ -17,6 +18,7 @@ export default function MealsPage() {
   const preferences = useFoodPreferences(user, isGuest, reloadKey);
   const trainingPlan = useTrainingPlan(user, isGuest);
   const mealPlan = useMealPlan(user, isGuest);
+  const savedMeals = useSavedMeals(user, isGuest);
 
   React.useEffect(() => {
     if (!loading && !user && !isGuest) {
@@ -67,6 +69,12 @@ export default function MealsPage() {
         userProfile={profile.profile}
         foodPreferences={preferences.preferences}
         trainingPlan={trainingPlan.plan}
+        onSaveMeal={savedMeals.saveMealToFavorites}
+        isMealSaved={savedMeals.isMealSaved}
+        isGuest={isGuest}
+        savedMeals={savedMeals.savedMeals}
+        onUseSavedMeal={savedMeals.useSavedMeal}
+        onDeleteSavedMeal={savedMeals.removeSavedMeal}
       />
     </Layout>
   );
