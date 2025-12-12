@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { RecipeModal } from '../components/modals/RecipeModal';
 import { GroceryModal } from '../components/modals/GroceryModal';
+import { CopyMealModal } from '../components/modals/CopyMealModal';
+import { LogMealModal } from '../components/modals/LogMealModal';
 import { calculateDayMacros } from '../services/mealService';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
+import { Tooltip } from '../components/shared/Tooltip';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -32,12 +35,22 @@ export const MealPlanPage = ({
   const [showGroceryModal, setShowGroceryModal] = useState(false);
   const [groceryList, setGroceryList] = useState([]);
   
+  // Copy meal state
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyMealData, setCopyMealData] = useState({ meal: '', mealType: '', day: '' });
+  
+  // Log meal state
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logMealDefaults, setLogMealDefaults] = useState({ day: 'monday', mealType: 'lunch' });
+  
   const [localStatusMessage, setLocalStatusMessage] = useState('');
+
+  const [loadingRecipe, setLoadingRecipe] = useState(null);
 
   // Use either the passed statusMessage or local one
   const displayMessage = statusMessage || localStatusMessage;
 
-  // --- Safety: log what’s going on when it “hangs” ---
+  // --- Safety: log what's going on when it "hangs" ---
   console.log('MealPlanPage render', {
     isLoading,
     hasMealsDebug: mealPlan && Object.values(mealPlan).some(day =>
@@ -65,7 +78,28 @@ export const MealPlanPage = ({
     });
   };
 
+  const handleCopyClick = (day, mealType, meal) => {
+    setCopyMealData({ meal, mealType, day });
+    setShowCopyModal(true);
+  };
+
+  const handleCopyMeal = (targetDay, mealType, meal) => {
+    onUpdate(targetDay, mealType, meal);
+  };
+
+  const handleLogClick = (day = 'monday', mealType = 'lunch') => {
+    setLogMealDefaults({ day, mealType });
+    setShowLogModal(true);
+  };
+
+  const handleLogMeal = (day, mealType, description) => {
+    onUpdate(day, mealType, description);
+    setLocalStatusMessage(`✅ Logged ${mealType} for ${day}!`);
+    setTimeout(() => setLocalStatusMessage(''), 3000);
+  };
+
   const getRecipe = async (day, mealType) => {
+    setLoadingRecipe({ day, mealType }); // Add this line
     setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
@@ -93,6 +127,7 @@ export const MealPlanPage = ({
       setLocalStatusMessage(`❌ Error getting recipe: ${error.message}`);
     }
 
+    setLoadingRecipe(null); // Add this line
     setTimeout(() => setLocalStatusMessage(''), 3000);
   };
 
@@ -229,7 +264,7 @@ export const MealPlanPage = ({
     return () => clearTimeout(timeoutId);
   }, [mealPlan, currentWeekStarting, onSave, hasMeals]);
 
-  // ✅ Only show skeleton if loading AND we *don’t* have meals yet
+  // ✅ Only show skeleton if loading AND we *don't* have meals yet
   if (isLoading && !hasMeals) {
     return (
       <div className="space-y-8">
@@ -276,7 +311,7 @@ export const MealPlanPage = ({
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               onClick={onGenerate}
               disabled={isGenerating}
@@ -285,6 +320,14 @@ export const MealPlanPage = ({
               className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
             >
               {isGenerating ? 'Generating...' : 'Generate Meals'}
+            </Button>
+            <Button
+              onClick={() => handleLogClick()}
+              variant="outline"
+              icon={UtensilsCrossed}
+              size="sm"
+            >
+              Log Meal
             </Button>
             {hasMeals && (
               <Button
@@ -321,7 +364,7 @@ export const MealPlanPage = ({
         {!hasMeals && !isGenerating ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">
-              No meal plan generated yet. Click "Generate Meals" to create your personalized weekly meal plan!
+              No meal plan generated yet. Click "Generate Meals" to create your personalized weekly meal plan, or "Log Meal" to enter what you ate!
             </p>
           </div>
         ) : (
@@ -366,6 +409,9 @@ export const MealPlanPage = ({
                         onRate={onRate}
                         onRegenerate={handleRegenerate}
                         onGetRecipe={getRecipe}
+                        onCopy={handleCopyClick}
+                        onLogClick={handleLogClick}
+                        loadingRecipe={loadingRecipe}
                       />
                     ))}
                   </div>
@@ -382,6 +428,9 @@ export const MealPlanPage = ({
                         onRate={onRate}
                         onRegenerate={handleRegenerate}
                         onGetRecipe={getRecipe}
+                        onCopy={handleCopyClick}
+                        onLogClick={handleLogClick}
+                        loadingRecipe={loadingRecipe}
                       />
                     ))}
                   </div>
@@ -404,6 +453,23 @@ export const MealPlanPage = ({
         onClose={() => setShowGroceryModal(false)}
         groceryList={groceryList}
       />
+
+      <CopyMealModal
+        isOpen={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        meal={copyMealData.meal}
+        mealType={copyMealData.mealType}
+        currentDay={copyMealData.day}
+        onCopy={handleCopyMeal}
+      />
+
+      <LogMealModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onLog={handleLogMeal}
+        defaultDay={logMealDefaults.day}
+        defaultMealType={logMealDefaults.mealType}
+      />
     </div>
   );
 };
@@ -416,24 +482,52 @@ const MealCard = ({
   onUpdate, 
   onRate,
   onRegenerate, 
-  onGetRecipe 
+  onGetRecipe,
+  onCopy,
+  onLogClick,
+  loadingRecipe  // Add this prop
 }) => {
+  const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
+
   return (
     <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center">
         <label className="block text-sm font-semibold text-gray-700 capitalize">
           {mealType}
         </label>
-        {meal && (
-          <button
-            onClick={() => onRegenerate(day, mealType)}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
-            title="Regenerate this meal"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Regenerate
-          </button>
-        )}
+        <div className="flex gap-1">
+          {meal ? (
+            <>
+              <Tooltip text="Copy meal">
+                <button
+                  onClick={() => onCopy(day, mealType, meal)}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </Tooltip>
+
+              <Tooltip text="Regenerate meal">
+                <button
+                  onClick={() => onRegenerate(day, mealType)}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </Tooltip>
+            </>
+          ) : (
+            <Tooltip text="Log what you ate">
+              <button
+                onClick={() => onLogClick(day, mealType)}
+                className="text-xs bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded text-primary flex items-center gap-1 transition-colors"
+              >
+                <UtensilsCrossed className="w-3 h-3" />
+                Log
+              </button>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <textarea
@@ -471,9 +565,21 @@ const MealCard = ({
 
           <button
             onClick={() => onGetRecipe(day, mealType)}
-            className="w-full text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-2 rounded-md text-gray-900 font-medium transition-colors shadow-sm hover:shadow-md"
+            disabled={isLoadingRecipe}
+            className={`w-full text-sm px-3 py-2 rounded-md font-medium transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+              isLoadingRecipe
+                ? 'bg-yellow-200 text-yellow-800 cursor-wait'
+                : 'bg-yellow-100 hover:bg-yellow-200 text-gray-900'
+            }`}
           >
-            Get Recipe
+            {isLoadingRecipe ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-yellow-800 border-t-transparent rounded-full" />
+                Loading recipe...
+              </>
+            ) : (
+              'Get Recipe'
+            )}
           </button>
         </>
       )}
