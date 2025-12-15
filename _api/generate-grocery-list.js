@@ -49,16 +49,15 @@ Meals:
 ${meals.join('\n')}
 
 Rules:
-- Each meal is ONE serving. Estimate total quantity across all meals.
-- Use realistic shopping units (e.g., "1 lb", "2 cups", "1 bunch").
+- Don't use quantities from the meals; just list items needed.
 - Organize by grocery store sections (e.g., Produce, Meat, Dairy, Pantry, Bakery, Frozen).
 - No explanations, no extra fields.
 
 Return JSON that matches this structure:
 {
   "list": [
-    { "category": "Produce", "items": ["3 apples", "1 bunch spinach"] },
-    { "category": "Meat",    "items": ["2 lbs chicken breast"] }
+    { "category": "Produce", "items": ["Apples", "Spinach"] },
+    { "category": "Meat",    "items": ["Chicken breast"] }
   ]
 }`;
 

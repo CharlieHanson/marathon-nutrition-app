@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, MoreHorizontal, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { RecipeModal } from '../components/modals/RecipeModal';
@@ -10,6 +10,8 @@ import { calculateDayMacros } from '../services/mealService';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
 import { Tooltip } from '../components/shared/Tooltip';
 import { MealPrepModal } from '../components/modals/MealPrepModal';
+import { AnalyticsModal } from '../components/modals/AnalyticsModal';
+import { Dropdown } from '../components/shared/Dropdown';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -54,6 +56,21 @@ export const MealPlanPage = ({
 
   const [loadingRecipe, setLoadingRecipe] = useState(null);
   const [showMealPrepModal, setShowMealPrepModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Use either the passed statusMessage or local one
   const displayMessage = statusMessage || localStatusMessage;
@@ -126,6 +143,7 @@ export const MealPlanPage = ({
   };
 
   const { filled, total, hasPartial } = countMeals();
+  const isPlanComplete = filled === total && total > 0;
 
   const getRecipe = async (day, mealType) => {
     setLoadingRecipe({ day, mealType }); // Add this line
@@ -347,31 +365,108 @@ export const MealPlanPage = ({
               )}
             </div>
 
-            {/* Right: Action buttons (top row) */}
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 lg:justify-end">
+            {/* Right: Action buttons - single row with dropdown */}
+            <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
               <Button
                 onClick={onGenerate}
                 disabled={isGenerating}
                 icon={Plus}
                 size="lg"
-                className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+                className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
               >
                 {isGenerating ? 'Generating...' : hasPartial ? 'Generate Remaining' : 'Generate Meals'}
               </Button>
 
-              <Button onClick={() => setShowMealPrepModal(true)} variant="outline" icon={ChefHat} size="sm">
-                Meal Prep
-              </Button>
+              {isPlanComplete ? (
+                <>
+                  <Button onClick={() => setShowAnalyticsModal(true)} variant="outline" icon={BarChart3} size="sm">
+                    Analytics
+                  </Button>
 
-              <Button onClick={() => handleLogClick()} variant="outline" icon={UtensilsCrossed} size="sm">
-                Log Meal
-              </Button>
+                  {hasMeals && (
+                    <Button onClick={generateGroceryList} variant="outline" icon={ShoppingCart} size="sm">
+                      Grocery List
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => setShowMealPrepModal(true)} variant="outline" icon={ChefHat} size="sm">
+                    Meal Prep
+                  </Button>
 
-              {hasMeals && (
-                <Button onClick={generateGroceryList} variant="secondary" icon={ShoppingCart} size="sm">
-                  Grocery List
-                </Button>
+                  <Button onClick={() => handleLogClick()} variant="outline" icon={UtensilsCrossed} size="sm">
+                    Log Meal
+                  </Button>
+                </>
               )}
+
+              {/* More Actions Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                  title="More actions"
+                >
+                  <MoreHorizontal className="w-5 h-5 text-gray-600" />
+                </button>
+
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50 py-1">
+                    {isPlanComplete ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowMealPrepModal(true);
+                            setShowDropdown(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <ChefHat className="w-4 h-4" />
+                          Meal Prep
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleLogClick();
+                            setShowDropdown(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <UtensilsCrossed className="w-4 h-4" />
+                          Log Meal
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowAnalyticsModal(true);
+                            setShowDropdown(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          Analytics
+                        </button>
+
+                        {hasMeals && (
+                          <button
+                            onClick={() => {
+                              generateGroceryList();
+                              setShowDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            Grocery List
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -501,6 +596,14 @@ export const MealPlanPage = ({
         mealType={copyMealData.mealType}
         currentDay={copyMealData.day}
         onCopy={handleCopyMeal}
+      />
+
+      <AnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
+        mealPlan={mealPlan}
+        userProfile={userProfile}
+        trainingPlan={trainingPlan}
       />
 
       <MealPrepModal
