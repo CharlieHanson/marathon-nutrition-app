@@ -47,9 +47,9 @@ export const ProLandingPage = () => {
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Stop wrestling with spreadsheets and custom GPTs. Give your clients personalized meal plans that respect your macro guidance, track compliance, and scale your practice effortlessly.
+            Replace spreadsheets with AI-powered client management. Set macro boundaries, track compliance, scale your practice.
           </p>
-          
+
           <div className="flex gap-4 justify-center flex-wrap">
             <Link href="/login?role=nutritionist">
               <button className="px-8 py-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
@@ -63,7 +63,7 @@ export const ProLandingPage = () => {
           <div className="mt-12 flex flex-wrap justify-center gap-8 items-center text-gray-600 text-sm">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <span>No credit card required</span>
+              <span>Save 10+ hours per week</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -285,17 +285,6 @@ export const ProLandingPage = () => {
                 feature=""
                 right="✅ Simple invite code"
                 rightGood={true}
-              />
-
-              <ComparisonRow
-                feature="Price"
-                left="$20/mo per nutritionist"
-                leftBad={false}
-              />
-              <ComparisonRow
-                feature=""
-                right="$49/mo unlimited clients"
-                rightGood={false}
               />
             </div>
           </div>
