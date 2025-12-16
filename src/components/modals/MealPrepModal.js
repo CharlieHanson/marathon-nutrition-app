@@ -16,7 +16,7 @@ export const MealPrepModal = ({
 }) => {
   const [step, setStep] = useState(1); // 1: meal type, 2: days, 3: options
   const [selectedMealType, setSelectedMealType] = useState('lunch');
-  const [selectedDays, setSelectedDays] = useState(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+  const [selectedDays, setSelectedDays] = useState([]);
   const [options, setOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -94,7 +94,7 @@ export const MealPrepModal = ({
   const handleClose = () => {
     setStep(1);
     setSelectedMealType('lunch');
-    setSelectedDays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']);
+    setSelectedDays([]);
     setOptions([]);
     setError('');
     setApplied(false);

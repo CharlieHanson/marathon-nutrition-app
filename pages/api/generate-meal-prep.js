@@ -63,6 +63,8 @@ MEAL PREP REQUIREMENTS:
 - Must stay fresh in fridge for 5+ days
 - Easy to batch cook (scales to 4-6 servings)
 - Good for portioning into containers
+- Simple and quick to prepare
+- Only have max 2 be chicken based meals, and have at least one vegetarian option and one meat option that isn't chicken.
 
 For each option, provide:
 1. A concise meal name and description (ingredients)
