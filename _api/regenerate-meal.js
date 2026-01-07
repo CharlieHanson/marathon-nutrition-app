@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       trainingPlan
     } = req.body || {};
 
-    if (!day || !mealType || !reason || !currentMeal) {
+    if (!day || !mealType || !reason || currentMeal === undefined || currentMeal === null) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: day, mealType, reason, currentMeal'

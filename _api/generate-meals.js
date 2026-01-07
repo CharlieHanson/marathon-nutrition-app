@@ -319,8 +319,9 @@ CRITICAL REQUIREMENTS:
 4) Provide varied cuisines across the week; rotate main proteins.
 5) Use liked foods thoughtfully (≤ 3–4 appearances in the whole week).
 6) Return concise meal descriptions (no macros text).
-7) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
-8) Dessert must clearly fit the category "${dessertCategory}" and differ from earlier days until all categories are covered.
+7) Provide meals that may have more protein and calories for days where the user is training harder.
+8) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
+9) Dessert must clearly fit the category "${dessertCategory}" and differ from earlier days until all categories are covered.
 
 Return a JSON object that matches the required schema, with:
 - "day" equal to "${day}"
