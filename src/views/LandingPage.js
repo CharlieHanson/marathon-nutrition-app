@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat } from 'lucide-react';
+import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
 
 export const LandingPage = () => {
   const router = useRouter();
@@ -96,6 +96,9 @@ export const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Mobile App Section */}
+      <MobileAppCarousel />
 
       {/* Feature 1: Training Integration */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
@@ -407,6 +410,198 @@ export const LandingPage = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+// Mobile App Carousel Component
+const MobileAppCarousel = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const slides = [
+    {
+      id: 'dashboard',
+      title: 'Dashboard',
+      description: 'Your daily nutrition overview at a glance',
+      // Replace with your actual screenshot path
+      image: '/mobile-screenshots/dashboard.png',
+    },
+    {
+      id: 'meals',
+      title: 'Meal Plan',
+      description: 'AI-generated meals tailored to your training',
+      image: '/mobile-screenshots/meals.png',
+    },
+    {
+      id: 'training',
+      title: 'Training',
+      description: 'Sync your workouts for optimized nutrition',
+      image: '/mobile-screenshots/training.png',
+    },
+    {
+      id: 'preferences',
+      title: 'Preferences',
+      description: 'Customize dietary needs and restrictions',
+      image: '/mobile-screenshots/preferences.png',
+    },
+  ];
+
+  // Auto-advance carousel
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, slides.length]);
+
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+    setIsAutoPlaying(false);
+    // Resume auto-play after 10 seconds of inactivity
+    setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  const goToPrevious = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+    setIsAutoPlaying(false);
+    setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  const goToNext = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+    setIsAutoPlaying(false);
+    setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  return (
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
+            <Smartphone className="w-5 h-5 text-primary" />
+            <span className="text-primary font-semibold text-sm">Coming Soon to iOS</span>
+          </div>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Take Alimenta Anywhere
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            The same powerful AI nutrition planning, now in your pocket. Track meals, adjust training, and generate plans on the go.
+          </p>
+        </div>
+
+        {/* Carousel Container */}
+        <div className="relative max-w-4xl mx-auto">
+          {/* Navigation Arrows */}
+          <button
+            onClick={goToPrevious}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 z-10 p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="w-6 h-6 text-gray-700" />
+          </button>
+          <button
+            onClick={goToNext}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 z-10 p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="w-6 h-6 text-gray-700" />
+          </button>
+
+          {/* Phone Mockup with Screenshots */}
+          <div className="flex justify-center items-center">
+            <div className="relative">
+              {/* Phone Frame */}
+              <div className="relative mx-auto w-[280px] h-[580px] bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
+                {/* Screen */}
+                <div className="relative w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
+                  {/* Dynamic Island / Notch */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-7 bg-gray-900 rounded-b-2xl z-10"></div>
+                  
+                  {/* Screenshot Container */}
+                  <div className="relative w-full h-full">
+                    {slides.map((slide, index) => (
+                      <div
+                        key={slide.id}
+                        className={`absolute inset-0 transition-opacity duration-500 ${
+                          index === currentSlide ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      >
+                        {/* Placeholder for screenshot - replace src with actual screenshots */}
+                        <div className="w-full h-full bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
+                          <img
+                            src={slide.image}
+                            alt={`${slide.title} screen`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback placeholder if image doesn't exist
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          {/* Placeholder shown if image fails to load */}
+                          <div 
+                            className="absolute inset-0 bg-gradient-to-b from-orange-100 to-orange-50 flex-col items-center justify-center text-center p-8 hidden"
+                            style={{ display: 'none' }}
+                          >
+                            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
+                              <Smartphone className="w-8 h-8 text-primary" />
+                            </div>
+                            <p className="text-gray-500 text-sm font-medium">{slide.title}</p>
+                            <p className="text-gray-400 text-xs mt-1">Screenshot coming soon</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reflection/Glow Effect */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-orange-500/20 rounded-[4rem] blur-2xl -z-10"></div>
+            </div>
+          </div>
+
+          {/* Slide Info */}
+          <div className="text-center mt-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              {slides[currentSlide].title}
+            </h3>
+            <p className="text-gray-600">
+              {slides[currentSlide].description}
+            </p>
+          </div>
+
+          {/* Dot Navigation */}
+          <div className="flex justify-center gap-3 mt-6">
+            {slides.map((slide, index) => (
+              <button
+                key={slide.id}
+                onClick={() => goToSlide(index)}
+                className={`transition-all duration-300 ${
+                  index === currentSlide
+                    ? 'w-8 h-3 bg-primary rounded-full'
+                    : 'w-3 h-3 bg-gray-300 rounded-full hover:bg-gray-400'
+                }`}
+                aria-label={`Go to ${slide.title}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* App Store Badge Placeholder */}
+        <div className="flex justify-center mt-10">
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-xl">
+            <div className="text-2xl">🍎</div>
+            <div className="text-left">
+              <p className="text-xs text-gray-500 font-medium">Coming Soon on</p>
+              <p className="text-lg font-bold text-gray-900">App Store</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 };
 
