@@ -123,7 +123,7 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1-2 sentences), no macros.`;
+Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
 }
 
 function buildLunchPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
@@ -151,7 +151,7 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1-2 sentences), no macros.`;
+Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
 }
 
 function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
@@ -189,7 +189,7 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1-2 sentences), no macros.`;
+Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
 }
 
 function buildSnacksPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
@@ -215,7 +215,7 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY a concise snack description (1 sentence), no macros.`;
+Return ONLY a concise snack description (1 sentence, just states what the snack is), no macros.`;
 }
 
 function buildDessertPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
@@ -246,7 +246,7 @@ Category definitions:
 
 ${ragContext || ''}
 
-Return ONLY a concise dessert description (1 sentence), no macros.`;
+Return ONLY a concise dessert description (1 sentence, just states what the dessert is), no macros.`;
 }
 
 /* ---------------------- Generate single meal ---------------------- */

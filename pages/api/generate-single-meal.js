@@ -181,7 +181,7 @@ ${mealSpecificInstructions}
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1-2 sentences), no macros or extra text.`;
+Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros or extra text.`;
 }
 
 /* --------------------------------- Handler -------------------------------- */
