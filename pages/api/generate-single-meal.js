@@ -1,9 +1,19 @@
 // pages/api/generate-single-meal.js
-// Generates a single meal for an empty slot
+// Generates a single meal for an empty slot with optional user suggestions
+// Uses helper functions for variety/rotation
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getTopMealsByVector } from '../../src/lib/rag.js';
+import {
+  getBreakfastSuggestion,
+  getLunchSuggestion,
+  getDinnerSuggestion,
+  getSnackSuggestion,
+  getDessertSuggestion,
+  getTrainingContext,
+  DAYS,
+} from '../../src/lib/mealSuggestions.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey =
@@ -14,7 +24,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ML_API_URL = 'https://alimenta-ml-service.onrender.com';
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
 /* ---------------------------- Macro utils (ML) ----------------------------- */
@@ -49,60 +58,16 @@ function attachMacrosText(desc, macros) {
   return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
 }
 
-/* ---------------------- Training plan helpers ---------------------- */
-function summarizePlanData(planData) {
-  if (!planData || typeof planData !== 'object') return null;
-
-  const summary = {};
-  for (const day of DAYS) {
-    const dayObj = planData[day] || {};
-    const workouts = Array.isArray(dayObj.workouts) ? dayObj.workouts : [];
-
-    if (!workouts.length) {
-      summary[day] = { type: 'Rest', distance: '', intensity: 5 };
-      continue;
-    }
-
-    const nonRest = workouts.filter(
-      (w) => (w.type || '').toLowerCase() !== 'rest'
-    );
-    const chosen = nonRest[0] || workouts[0];
-
-    const intensities = workouts
-      .map((w) => Number(w.intensity) || 0)
-      .filter((n) => n > 0);
-    const intensity = intensities.length
-      ? Math.round(intensities.reduce((a, b) => a + b, 0) / intensities.length)
-      : 5;
-
-    summary[day] = {
-      type: chosen.type || 'Rest',
-      distance: chosen.distance || '',
-      intensity,
-    };
-  }
-
-  return summary;
-}
-
 /* ---------------------- RAG Personalization ---------------------- */
-async function getPersonalizationContext({
-  userId,
-  mealType,
-  foodPreferences,
-  userProfile,
-  trainingPlan,
-  day,
-}) {
+async function getPersonalizationContext({ userId, mealType, foodPreferences, userProfile, training }) {
   const likes = foodPreferences?.likes;
   const dislikes = foodPreferences?.dislikes;
   const cuisines = foodPreferences?.cuisines;
   const goal = userProfile?.goal;
 
-  const w = trainingPlan?.[day] || {};
-  const intensityText = `${w.type || 'easy'} ${w.distance || ''} ${
-    w.intensity != null ? `(intensity ${w.intensity})` : ''
-  }`.trim();
+  const intensityText = training?.today 
+    ? `${training.today.type || 'rest'} ${training.today.distance || ''}`
+    : '';
 
   const recs = userId
     ? await getTopMealsByVector({
@@ -114,118 +79,109 @@ async function getPersonalizationContext({
         goal,
         intensityText,
         k: 3,
-        candidateLimit: 40,
-        efSearch: 64,
       })
     : [];
 
   if (!recs?.length) return '';
   const bullets = recs.map((r) => `- ${r.meal_description} (${r.rating}★)`).join('\n');
-  return `PAST FAVORITES (${mealType}):\n${bullets}\nGenerate a NEW ${mealType} inspired by these (not identical).`;
+  return `PAST FAVORITES:\n${bullets}\nUse as inspiration, but create something NEW.`;
 }
 
-/* ---------------------- Existing meals context ---------------------- */
-function getExistingMealsContext(existingMeals, day, mealType) {
-  const lines = [];
+/* ---------------------- Get existing meals for the week ---------------------- */
+async function getExistingMeals(userId, weekStarting) {
+  if (!userId || !weekStarting) return {};
 
-  // Same day meals
-  const dayMeals = existingMeals?.[day] || {};
-  const sameDayMeals = Object.entries(dayMeals)
-    .filter(([mt, meal]) => mt !== mealType && meal && typeof meal === 'string' && meal.trim())
-    .map(([mt, meal]) => {
-      const cleanMeal = meal.replace(/\s*\(Cal:[^)]+\)\s*$/i, '').trim();
-      return `- ${mt}: ${cleanMeal}`;
-    });
+  try {
+    const { data } = await supabase
+      .from('meal_plans')
+      .select('meals')
+      .eq('user_id', userId)
+      .eq('week_starting', weekStarting)
+      .maybeSingle();
 
-  if (sameDayMeals.length > 0) {
-    lines.push(`OTHER MEALS TODAY (${day}):`);
-    lines.push(...sameDayMeals);
+    return data?.meals || {};
+  } catch (error) {
+    console.error('Error fetching existing meals:', error);
+    return {};
   }
-
-  // Recent days for variety
-  const dayIndex = DAYS.indexOf(day);
-  const recentDays = DAYS.slice(Math.max(0, dayIndex - 2), dayIndex);
-  
-  const recentMealsOfType = recentDays
-    .map((d) => {
-      const meal = existingMeals?.[d]?.[mealType];
-      if (meal && typeof meal === 'string' && meal.trim()) {
-        const cleanMeal = meal.replace(/\s*\(Cal:[^)]+\)\s*$/i, '').trim();
-        return `- ${d}: ${cleanMeal}`;
-      }
-      return null;
-    })
-    .filter(Boolean);
-
-  if (recentMealsOfType.length > 0) {
-    lines.push(`\nRECENT ${mealType.toUpperCase()} MEALS (avoid repeating):`);
-    lines.push(...recentMealsOfType);
-  }
-
-  return lines.join('\n');
 }
 
-/* ---------------------- Build prompt ---------------------- */
-async function buildPrompt({
-  day,
+/* ---------------------- Build prompt with suggestions ---------------------- */
+function buildPromptWithSuggestion({
   mealType,
   userProfile,
   foodPreferences,
-  trainingPlan,
-  existingMeals,
-  userId,
+  suggestion,
+  training,
+  ragContext,
+  userPrompt,
 }) {
-  const likedFoods = foodPreferences?.likes || 'No preferences specified';
-  const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
-  const cuisines = foodPreferences?.cuisines || 'No cuisines specified';
-
-  const w = trainingPlan?.[day] || {};
-  const dayTraining = `${w.type || 'easy'} ${w.distance || ''} ${
-    w.intensity != null ? `(intensity ${w.intensity})` : ''
-  }`.trim();
-
-  const personalization = await getPersonalizationContext({
-    userId,
-    mealType,
-    foodPreferences,
-    userProfile,
-    trainingPlan,
-    day,
-  });
-
-  const existingContext = getExistingMealsContext(existingMeals, day, mealType);
-
-  return `You are a sports nutritionist creating a single ${mealType} for ${day}.
-
-USER PROFILE:
-- Height: ${userProfile?.height || 'Not specified'}
-- Weight: ${userProfile?.weight || 'Not specified'}
+  const baseContext = `USER PROFILE:
 - Goal: ${userProfile?.goal || 'maintain weight'}
-- Objective: ${userProfile?.objective || 'Not specified'}
-- Activity Level: ${userProfile?.activityLevel || 'moderate'}
 - Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
 
 FOOD PREFERENCES:
-- Likes: ${likedFoods}
-- Dislikes: ${dislikedFoods}
-- Favorite Cuisines: ${cuisines}
+- Likes: ${foodPreferences?.likes || 'No preferences'}
+- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
+- Favorite Cuisines: ${foodPreferences?.cuisines || 'Any'}
 
-TRAINING (${day}):
-- ${dayTraining || 'Rest / easy day'}
+TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)`;
 
-${existingContext || ''}
+  const userRequest = userPrompt 
+    ? `\nUSER'S SPECIFIC REQUEST: "${userPrompt}"\nPrioritize this request while still meeting nutritional needs.`
+    : '';
 
-${personalization || ''}
+  let mealSpecificInstructions;
+
+  switch (mealType) {
+    case 'breakfast':
+      mealSpecificInstructions = `Create a ${suggestion?.type || 'balanced'}-style breakfast.
+${suggestion?.avoid?.length ? `AVOID these types (already had): ${suggestion.avoid.join(', ')}` : ''}`;
+      break;
+
+    case 'lunch':
+      mealSpecificInstructions = `Create a ${suggestion?.type || 'balanced'} for lunch.
+${suggestion?.protein ? `Use ${suggestion.protein} as the protein.` : ''}
+${suggestion?.avoid?.length ? `AVOID these formats: ${suggestion.avoid.join(', ')}` : ''}
+${suggestion?.avoidProteins?.length ? `AVOID these proteins: ${suggestion.avoidProteins.join(', ')}` : ''}`;
+      break;
+
+    case 'dinner':
+      const tomorrowIntense = training?.tomorrow?.intensity?.toLowerCase() === 'high';
+      mealSpecificInstructions = `Create a dinner with ${suggestion?.protein || 'quality protein'} as the main protein - THIS IS REQUIRED.
+${suggestion?.avoid?.length ? `DO NOT use these proteins: ${suggestion.avoid.join(', ')}` : ''}
+${tomorrowIntense ? 'Tomorrow has intense training - include good carbs.' : ''}`;
+      break;
+
+    case 'snacks':
+      mealSpecificInstructions = `Create a ${suggestion?.type || 'healthy'}-based snack.
+${suggestion?.avoid?.length ? `AVOID these types: ${suggestion.avoid.join(', ')}` : ''}
+Keep it simple and portable.`;
+      break;
+
+    case 'dessert':
+      mealSpecificInstructions = `Create a ${suggestion?.category || 'balanced'} dessert - THIS CATEGORY IS REQUIRED.
+${suggestion?.avoid?.length ? `AVOID these categories: ${suggestion.avoid.join(', ')}` : ''}
+Categories: baked (cookies, cakes), frozen (ice cream), chocolate, fruit-based, pastry/cream (mousse, custard)`;
+      break;
+
+    default:
+      mealSpecificInstructions = 'Create a balanced meal.';
+  }
+
+  return `You are a sports nutritionist creating a single ${mealType}.
+
+${baseContext}
+${userRequest}
 
 REQUIREMENTS:
-1) Generate ONE ${mealType} meal that fits the user's profile and preferences.
-2) Avoid all foods not suitable for dietary restrictions.
-3) Strictly avoid disliked foods.
-4) Complement other meals already planned for today.
-5) Avoid repeating recent ${mealType} meals from this week.
-6) Return ONLY a concise meal description (no macros, no extra text).
+${mealSpecificInstructions}
+- Respect dietary restrictions and dislikes
+- Keep portions appropriate for an athlete
 
-Return ONLY the meal description as a single line of text, nothing else.`;
+${ragContext || ''}
+
+Return ONLY a concise meal description (1-2 sentences), no macros or extra text.`;
 }
 
 /* --------------------------------- Handler -------------------------------- */
@@ -241,9 +197,8 @@ export default async function handler(req, res) {
       mealType,
       userProfile,
       foodPreferences,
-      trainingPlan: clientTrainingPlan,
       weekStarting,
-      existingMeals,
+      userPrompt, // NEW: optional user suggestion/preference
     } = req.body || {};
 
     // Validate required fields
@@ -254,36 +209,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid or missing mealType' });
     }
 
-    // Get training plan from DB if available
-    let trainingPlan = null;
+    // Get existing meals for variety checking
+    const existingMeals = await getExistingMeals(userId, weekStarting);
 
-    if (userId) {
-      const { data: activePlan, error } = await supabase
-        .from('training_plans')
-        .select('plan_data')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
+    // Get training context
+    const training = await getTrainingContext(userId, day);
 
-      if (!error && activePlan?.plan_data) {
-        trainingPlan = summarizePlanData(activePlan.plan_data);
-      }
-    }
+    // Get meal-specific suggestion
+    const suggestionFunctions = {
+      breakfast: getBreakfastSuggestion,
+      lunch: getLunchSuggestion,
+      dinner: getDinnerSuggestion,
+      snacks: getSnackSuggestion,
+      dessert: getDessertSuggestion,
+    };
 
-    // Fallback to client-sent plan
-    if (!trainingPlan && clientTrainingPlan) {
-      trainingPlan = summarizePlanData(clientTrainingPlan) || null;
-    }
+    const suggestion = suggestionFunctions[mealType](day, existingMeals, foodPreferences);
+
+    // Get RAG personalization
+    const ragContext = await getPersonalizationContext({
+      userId,
+      mealType,
+      foodPreferences,
+      userProfile,
+      training,
+    });
 
     // Build prompt
-    const prompt = await buildPrompt({
-      day,
+    const prompt = buildPromptWithSuggestion({
       mealType,
       userProfile,
       foodPreferences,
-      trainingPlan,
-      existingMeals,
-      userId,
+      suggestion,
+      training,
+      ragContext,
+      userPrompt,
     });
 
     // Generate meal with OpenAI
@@ -302,9 +262,9 @@ export default async function handler(req, res) {
 
     // Clean up any extra formatting
     mealDescription = mealDescription
-      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-      .replace(/^\d+\.\s*/, '') // Remove leading numbers
-      .replace(/^[-•]\s*/, '') // Remove bullet points
+      .replace(/^["']|["']$/g, '')
+      .replace(/^\d+\.\s*/, '')
+      .replace(/^[-•]\s*/, '')
       .trim();
 
     // Attach macros via ML service

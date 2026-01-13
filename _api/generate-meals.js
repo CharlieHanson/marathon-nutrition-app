@@ -322,6 +322,7 @@ CRITICAL REQUIREMENTS:
 7) Provide meals that may have more protein and calories for days where the user is training harder.
 8) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
 9) Dessert must clearly fit the category "${dessertCategory}" and differ from earlier days until all categories are covered.
+10) Ensure that dinners contain a balance of all the types of protein that the user likes. If the user only likes one or two, have a few dinners each plus a couple that aren't on their list of likes. NONE on the list of dislikes though.
 
 Return a JSON object that matches the required schema, with:
 - "day" equal to "${day}"
