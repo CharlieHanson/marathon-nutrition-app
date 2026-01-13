@@ -98,10 +98,47 @@ async function getPersonalizationContext({ userId, mealType, foodPreferences, us
   return `PAST FAVORITES:\n${bullets}\nUse these as inspiration for style/flavors the user enjoys, but create something NEW.`;
 }
 
+/* ---------------------- Helper to format today's meals for prompts ---------------------- */
+function formatTodaysMeals(todaysMeals) {
+  if (!todaysMeals || Object.keys(todaysMeals).length === 0) {
+    return '';
+  }
+
+  const mealLabels = {
+    breakfast: 'Breakfast',
+    lunch: 'Lunch',
+    dinner: 'Dinner',
+    snacks: 'Snacks',
+    dessert: 'Dessert',
+  };
+
+  const lines = [];
+  Object.entries(todaysMeals).forEach(([mealType, meal]) => {
+    if (meal && typeof meal === 'string' && meal.trim()) {
+      // Remove macros text for cleaner display
+      const cleanMeal = meal.replace(/\s*\(Cal:[^)]+\)\s*$/i, '').trim();
+      const label = mealLabels[mealType] || mealType.charAt(0).toUpperCase() + mealType.slice(1);
+      lines.push(`- ${label}: ${cleanMeal}`);
+    }
+  });
+
+  if (lines.length === 0) {
+    return '';
+  }
+
+  return `ALREADY GENERATED TODAY (add variety, don't repeat key ingredients):
+${lines.join('\n')}
+
+Now generate...`;
+}
+
 /* ---------------------- Prompt builders for each meal type ---------------------- */
 
-function buildBreakfastPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
+function buildBreakfastPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
   const { type, avoid } = suggestion;
+  
+  // Format already generated meals for variety
+  const alreadyGenerated = formatTodaysMeals(todaysMeals);
   
   return `You are a sports nutritionist creating a breakfast.
 
@@ -115,19 +152,27 @@ FOOD PREFERENCES:
 
 TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
 
+${alreadyGenerated}
+
 REQUIREMENTS:
 1) Create a ${type || 'balanced'}-style breakfast
 2) ${avoid?.length ? `AVOID these types (already had this week): ${avoid.join(', ')}` : ''}
 3) Respect dietary restrictions and dislikes
 4) Keep it practical and quick to prepare
+5) Add variety - don't repeat key ingredients from meals already generated today
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
+Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
 }
 
-function buildLunchPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
+function buildLunchPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
   const { type, protein, avoid, avoidProteins } = suggestion;
+  
+  // Format already generated meals for variety
+  const alreadyGenerated = formatTodaysMeals(todaysMeals);
   
   return `You are a sports nutritionist creating a lunch.
 
@@ -142,19 +187,24 @@ FOOD PREFERENCES:
 
 TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
 
+${alreadyGenerated}
+
 REQUIREMENTS:
 1) Create a ${type || 'balanced'} for lunch
 2) Use ${protein || 'a lean protein'} as the main protein
 3) ${avoid?.length ? `AVOID these formats (already had this week): ${avoid.join(', ')}` : ''}
 4) ${avoidProteins?.length ? `AVOID these proteins: ${avoidProteins.join(', ')}` : ''}
 5) Respect dietary restrictions and dislikes
+6) Add variety - don't repeat key ingredients from meals already generated today
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
+Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
 }
 
-function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
+function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
   const { protein, avoid } = suggestion;
   
   // Check if tomorrow's training is intense for carb-loading
@@ -165,6 +215,9 @@ function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training,
   const carbNote = tomorrowIntense 
     ? 'Tomorrow has intense training - include good carbs for fuel.' 
     : '';
+  
+  // Format already generated meals for variety
+  const alreadyGenerated = formatTodaysMeals(todaysMeals);
   
   return `You are a sports nutritionist creating a dinner.
 
@@ -180,20 +233,28 @@ FOOD PREFERENCES:
 TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
 TOMORROW'S TRAINING: ${training?.tomorrow?.type || 'Rest'} ${training?.tomorrow?.distance || ''}
 
+${alreadyGenerated}
+
 REQUIREMENTS:
 1) Use ${protein || 'a quality protein'} as the main protein - THIS IS REQUIRED
 2) ${avoid?.length ? `DO NOT use these proteins (already used this week): ${avoid.join(', ')}` : ''}
 3) ${carbNote}
 4) Respect dietary restrictions and dislikes
 5) Make it a satisfying, complete dinner
+6) Add variety - don't repeat key ingredients from meals already generated today
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros.`;
+Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
 }
 
-function buildSnacksPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
+function buildSnacksPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
   const { type, avoid } = suggestion;
+  
+  // Format already generated meals for variety
+  const alreadyGenerated = formatTodaysMeals(todaysMeals);
   
   return `You are a sports nutritionist creating a snack.
 
@@ -207,19 +268,27 @@ FOOD PREFERENCES:
 
 TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''}
 
+${alreadyGenerated}
+
 REQUIREMENTS:
 1) Create a ${type || 'healthy'}-based snack
 2) ${avoid?.length ? `AVOID these types (already had this week): ${avoid.join(', ')}` : ''}
 3) Keep it simple and portable
 4) Good for an athlete's energy needs
+5) Add variety - don't repeat key ingredients from meals already generated today
 
 ${ragContext || ''}
 
-Return ONLY a concise snack description (1 sentence, just states what the snack is), no macros.`;
+Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
 }
 
-function buildDessertPrompt({ userProfile, foodPreferences, suggestion, training, ragContext }) {
+function buildDessertPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
   const { category, avoid } = suggestion;
+  
+  // Format already generated meals for variety
+  const alreadyGenerated = formatTodaysMeals(todaysMeals);
   
   return `You are a sports nutritionist creating a dessert.
 
@@ -231,11 +300,14 @@ FOOD PREFERENCES:
 - Likes: ${foodPreferences?.likes || 'No preferences'}
 - Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
 
+${alreadyGenerated}
+
 REQUIREMENTS:
 1) Create a ${category} dessert - THIS CATEGORY IS REQUIRED
 2) ${avoid?.length ? `AVOID these categories (already had this week): ${avoid.join(', ')}` : ''}
 3) Keep portions reasonable for an athlete
 4) Respect dietary restrictions
+5) Add variety - don't repeat key ingredients from meals already generated today
 
 Category definitions:
 - baked: brownies, cakes, cookies, tarts, crumbles
@@ -246,11 +318,13 @@ Category definitions:
 
 ${ragContext || ''}
 
-Return ONLY a concise dessert description (1 sentence, just states what the dessert is), no macros.`;
+Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness`;
 }
 
 /* ---------------------- Generate single meal ---------------------- */
-async function generateMeal({ mealType, userProfile, foodPreferences, suggestion, training, userId }) {
+async function generateMeal({ mealType, userProfile, foodPreferences, suggestion, training, userId, todaysMeals = {} }) {
   // Get RAG personalization
   const ragContext = await getPersonalizationContext({
     userId,
@@ -275,6 +349,7 @@ async function generateMeal({ mealType, userProfile, foodPreferences, suggestion
     suggestion,
     training,
     ragContext,
+    todaysMeals,
   });
 
   // Generate with OpenAI
@@ -411,7 +486,9 @@ export default async function handler(req, res) {
     // Get all suggestions for the day (includes training context)
     const suggestions = await getDaySuggestions(userId, day, existingMeals, foodPreferences);
     
+    // Track meals generated in this session (for variety enforcement)
     const generatedMeals = { ...existingDayMeals };
+    const todaysMeals = {}; // Only newly generated meals for this session
 
     // Generate each empty meal
     for (const mealType of emptyMealTypes) {
@@ -426,9 +503,11 @@ export default async function handler(req, res) {
           suggestion: suggestions[mealType],
           training: suggestions.training,
           userId,
+          todaysMeals, // Pass what we've generated so far today
         });
 
         generatedMeals[mealType] = meal;
+        todaysMeals[mealType] = meal; // Track for next meal generation
 
         // Send progress event
         sendEvent(res, 'meal', { 
