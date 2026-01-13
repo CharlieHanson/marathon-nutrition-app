@@ -4,7 +4,7 @@
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getTopMealsByVector } from '../../src/lib/rag.js';
+import { getTopMealsByVector } from '../../shared/lib/rag.js';
 import {
   getBreakfastSuggestion,
   getLunchSuggestion,

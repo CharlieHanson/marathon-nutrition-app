@@ -41,6 +41,7 @@ ml-service/ENV/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # IDEs
 .vscode/
