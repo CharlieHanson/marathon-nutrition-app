@@ -163,9 +163,12 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+CRITICAL: (1 sentence, just states what the meal is)
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
 Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
 }
 
 function buildLunchPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
@@ -199,9 +202,13 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+CRITICAL: (1 sentence, just states what the meal is)
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
 Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
+
 }
 
 function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
@@ -245,9 +252,12 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+CRITICAL:
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
 Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
 }
 
 function buildSnacksPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
@@ -279,9 +289,12 @@ REQUIREMENTS:
 
 ${ragContext || ''}
 
-Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+CRITICAL:
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
 Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'`;
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
 }
 
 function buildDessertPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
@@ -318,9 +331,12 @@ Category definitions:
 
 ${ragContext || ''}
 
-Return ONLY the meal name and key ingredients. No macros, no cooking instructions.
+CRITICAL:
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
 Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness`;
+Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
 }
 
 /* ---------------------- Generate single meal ---------------------- */

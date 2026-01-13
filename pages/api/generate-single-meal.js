@@ -181,7 +181,10 @@ ${mealSpecificInstructions}
 
 ${ragContext || ''}
 
-Return ONLY a concise meal description (1 sentence, just states what the meal is), no macros or extra text.`;
+CRITICAL: (1 sentence, just states what the meal is)
+Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
+Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
+Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
 }
 
 /* --------------------------------- Handler -------------------------------- */
