@@ -1,0 +1,713 @@
+// meals-refactored.jsx (drop-in replacement)
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  Alert,
+  Share,
+  Animated,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useAuth } from '../../context/AuthContext';
+import { useMealPlan } from '../../hooks/useMealPlan';
+import { fetchPersonalInfo, fetchActiveTrainingPlan } from '../../../shared/lib/dataClient';
+import { apiClient } from '../../../shared/services/api';
+
+// Import components
+import { MealCard } from '../../components/meals/MealCard';
+import {
+  WeekNavigation,
+  QuickActionsRow,
+  DaySelector,
+  MacrosSummary,
+} from '../../components/meals/MealsHeader';
+import { RecipeModal } from '../../components/meals/modals/RecipeModal';
+import { GroceryListModal } from '../../components/meals/modals/GroceryListModal';
+import { RegenerateReasonModal } from '../../components/meals/modals/RegenerateReasonModal';
+import { MealOptionsBottomSheet } from '../../components/meals/modals/MealOptionsBottomSheet';
+
+// Import utilities
+import {
+  DAYS,
+  DAY_LABELS,
+  MEAL_TYPES,
+  getMondayOfCurrentWeek,
+  formatWeekDate,
+  getPreviousWeek,
+  getNextWeek,
+  parseMeal,
+  calculateDayMacros,
+  countMeals,
+} from '../../utils/mealHelpers';
+
+// Animation constants
+const EXPANDED_HEADER_HEIGHT = 280;
+const COLLAPSED_HEADER_HEIGHT = 140;
+const SCROLL_THRESHOLD = 30;
+// Footer height: paddingVertical (8*2) + minHeight (60) = 76px
+const FOOTER_HEIGHT = 76;
+
+export default function MealsScreen() {
+  const { user, isGuest } = useAuth();
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Calculate FAB position: footer height + safe area bottom + gap
+  const insets = useSafeAreaInsets();
+  const bottomOffset = FOOTER_HEIGHT + insets.bottom;
+  const fabBottom = bottomOffset + 8;
+  const fabLabelBottom = bottomOffset + 70;
+
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().getDay();
+    return DAYS[today === 0 ? 6 : today - 1];
+  });
+
+  // Modal states
+  const [showMealOptions, setShowMealOptions] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState(null);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipe, setRecipe] = useState('');
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
+  const [showGroceryModal, setShowGroceryModal] = useState(false);
+  const [groceryList, setGroceryList] = useState([]);
+  const [loadingGroceryList, setLoadingGroceryList] = useState(false);
+  const [showRegenerateReasonModal, setShowRegenerateReasonModal] = useState(false);
+  const [regenerateReason, setRegenerateReason] = useState('');
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showMealPrepModal, setShowMealPrepModal] = useState(false);
+  const [showLogMealModal, setShowLogMealModal] = useState(false);
+
+  // User data states
+  const [userProfile, setUserProfile] = useState(null);
+  const [foodPreferences, setFoodPreferences] = useState(null);
+  const [trainingPlan, setTrainingPlan] = useState(null);
+
+  const mealPlanHook = useMealPlan(user, isGuest);
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user || isGuest) return;
+
+      try {
+        const [personalInfo, training] = await Promise.all([
+          fetchPersonalInfo(user.id),
+          fetchActiveTrainingPlan(user.id),
+        ]);
+
+        setUserProfile(personalInfo?.userProfile || null);
+        setFoodPreferences(personalInfo?.foodPreferences || null);
+        setTrainingPlan(training?.plan_data || null);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUserData();
+  }, [user?.id, isGuest]);
+
+  // Auto-save meal plan
+  useEffect(() => {
+    if (!mealPlanHook.currentWeekStarting || !mealPlanHook.mealPlan) return;
+
+    const timeoutId = setTimeout(() => {
+      mealPlanHook.saveCurrentMealPlan();
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [mealPlanHook.mealPlan, mealPlanHook.currentWeekStarting]);
+
+  // Handlers
+  const handleMealPress = (mealType, parsedMeal) => {
+    setSelectedMeal({ mealType, ...parsedMeal });
+    setShowMealOptions(true);
+  };
+
+  const handleGetRecipe = async () => {
+    if (!selectedMeal || !mealPlanHook.mealPlan) return;
+
+    setLoadingRecipe(true);
+    setShowMealOptions(false);
+    setShowRecipeModal(true); // Open modal immediately
+
+    try {
+      const mealDescription = mealPlanHook.mealPlan?.[selectedDay]?.[selectedMeal.mealType];
+      const result = await apiClient.getRecipe({
+        meal: mealDescription,
+        day: selectedDay,
+        mealType: selectedMeal.mealType,
+      });
+
+      if (result.success) {
+        setRecipe(result.recipe || '');
+      } else {
+        setShowRecipeModal(false); // Close modal on error
+        Alert.alert('Error', result.error || 'Failed to get recipe');
+      }
+    } catch (error) {
+      console.error('Error getting recipe:', error);
+      setShowRecipeModal(false); // Close modal on error
+      Alert.alert('Error', 'Failed to get recipe. Please try again.');
+    } finally {
+      setLoadingRecipe(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (!selectedMeal) return;
+    setShowMealOptions(false);
+    setRegenerateReason('');
+    setShowRegenerateReasonModal(true);
+  };
+
+  const handleRegenerateConfirm = async () => {
+    if (!selectedMeal || !regenerateReason.trim()) {
+      Alert.alert('Reason Required', 'Please provide a reason for regenerating this meal.');
+      return;
+    }
+
+    setShowRegenerateReasonModal(false);
+    await mealPlanHook.regenerateMeal(selectedDay, selectedMeal.mealType, regenerateReason.trim(), {
+      userProfile,
+      foodPreferences,
+      trainingPlan,
+    });
+    setRegenerateReason('');
+  };
+
+  const handleGenerateMeals = async () => {
+    await mealPlanHook.generateMeals(userProfile, foodPreferences, trainingPlan);
+  };
+
+  const handlePreviousWeek = async () => {
+    const prevWeek = getPreviousWeek(mealPlanHook.currentWeekStarting);
+    if (prevWeek) await mealPlanHook.loadMealPlanByWeek(prevWeek);
+  };
+
+  const handleNextWeek = async () => {
+    const nextWeek = getNextWeek(mealPlanHook.currentWeekStarting);
+    if (nextWeek) await mealPlanHook.loadMealPlanByWeek(nextWeek);
+  };
+
+  const handleCurrentWeek = async () => {
+    const week = getMondayOfCurrentWeek();
+    await mealPlanHook.loadMealPlanByWeek(week);
+  };
+
+  const generateGroceryList = async () => {
+    try {
+      setLoadingGroceryList(true);
+      const allMeals = [];
+
+      Object.entries(mealPlanHook.mealPlan || {}).forEach(([day, meals]) => {
+        Object.entries(meals || {}).forEach(([mealType, meal]) => {
+          if (!meal || typeof meal !== 'string' || mealType.includes('_rating') || meal.trim() === '') return;
+          allMeals.push(meal);
+        });
+      });
+
+      if (allMeals.length === 0) {
+        Alert.alert('No Meals', 'No meals found. Generate a meal plan first!');
+        return;
+      }
+
+      const result = await apiClient.generateGroceryList({
+        meals: allMeals,
+        userProfile,
+      });
+
+      if (result.success && result.groceryList) {
+        setGroceryList(result.groceryList);
+        setShowGroceryModal(true);
+      } else {
+        throw new Error(result.error || 'Failed to generate grocery list');
+      }
+    } catch (error) {
+      console.error('Error generating grocery list:', error);
+      Alert.alert('Error', error.message || 'Failed to generate grocery list');
+    } finally {
+      setLoadingGroceryList(false);
+    }
+  };
+
+  const handleShareGroceryList = async () => {
+    try {
+      const listItems = [];
+      (groceryList || []).forEach((category) => {
+        if (category.category) {
+          listItems.push(`\n${category.category}:`);
+          (category.items || []).forEach((item) => listItems.push(`  • ${item}`));
+        }
+      });
+      await Share.share({
+        message: `Grocery List:\n${listItems.join('\n')}`,
+        title: 'Grocery List',
+      });
+    } catch (error) {
+      console.error('Error sharing grocery list:', error);
+    }
+  };
+
+  const handleShareRecipe = async () => {
+    try {
+      const mealTitle = selectedMeal?.name || 'Recipe';
+      await Share.share({
+        message: `${mealTitle}\n\n${recipe}`,
+        title: mealTitle,
+      });
+    } catch (error) {
+      console.error('Error sharing recipe:', error);
+    }
+  };
+
+  // Computed values
+  const hasMeals =
+    !!mealPlanHook.mealPlan &&
+    Object.values(mealPlanHook.mealPlan).some(
+      (day) =>
+        day &&
+        Object.entries(day).some(
+          ([mealType, meal]) => !mealType.includes('_rating') && meal && typeof meal === 'string' && meal.trim()
+        )
+    );
+
+  const { hasPartial } = countMeals(mealPlanHook.mealPlan);
+  const dayMacros = mealPlanHook.mealPlan
+    ? calculateDayMacros(mealPlanHook.mealPlan[selectedDay])
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+  const isCurrentWeek = mealPlanHook.currentWeekStarting === getMondayOfCurrentWeek();
+
+  // Animation interpolations
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [EXPANDED_HEADER_HEIGHT, COLLAPSED_HEADER_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  const weekNavOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const weekNavHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [56, 0],
+    extrapolate: 'clamp',
+  });
+
+  const weekNavTranslateY = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [0, -40],
+    extrapolate: 'clamp',
+  });
+
+  const macrosOpacity = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const macrosHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [110, 0],
+    extrapolate: 'clamp',
+  });
+
+  const macrosTranslateY = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [0, -40],
+    extrapolate: 'clamp',
+  });
+
+  // ↑ Make collapsed spacing consistent (top of actions == bottom of day chips)
+  const quickActionsPaddingTop = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [12, 8],
+    extrapolate: 'clamp',
+  });
+
+  const quickActionsPaddingBottom = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [12, 8],
+    extrapolate: 'clamp',
+  });
+
+  const dayPillsPaddingTop = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [12, 8],
+    extrapolate: 'clamp',
+  });
+
+  const dayPillsPaddingBottom = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [12, 8],
+    extrapolate: 'clamp',
+  });
+
+  const weekNavBorderWidth = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const macrosBorderWidth = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  if (mealPlanHook.isLoading && !hasMeals) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#F6921D" />
+        <Text style={styles.loadingText}>Loading meal plan...</Text>
+      </View>
+    );
+  }
+
+  const statusBannerHeight = mealPlanHook.statusMessage || mealPlanHook.isGenerating ? 48 : 0;
+
+  return (
+    <View style={styles.container}>
+      {/* Status Banner */}
+      {mealPlanHook.statusMessage || mealPlanHook.isGenerating ? (
+        <View
+          style={[
+            styles.statusBanner,
+            mealPlanHook.statusMessage?.includes('✅') && styles.statusBannerSuccess,
+            mealPlanHook.statusMessage?.includes('❌') && styles.statusBannerError,
+          ]}
+        >
+          {mealPlanHook.isGenerating ? (
+            <ActivityIndicator
+              size="small"
+              color={
+                mealPlanHook.statusMessage?.includes('❌')
+                  ? '#DC2626'
+                  : mealPlanHook.statusMessage?.includes('✅')
+                  ? '#059669'
+                  : '#1E40AF'
+              }
+              style={{ marginRight: 8 }}
+            />
+          ) : null}
+
+          <Text
+            style={[
+              styles.statusText,
+              mealPlanHook.statusMessage?.includes('✅') && { color: '#065F46' },
+              mealPlanHook.statusMessage?.includes('❌') && { color: '#991B1B' },
+            ]}
+            numberOfLines={2}
+          >
+            {mealPlanHook.isGenerating && !mealPlanHook.statusMessage
+              ? 'Generating personalized meal plan...'
+              : mealPlanHook.statusMessage}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Collapsible Header Card */}
+      <Animated.View
+        style={[
+          styles.headerCard,
+          {
+            height: headerHeight,
+            position: 'absolute',
+            top: statusBannerHeight,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            marginHorizontal: 12,
+            marginTop: 10,
+          },
+        ]}
+      >
+        <WeekNavigation
+          currentWeekStarting={mealPlanHook.currentWeekStarting}
+          isCurrentWeek={isCurrentWeek}
+          formatWeekDate={formatWeekDate}
+          onPreviousWeek={handlePreviousWeek}
+          onNextWeek={handleNextWeek}
+          onCurrentWeek={handleCurrentWeek}
+          isGuest={isGuest}
+          user={user}
+          animatedStyle={{
+            opacity: weekNavOpacity,
+            maxHeight: weekNavHeight,
+            overflow: 'hidden',
+            borderBottomWidth: weekNavBorderWidth,
+            transform: [{ translateY: weekNavTranslateY }],
+          }}
+        />
+
+        <QuickActionsRow
+          hasMeals={hasMeals}
+          onAnalytics={() => setShowAnalyticsModal(true)}
+          onGroceryList={generateGroceryList}
+          onMealPrep={() => setShowMealPrepModal(true)}
+          onLogMeal={() => setShowLogMealModal(true)}
+          loadingGroceryList={loadingGroceryList}
+          animatedStyle={{
+            paddingTop: quickActionsPaddingTop,
+            paddingBottom: quickActionsPaddingBottom,
+          }}
+        />
+
+        <DaySelector
+          days={DAYS}
+          dayLabels={DAY_LABELS}
+          selectedDay={selectedDay}
+          onSelectDay={setSelectedDay}
+          animatedStyle={{
+            paddingTop: dayPillsPaddingTop,
+            paddingBottom: dayPillsPaddingBottom,
+          }}
+        />
+
+        <MacrosSummary
+          dayMacros={dayMacros}
+          animatedStyle={{
+            opacity: macrosOpacity,
+            maxHeight: macrosHeight,
+            overflow: 'hidden',
+            borderTopWidth: macrosBorderWidth,
+            transform: [{ translateY: macrosTranslateY }],
+          }}
+        />
+      </Animated.View>
+
+      {/* Body */}
+      {!hasMeals ? (
+        <View style={[styles.emptyState, { marginTop: EXPANDED_HEADER_HEIGHT + statusBannerHeight + 20 }]}>
+          <Ionicons name="restaurant-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.emptyStateTitle}>No meal plan yet</Text>
+          <Text style={styles.emptyStateText}>
+            Tap the + button to generate your personalized weekly meal plan!
+          </Text>
+        </View>
+      ) : (
+        <Animated.ScrollView
+          style={styles.mealsScroll}
+          contentContainerStyle={[
+            styles.mealsContent,
+            { paddingTop: EXPANDED_HEADER_HEIGHT + statusBannerHeight + 20 },
+          ]}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+            useNativeDriver: false,
+          })}
+          scrollEventThrottle={16}
+        >
+          {MEAL_TYPES.map((mealType) => (
+            <MealCard
+              key={mealType}
+              mealType={mealType}
+              meal={mealPlanHook.mealPlan?.[selectedDay]?.[mealType] || ''}
+              rating={mealPlanHook.mealPlan?.[selectedDay]?.[`${mealType}_rating`] || 0}
+              onRate={(rating) => mealPlanHook.rateMeal(selectedDay, mealType, rating)}
+              onMealPress={handleMealPress}
+              parseMeal={parseMeal}
+            />
+          ))}
+        </Animated.ScrollView>
+      )}
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: fabBottom }]}
+        onPress={handleGenerateMeals}
+        disabled={mealPlanHook.isGenerating}
+      >
+        {mealPlanHook.isGenerating ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        )}
+      </TouchableOpacity>
+
+      {!mealPlanHook.isGenerating ? (
+        <View style={[styles.fabLabel, { bottom: fabLabelBottom }]}>
+          <Text style={styles.fabLabelText}>{hasPartial ? 'Generate Remaining' : 'Generate Meals'}</Text>
+        </View>
+      ) : null}
+
+      {/* Modals */}
+      <MealOptionsBottomSheet
+        visible={showMealOptions}
+        mealName={selectedMeal?.name}
+        rating={mealPlanHook.mealPlan?.[selectedDay]?.[`${selectedMeal?.mealType}_rating`]}
+        onRate={(rating) => mealPlanHook.rateMeal(selectedDay, selectedMeal?.mealType, rating)}
+        onGetRecipe={handleGetRecipe}
+        onRegenerate={handleRegenerate}
+        onClose={() => setShowMealOptions(false)}
+        loadingRecipe={loadingRecipe}
+      />
+
+      <RecipeModal
+        visible={showRecipeModal}
+        recipe={recipe}
+        mealName={selectedMeal?.name}
+        onClose={() => setShowRecipeModal(false)}
+        onShare={handleShareRecipe}
+        loading={loadingRecipe}
+      />
+
+      <GroceryListModal
+        visible={showGroceryModal}
+        groceryList={groceryList}
+        onShare={handleShareGroceryList}
+        onClose={() => setShowGroceryModal(false)}
+      />
+
+      <RegenerateReasonModal
+        visible={showRegenerateReasonModal}
+        reason={regenerateReason}
+        onChangeReason={setRegenerateReason}
+        onConfirm={handleRegenerateConfirm}
+        onClose={() => {
+          setShowRegenerateReasonModal(false);
+          setRegenerateReason('');
+        }}
+      />
+
+      {/* Placeholder Modals */}
+      <Modal
+        visible={showAnalyticsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAnalyticsModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAnalyticsModal(false)}>
+          <Pressable style={styles.placeholderModal} onPress={() => {}}>
+            <View style={styles.placeholderModalHeader}>
+              <Text style={styles.placeholderModalTitle}>Analytics</Text>
+              <TouchableOpacity onPress={() => setShowAnalyticsModal(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.placeholderText}>Analytics coming soon...</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showMealPrepModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMealPrepModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowMealPrepModal(false)}>
+          <Pressable style={styles.placeholderModal} onPress={() => {}}>
+            <View style={styles.placeholderModalHeader}>
+              <Text style={styles.placeholderModalTitle}>Meal Prep</Text>
+              <TouchableOpacity onPress={() => setShowMealPrepModal(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.placeholderText}>Meal prep coming soon...</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showLogMealModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLogMealModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowLogMealModal(false)}>
+          <Pressable style={styles.placeholderModal} onPress={() => {}}>
+            <View style={styles.placeholderModalHeader}>
+              <Text style={styles.placeholderModalTitle}>Log Meal</Text>
+              <TouchableOpacity onPress={() => setShowLogMealModal(false)}>
+                <Ionicons name="close" size={22} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.placeholderText}>Log meal coming soon...</Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' },
+  loadingText: { marginTop: 14, fontSize: 15, color: '#6B7280', fontWeight: '600' },
+
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FFEDD5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FED7AA',
+  },
+  statusBannerSuccess: { backgroundColor: '#D1FAE5', borderBottomColor: '#A7F3D0' },
+  statusBannerError: { backgroundColor: '#FEE2E2', borderBottomColor: '#FECACA' },
+  statusText: { fontSize: 13, fontWeight: '600', color: '#111827', flex: 1 },
+
+  headerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FED7AA',
+    overflow: 'hidden',
+    shadowColor: '#F6921D',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  emptyStateTitle: { fontSize: 20, fontWeight: '900', color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyStateText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, fontWeight: '600' },
+
+  mealsScroll: { flex: 1 },
+  mealsContent: { padding: 16, paddingBottom: 140 },
+
+  fab: {
+    position: 'absolute',
+    right: 18,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F6921D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  fabLabel: {
+    position: 'absolute',
+    right: 18,
+    backgroundColor: '#111827',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  fabLabelText: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  placeholderModal: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, maxHeight: '55%' },
+  placeholderModalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  placeholderModalTitle: { flex: 1, fontSize: 18, fontWeight: '900', color: '#111827' },
+  placeholderText: { fontSize: 15, color: '#6B7280', textAlign: 'center', marginTop: 10, fontWeight: '700' },
+});
