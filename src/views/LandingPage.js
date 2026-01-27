@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat, ChevronLeft, ChevronRight, Smartphone, HelpCircle } from 'lucide-react';
 
 export const LandingPage = () => {
   const router = useRouter();
@@ -19,8 +19,16 @@ export const LandingPage = () => {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
+              <Link href="/help">
+                <button 
+                  className="p-2 text-gray-600 hover:text-primary hover:bg-orange-50 rounded-lg transition-colors"
+                  title="Help"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </button>
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/pro">
