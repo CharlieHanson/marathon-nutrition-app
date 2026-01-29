@@ -135,6 +135,29 @@ This is what the nutritionist dashboard currently looks like:
 
 ---
 
+## Mobile Development
+
+The Alimenta mobile app is built with **Expo** and **React Native**, using **Expo Router** for file-based navigation. It shares auth, data, and API logic with the web app via the `shared/` package (Supabase clients, API client, meal helpers) and talks to the same Next.js API and Supabase backend.
+
+**Stack**: React Native, Expo SDK, Expo Router, shared Supabase/API code, theme support (light/dark).
+
+**Features**: Weekly meal plan with day selector and meal cards, training plan view, food preferences (categories, cuisines, likes/dislikes), profile and settings, onboarding flow, recipe and grocery modals, meal ratings and RAG-powered personalization. Email confirmation deep-links into the app (`alimenta://login`).
+
+The app is currently being tested via **TestFlight** and is expected to be on the **App Store** soon.
+
+Screenshots (iOS):
+
+<p align="center">
+  <img src="public/mobile-screenshots/dashboard.png" alt="Mobile dashboard" width="220">
+  <img src="public/mobile-screenshots/meals.png" alt="Mobile meal plan" width="220">
+</p>
+<p align="center">
+  <img src="public/mobile-screenshots/training.png" alt="Mobile training plan" width="220">
+  <img src="public/mobile-screenshots/preferences.png" alt="Mobile food preferences" width="220">
+</p>
+
+---
+
 ## Project Structure
 
 ```
@@ -222,7 +245,7 @@ CI pipeline runs 23 tests on every push, validates model files, and auto-deploys
 
 **Next**: Security hardening, nutritionist dashboard completion, beta launch with pilot nutritionists
 
-**Future**: Mobile app, fitness tracker integrations (Strava, Apple Health), analytics dashboard
+**Future**: Fitness tracker integrations (Strava, Apple Health), analytics dashboard
 
 ---
 
