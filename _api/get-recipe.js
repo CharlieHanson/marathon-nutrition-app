@@ -82,7 +82,7 @@ export default async function handler(req, res) {
 Return ONLY JSON that matches the provided schema. No extra text.`;
 
     const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
       max_tokens: 700,

@@ -86,7 +86,7 @@ Return ONLY valid JSON in this exact format:
 Generate 4 diverse options that match the user's preferences. Do NOT include macro information.`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 800,

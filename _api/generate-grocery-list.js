@@ -62,7 +62,7 @@ Return JSON that matches this structure:
 }`;
 
     const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
       max_tokens: 900,

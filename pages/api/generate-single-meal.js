@@ -251,7 +251,7 @@ export default async function handler(req, res) {
 
     // Generate meal with OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 150,
