@@ -1,85 +1,90 @@
 // pages/auth/redirect.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
-import { checkOnboardingStatus } from '../../src/dataClient'; 
+import { checkOnboardingStatus } from '../../src/dataClient';
 
 export default function AuthRedirect() {
   const router = useRouter();
   const { user, loading, getUserRole } = useAuth();
-  // Mobile app handling commented out – all logins go through web app
-  // const [isMobile, setIsMobile] = useState(null);
-  // const [showFallback, setShowFallback] = useState(false);
+  const [showMobileChoice, setShowMobileChoice] = useState(false);
 
-  // useEffect(() => {
-  //   const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  //   setIsMobile(mobile);
-  //   if (mobile) {
-  //     window.location.href = 'alimenta://login';
-  //     const timeout = setTimeout(() => setShowFallback(true), 1500);
-  //     return () => clearTimeout(timeout);
-  //   }
-  // }, []);
+  const routeUser = async () => {
+    try {
+      const role = await getUserRole();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      if (loading) return;
-
-      if (!user) {
-        router.replace('/login');
+      if (role === 'nutritionist') {
+        router.replace('/pro/dashboard');
         return;
       }
 
-      try {
-        const role = await getUserRole();
-        if (cancelled) return;
+      const status = await checkOnboardingStatus(user.id);
 
-        if (role === 'nutritionist') {
-          router.replace('/pro/dashboard');
-          return;
-        }
-
-        const status = await checkOnboardingStatus(user.id);
-        if (cancelled) return;
-
-        if (!status?.hasCompletedOnboarding) {
-          router.replace('/onboarding');
-        } else {
-          router.replace('/training');
-        }
-      } catch (e) {
-        console.error('AuthRedirect: error getting role/onboarding status', e);
-        router.replace('/login');
+      if (!status?.hasCompletedOnboarding) {
+        router.replace('/onboarding');
+      } else {
+        router.replace('/training');
       }
-    };
+    } catch (e) {
+      console.error('AuthRedirect: error routing user', e);
+      router.replace('/login');
+    }
+  };
 
-    run();
-    return () => { cancelled = true; };
-  }, [user?.id, loading, getUserRole, router]);
+  useEffect(() => {
+    if (loading) return;
 
-  // Mobile-specific UI commented out – all users see "Signing you in..." then redirect
-  // if (isMobile) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-6">
-  //       <div className="text-center max-w-sm">
-  //         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-  //           <CheckIcon />
-  //         </div>
-  //         <h1 className="text-2xl font-bold text-gray-900 mb-2">Email Confirmed!</h1>
-  //         <p className="text-gray-600 mb-6">Opening Alimenta...</p>
-  //         {showFallback && (
-  //           <div className="space-y-3">
-  //             <p className="text-sm text-gray-500">Didn't open automatically?</p>
-  //             <a href="alimenta://login" className="...">Open App</a>
-  //             <button onClick={() => router.push('/login')} className="...">Continue on Web</button>
-  //           </div>
-  //         )}
-  //       </div>
-  //     </div>
-  //   );
-  // }
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      setShowMobileChoice(true);
+    } else {
+      routeUser();
+    }
+  }, [user?.id, loading]);
+
+  const handleOpenApp = () => {
+    window.location.href = 'alimenta://login';
+  };
+
+  const handleContinueInBrowser = () => {
+    setShowMobileChoice(false);
+    routeUser();
+  };
+
+  if (showMobileChoice) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-6">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckIcon />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h1>
+          <p className="text-gray-600 mb-6">Where would you like to continue?</p>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleOpenApp}
+              className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+            >
+              Open in App
+            </button>
+            <button
+              onClick={handleContinueInBrowser}
+              className="w-full py-3 px-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-lg border border-gray-300 transition-colors"
+            >
+              Continue in Browser
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
