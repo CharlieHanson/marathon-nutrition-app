@@ -4,8 +4,8 @@ const APP_NAME = "Alimenta";
 const EFFECTIVE_DATE = "January 13, 2026";
 
 // TODO: Replace placeholders with your real info
-const COMPANY_NAME = "[Company Name / Legal Entity]";
-const CONTACT_EMAIL = "[support@yourdomain.com]";
+const COMPANY_NAME = "Alimenta Nutrition";
+const CONTACT_EMAIL = "alimentanutrition@gmail.com";
 const CONTACT_ADDRESS = "[Company Address]";
 
 export default function TermsPage() {
@@ -188,9 +188,9 @@ export default function TermsPage() {
           <section style={styles.section}>
             <h2 style={styles.h2}>14. Governing Law</h2>
             <p style={styles.p}>
-              These Terms are governed by the laws of <strong>[Your State/Country]</strong>, without
+              These Terms are governed by the laws of <strong>the United States</strong>, without
               regard to conflict of law rules. Venue for disputes will be in{" "}
-              <strong>[Your County/State]</strong>, unless otherwise required by law.
+              <strong>California</strong>, unless otherwise required by law.
             </p>
           </section>
 
@@ -198,9 +198,6 @@ export default function TermsPage() {
             <h2 style={styles.h2}>15. Contact</h2>
             <p style={styles.p}>
               Questions about these Terms? Contact us at <strong>{CONTACT_EMAIL}</strong>.
-            </p>
-            <p style={styles.p}>
-              Mailing address: <strong>{CONTACT_ADDRESS}</strong>
             </p>
           </section>
 

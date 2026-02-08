@@ -28,7 +28,7 @@ export const UpdatePasswordPage = () => {
         setMessage('❌ This link is invalid or has expired. Please request a new password reset email.');
       } else {
         // Optional: show a friendly message, or leave blank if you prefer
-        setMessage('Enter your new password below.');
+        setMessage('Enter your new password above.');
       }
     })();
 

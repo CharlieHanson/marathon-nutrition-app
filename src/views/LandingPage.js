@@ -407,6 +407,18 @@ export const LandingPage = () => {
           <p className="text-sm text-gray-600">
             © 2026 Alimenta. Built with AI for athletes who demand precision.
           </p>
+          <div className="mt-4 flex justify-center gap-6">
+            <Link href="/privacy">
+              <button className="text-sm text-gray-600 hover:text-primary transition-colors">
+                Privacy Policy
+              </button>
+            </Link>
+            <Link href="/terms">
+              <button className="text-sm text-gray-600 hover:text-primary transition-colors">
+                Terms of Service
+              </button>
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
