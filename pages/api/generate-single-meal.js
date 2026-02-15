@@ -1,193 +1,64 @@
-// pages/api/generate-single-meal.js
-// Generates a single meal for an empty slot with optional user suggestions
-// Uses helper functions for variety/rotation
+/**
+ * generate-single-meal.js
+ * pages/api/generate-single-meal.js
+ *
+ * Generate ONE meal for a specific slot. Supports optional userPrompt hint.
+ * NEW PIPELINE: TDEE → budget → OpenAI → density → scaler
+ *
+ * Body: { userId, day, mealType, userProfile, foodPreferences, trainingPlan,
+ *         weekStarting?, userPrompt?, ragContext? }
+ *
+ * Returns: { success, meal: "Name (Cal: X, ...)", day, mealType, meal_v2: {...} }
+ * Optionally upserts to meal_plans table.
+ */
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getTopMealsByVector } from '../../src/lib/rag.js';
-import {
-  getBreakfastSuggestion,
-  getLunchSuggestion,
-  getDinnerSuggestion,
-  getSnackSuggestion,
-  getDessertSuggestion,
-  getTrainingContext,
-  DAYS,
-} from '../../shared/lib/mealSuggestions.js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
+import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ML_API_URL = 'https://alimenta-ml-service.onrender.com';
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
-/* ---------------------------- Macro utils (ML) ----------------------------- */
-async function getMacrosFromML(mealDescription, mealType) {
-  try {
-    const endpointMap = {
-      breakfast: '/predict-breakfast',
-      lunch: '/predict-lunch',
-      dinner: '/predict-dinner',
-      snacks: '/predict-snacks',
-      dessert: '/predict-desserts',
-    };
-    const endpoint = endpointMap[mealType];
-    if (!endpoint) return null;
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-    const resp = await fetch(`${ML_API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meal: mealDescription }),
-    });
-    const data = await resp.json();
-    if (data?.success) return data.predictions;
-  } catch (err) {
-    console.error('ML macro prediction error:', err);
-  }
-  return null;
-}
+const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
+const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
 
-function attachMacrosText(desc, macros) {
-  if (!macros) return desc;
-  const c = (n) => Math.round(Number(n) || 0);
-  return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
-}
-
-/* ---------------------- RAG Personalization ---------------------- */
-async function getPersonalizationContext({ userId, mealType, foodPreferences, userProfile, training }) {
-  const likes = foodPreferences?.likes;
-  const dislikes = foodPreferences?.dislikes;
-  const cuisines = foodPreferences?.cuisines;
-  const goal = userProfile?.goal;
-
-  const intensityText = training?.today 
-    ? `${training.today.type || 'rest'} ${training.today.distance || ''}`
-    : '';
-
-  const recs = userId
-    ? await getTopMealsByVector({
-        userId,
-        mealType,
-        likes,
-        dislikes,
-        cuisines,
-        goal,
-        intensityText,
-        k: 3,
-      })
-    : [];
-
-  if (!recs?.length) return '';
-  const bullets = recs.map((r) => `- ${r.meal_description} (${r.rating}★)`).join('\n');
-  return `PAST FAVORITES:\n${bullets}\nUse as inspiration, but create something NEW.`;
-}
-
-/* ---------------------- Get existing meals for the week ---------------------- */
-async function getExistingMeals(userId, weekStarting) {
-  if (!userId || !weekStarting) return {};
-
-  try {
-    const { data } = await supabase
-      .from('meal_plans')
-      .select('meals')
-      .eq('user_id', userId)
-      .eq('week_starting', weekStarting)
-      .maybeSingle();
-
-    return data?.meals || {};
-  } catch (error) {
-    console.error('Error fetching existing meals:', error);
-    return {};
+function parseJSON(text) {
+  let s = text.trim();
+  if (s.startsWith('```json')) s = s.slice(7);
+  else if (s.startsWith('```')) s = s.slice(3);
+  if (s.endsWith('```')) s = s.slice(0, -3);
+  s = s.trim();
+  try { return JSON.parse(s); } catch {
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+    throw new Error('Failed to parse AI JSON');
   }
 }
 
-/* ---------------------- Build prompt with suggestions ---------------------- */
-function buildPromptWithSuggestion({
-  mealType,
-  userProfile,
-  foodPreferences,
-  suggestion,
-  training,
-  ragContext,
-  userPrompt,
-}) {
-  const baseContext = `USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-- Favorite Cuisines: ${foodPreferences?.cuisines || 'Any'}
-
-TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)`;
-
-  const userRequest = userPrompt 
-    ? `\nUSER'S SPECIFIC REQUEST: "${userPrompt}"\nPrioritize this request while still meeting nutritional needs.`
-    : '';
-
-  let mealSpecificInstructions;
-
-  switch (mealType) {
-    case 'breakfast':
-      mealSpecificInstructions = `Create a ${suggestion?.type || 'balanced'}-style breakfast.
-${suggestion?.avoid?.length ? `AVOID these types (already had): ${suggestion.avoid.join(', ')}` : ''}`;
-      break;
-
-    case 'lunch':
-      mealSpecificInstructions = `Create a ${suggestion?.type || 'balanced'} for lunch.
-${suggestion?.protein ? `Use ${suggestion.protein} as the protein.` : ''}
-${suggestion?.avoid?.length ? `AVOID these formats: ${suggestion.avoid.join(', ')}` : ''}
-${suggestion?.avoidProteins?.length ? `AVOID these proteins: ${suggestion.avoidProteins.join(', ')}` : ''}`;
-      break;
-
-    case 'dinner':
-      const tomorrowIntense = training?.tomorrow?.intensity?.toLowerCase() === 'high';
-      mealSpecificInstructions = `Create a dinner with ${suggestion?.protein || 'quality protein'} as the main protein - THIS IS REQUIRED.
-${suggestion?.avoid?.length ? `DO NOT use these proteins: ${suggestion.avoid.join(', ')}` : ''}
-${tomorrowIntense ? 'Tomorrow has intense training - include good carbs.' : ''}`;
-      break;
-
-    case 'snacks':
-      mealSpecificInstructions = `Create a ${suggestion?.type || 'healthy'}-based snack.
-${suggestion?.avoid?.length ? `AVOID these types: ${suggestion.avoid.join(', ')}` : ''}
-Keep it simple and portable.`;
-      break;
-
-    case 'dessert':
-      mealSpecificInstructions = `Create a ${suggestion?.category || 'balanced'} dessert - THIS CATEGORY IS REQUIRED.
-${suggestion?.avoid?.length ? `AVOID these categories: ${suggestion.avoid.join(', ')}` : ''}
-Categories: baked (cookies, cakes), frozen (ice cream), chocolate, fruit-based, pastry/cream (mousse, custard)`;
-      break;
-
-    default:
-      mealSpecificInstructions = 'Create a balanced meal.';
-  }
-
-  return `You are a sports nutritionist creating a single ${mealType}.
-
-${baseContext}
-${userRequest}
-
-REQUIREMENTS:
-${mealSpecificInstructions}
-- Respect dietary restrictions and dislikes
-- Keep portions appropriate for an athlete
-
-${ragContext || ''}
-
-CRITICAL: (1 sentence, just states what the meal is)
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
+function toMealString(name, macros) {
+  if (!macros) return name;
+  return `${name} (Cal: ${macros.calories}, P: ${macros.protein}g, C: ${macros.carbs}g, F: ${macros.fat}g)`;
 }
 
-/* --------------------------------- Handler -------------------------------- */
+function extractProteins(mealStr) {
+  if (!mealStr || typeof mealStr !== 'string') return [];
+  const desc = mealStr.replace(/\(Cal:.*?\)/g, '').toLowerCase();
+  const proteins = [
+    'chicken', 'salmon', 'tuna', 'beef', 'pork', 'turkey', 'shrimp',
+    'tofu', 'tempeh', 'eggs', 'egg', 'cod', 'tilapia', 'lentil', 'chickpea',
+  ];
+  return proteins.filter((p) => desc.includes(p));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -197,133 +68,170 @@ export default async function handler(req, res) {
     const {
       userId,
       day,
-      mealType,
+      mealType: rawMealType,
       userProfile,
       foodPreferences,
+      trainingPlan,
       weekStarting,
-      userPrompt, // NEW: optional user suggestion/preference
-    } = req.body || {};
-
-    // Validate required fields
-    if (!day || !DAYS.includes(day)) {
-      return res.status(400).json({ success: false, error: 'Invalid or missing day' });
-    }
-    if (!mealType || !MEAL_TYPES.includes(mealType)) {
-      return res.status(400).json({ success: false, error: 'Invalid or missing mealType' });
-    }
-
-    // Get existing meals for variety checking
-    const existingMeals = await getExistingMeals(userId, weekStarting);
-
-    // Get training context
-    const training = await getTrainingContext(userId, day);
-
-    // Get meal-specific suggestion
-    const suggestionFunctions = {
-      breakfast: getBreakfastSuggestion,
-      lunch: getLunchSuggestion,
-      dinner: getDinnerSuggestion,
-      snacks: getSnackSuggestion,
-      dessert: getDessertSuggestion,
-    };
-
-    const suggestion = suggestionFunctions[mealType](day, existingMeals, foodPreferences);
-
-    // Get RAG personalization
-    const ragContext = await getPersonalizationContext({
-      userId,
-      mealType,
-      foodPreferences,
-      userProfile,
-      training,
-    });
-
-    // Build prompt
-    const prompt = buildPromptWithSuggestion({
-      mealType,
-      userProfile,
-      foodPreferences,
-      suggestion,
-      training,
+      userPrompt,  // optional: "I want something with salmon" or "high protein snack"
       ragContext,
-      userPrompt,
-    });
+    } = req.body;
 
-    // Generate meal with OpenAI
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 150,
-    });
-
-    let mealDescription = completion.choices?.[0]?.message?.content?.trim() || '';
-
-    if (!mealDescription) {
-      return res.status(500).json({ success: false, error: 'Failed to generate meal' });
+    if (!userProfile || !day || !rawMealType) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    // Clean up any extra formatting
-    mealDescription = mealDescription
-      .replace(/^["']|["']$/g, '')
-      .replace(/^\d+\.\s*/, '')
-      .replace(/^[-•]\s*/, '')
-      .trim();
+    const mealType = toInternalKey(rawMealType);
+    const outKey = toOutputKey(mealType);
 
-    // Attach macros via ML service
-    const macros = await getMacrosFromML(mealDescription, mealType);
-    const mealWithMacros = attachMacrosText(mealDescription, macros);
+    // ── Step 1: TDEE + budget for this meal ──
+    const dayWorkouts = trainingPlan?.[day]?.workouts || [];
+    const dayTiming = trainingPlan?.[day]?.timing || null;
+    const timingMap = { 'Morning': 'am', 'Afternoon': 'pm', 'Evening': 'pm' };
 
-    // Save to database if user is logged in
+    const nutrition = computeNutritionTargets({
+      userProfile,
+      todayWorkouts: dayWorkouts,
+      workoutTiming: timingMap[dayTiming] || null,
+    });
+
+    const budget = nutrition.mealBudgets[mealType];
+    if (!budget) {
+      return res.status(400).json({ success: false, error: `No budget for meal type: ${rawMealType}` });
+    }
+
+    // ── Step 2: Load existing week meals for variety ──
+    let weekMeals = {};
     if (userId && weekStarting) {
       try {
-        const { data: existing } = await supabase
+        const { data } = await supabase
           .from('meal_plans')
-          .select('id, meals')
+          .select('meals')
           .eq('user_id', userId)
           .eq('week_starting', weekStarting)
           .maybeSingle();
-
-        if (existing) {
-          const updatedMeals = {
-            ...existing.meals,
-            [day]: {
-              ...(existing.meals?.[day] || {}),
-              [mealType]: mealWithMacros,
-            },
-          };
-
-          await supabase
-            .from('meal_plans')
-            .update({ meals: updatedMeals, updated_at: new Date().toISOString() })
-            .eq('id', existing.id);
-        } else {
-          const newMeals = {
-            [day]: { [mealType]: mealWithMacros },
-          };
-
-          await supabase
-            .from('meal_plans')
-            .insert({
-              user_id: userId,
-              meals: newMeals,
-              week_starting: weekStarting,
-            });
-        }
-      } catch (dbError) {
-        console.error('Error saving meal to database:', dbError);
-        // Don't fail the request, just log
+        if (data?.meals) weekMeals = data.meals;
+      } catch (e) {
+        console.warn('Could not load existing meals:', e.message);
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      meal: mealWithMacros,
-      day,
+    // Build avoid list + already-generated-today list
+    const usedProteins = [];
+    const alreadyToday = [];
+    for (const [d, meals] of Object.entries(weekMeals)) {
+      if (typeof meals !== 'object') continue;
+      for (const val of Object.values(meals)) {
+        if (!val || typeof val !== 'string') continue;
+        usedProteins.push(...extractProteins(val));
+        if (d === day) {
+          alreadyToday.push(val.replace(/\(Cal:.*?\)/g, '').trim());
+        }
+      }
+    }
+
+    // Training context
+    const dayIndex = DAYS.indexOf(day);
+    const tomorrowDay = DAYS[(dayIndex + 1) % 7];
+
+    // ── Step 3: Build prompt ──
+    // If user provided a hint, prepend it to the prompt as a preference
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
+    const enhancedPreferences = userPrompt
+      ? { ...foodPreferences, likes: [foodPreferences?.likes, userPrompt].filter(Boolean).join(', ') }
+      : foodPreferences;
+
+    const prompt = buildSingleMealPrompt({
       mealType,
+      macroBudget: budget,
+      foodPreferences: enhancedPreferences,
+      dietaryRestrictions,
+      todayTraining: formatTrainingDay(dayWorkouts),
+      tomorrowTraining: formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []),
+      avoidIngredients: [...new Set(usedProteins)],
+      alreadyGeneratedToday: alreadyToday,
+      ragContext: ragContext || null,
+    });
+
+    // ── Step 4: Call OpenAI ──
+    console.log(`🍽️ Generating ${rawMealType} for ${day}${userPrompt ? ` (hint: "${userPrompt}")` : ''}`);
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 800,
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+    });
+
+    const mealData = parseJSON(response.choices[0].message.content);
+
+    // ── Step 5: Density + scaler ──
+    const ingredients = (mealData.ingredients || [])
+      .filter((ing) => ing.name && ing.type && ing.grams > 0)
+      .map((ing) => ({
+        name: String(ing.name).trim(),
+        type: String(ing.type).trim().toLowerCase(),
+        grams: Math.round(parseFloat(ing.grams) || 0),
+      }));
+
+    let mealString;
+    let mealV2 = null;
+
+    if (ingredients.length > 0) {
+      const result = estimateAndAdjust(ingredients, budget);
+      const macros = {
+        calories: Math.round(result.macros.calories),
+        protein: Math.round(result.macros.protein),
+        carbs: Math.round(result.macros.carbs),
+        fat: Math.round(result.macros.fat),
+      };
+      const mealName = mealData.meal_name || `Generated ${rawMealType}`;
+      mealString = toMealString(mealName, macros);
+      mealV2 = {
+        meal_name: mealName,
+        ingredients: result.ingredients,
+        macros,
+        budget,
+        scaled: result.scaled,
+        scaleFactors: result.scaleFactors,
+      };
+    } else {
+      mealString = mealData.meal_name || `Generated ${rawMealType}`;
+    }
+
+    // ── Step 6: Optionally save to DB ──
+    if (userId && weekStarting) {
+      try {
+        const dayMeals = weekMeals[day] || {};
+        dayMeals[outKey] = mealString;
+        weekMeals[day] = dayMeals;
+
+        await supabase.from('meal_plans').upsert(
+          {
+            user_id: userId,
+            week_starting: weekStarting,
+            meals: weekMeals,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,week_starting' }
+        );
+      } catch (e) {
+        console.warn('Failed to save meal to DB:', e.message);
+      }
+    }
+
+    console.log(`✅ ${mealString}`);
+
+    res.status(200).json({
+      success: true,
+      meal: mealString,
+      day,
+      mealType: outKey,
+      meal_v2: mealV2,
     });
   } catch (error) {
     console.error('generate-single-meal error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 }

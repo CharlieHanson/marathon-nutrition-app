@@ -1,563 +1,285 @@
-// pages/api/generate-day.js
-// Generates all empty meals for a single day
-// Uses helper functions for variety/rotation instead of relying on LLM memory
+/**
+ * generate-day.js (Mobile + Web — Single Day, SSE)
+ * pages/api/generate-day.js
+ *
+ * Fills EMPTY meal slots for one day. Skips meals that already exist.
+ * Streams each meal as it's generated via SSE.
+ *
+ * NEW PIPELINE: TDEE → budget → OpenAI (per meal) → density → scaler
+ *
+ * Body: { userId, day, userProfile, foodPreferences, trainingPlan,
+ *         weekStarting?, existingMeals?, ragContext? }
+ *
+ * SSE events:
+ *   status  → { mealType, status: "generating"|"skipped" }
+ *   meal    → { mealType, meal: "Name (Cal: X, P: Xg, C: Xg, F: Xg)", day }
+ *   done    → { success, day, meals: [...], dailyTotals, dailyTargets }
+ *   error   → { message }
+ */
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getTopMealsByVector } from '../../src/lib/rag.js';
-import { 
-  getDaySuggestions, 
-  DAYS, 
-} from '../../shared/lib/mealSuggestions.js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
+import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ML_API_URL = 'https://alimenta-ml-service.onrender.com';
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
-
-/* ---------------------------- Macro utils (ML) ----------------------------- */
-async function getMacrosFromML(mealDescription, mealType) {
-  try {
-    const endpointMap = {
-      breakfast: '/predict-breakfast',
-      lunch: '/predict-lunch',
-      dinner: '/predict-dinner',
-      snacks: '/predict-snacks',
-      dessert: '/predict-desserts',
-    };
-    const endpoint = endpointMap[mealType];
-    if (!endpoint) return null;
-
-    const resp = await fetch(`${ML_API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meal: mealDescription }),
-    });
-    const data = await resp.json();
-    if (data?.success) return data.predictions;
-  } catch (err) {
-    console.error('ML macro prediction error:', err);
-  }
-  return null;
-}
-
-function attachMacrosText(desc, macros) {
-  if (!macros) return desc;
-  const c = (n) => Math.round(Number(n) || 0);
-  return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
-}
-
-/* ------------------------------- SSE helpers ------------------------------- */
-function sseHeaders(res) {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-}
-
-function sendEvent(res, type, payload) {
-  res.write(`event: ${type}\n`);
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
-}
-
-function sendStatus(res, message) {
-  sendEvent(res, 'status', { message });
-}
-
-/* ---------------------- RAG Personalization ---------------------- */
-async function getPersonalizationContext({ userId, mealType, foodPreferences, userProfile, training }) {
-  const likes = foodPreferences?.likes;
-  const dislikes = foodPreferences?.dislikes;
-  const cuisines = foodPreferences?.cuisines;
-  const goal = userProfile?.goal;
-
-  const intensityText = training?.today 
-    ? `${training.today.type || 'rest'} ${training.today.distance || ''} (${training.today.intensity || 'medium'})`
-    : '';
-
-  const recs = userId
-    ? await getTopMealsByVector({
-        userId,
-        mealType,
-        likes,
-        dislikes,
-        cuisines,
-        goal,
-        intensityText,
-        k: 3,
-      })
-    : [];
-
-  if (!recs?.length) return '';
-  const bullets = recs.map((r) => `- ${r.meal_description} (${r.rating}★)`).join('\n');
-  return `PAST FAVORITES:\n${bullets}\nUse these as inspiration for style/flavors the user enjoys, but create something NEW.`;
-}
-
-/* ---------------------- Helper to format today's meals for prompts ---------------------- */
-function formatTodaysMeals(todaysMeals) {
-  if (!todaysMeals || Object.keys(todaysMeals).length === 0) {
-    return '';
-  }
-
-  const mealLabels = {
-    breakfast: 'Breakfast',
-    lunch: 'Lunch',
-    dinner: 'Dinner',
-    snacks: 'Snacks',
-    dessert: 'Dessert',
-  };
-
-  const lines = [];
-  Object.entries(todaysMeals).forEach(([mealType, meal]) => {
-    if (meal && typeof meal === 'string' && meal.trim()) {
-      // Remove macros text for cleaner display
-      const cleanMeal = meal.replace(/\s*\(Cal:[^)]+\)\s*$/i, '').trim();
-      const label = mealLabels[mealType] || mealType.charAt(0).toUpperCase() + mealType.slice(1);
-      lines.push(`- ${label}: ${cleanMeal}`);
-    }
-  });
-
-  if (lines.length === 0) {
-    return '';
-  }
-
-  return `ALREADY GENERATED TODAY (add variety, don't repeat key ingredients):
-${lines.join('\n')}
-
-Now generate...`;
-}
-
-/* ---------------------- Prompt builders for each meal type ---------------------- */
-
-function buildBreakfastPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
-  const { type, avoid } = suggestion;
-  
-  // Format already generated meals for variety
-  const alreadyGenerated = formatTodaysMeals(todaysMeals);
-  
-  return `You are a sports nutritionist creating a breakfast.
-
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-
-TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
-
-${alreadyGenerated}
-
-REQUIREMENTS:
-1) Create a ${type || 'balanced'}-style breakfast
-2) ${avoid?.length ? `AVOID these types (already had this week): ${avoid.join(', ')}` : ''}
-3) Respect dietary restrictions and dislikes
-4) Keep it practical and quick to prepare
-5) Add variety - don't repeat key ingredients from meals already generated today
-
-${ragContext || ''}
-
-CRITICAL: (1 sentence, just states what the meal is)
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
-}
-
-function buildLunchPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
-  const { type, protein, avoid, avoidProteins } = suggestion;
-  
-  // Format already generated meals for variety
-  const alreadyGenerated = formatTodaysMeals(todaysMeals);
-  
-  return `You are a sports nutritionist creating a lunch.
-
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-- Favorite Cuisines: ${foodPreferences?.cuisines || 'Any'}
-
-TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
-
-${alreadyGenerated}
-
-REQUIREMENTS:
-1) Create a ${type || 'balanced'} for lunch
-2) Use ${protein || 'a lean protein'} as the main protein
-3) ${avoid?.length ? `AVOID these formats (already had this week): ${avoid.join(', ')}` : ''}
-4) ${avoidProteins?.length ? `AVOID these proteins: ${avoidProteins.join(', ')}` : ''}
-5) Respect dietary restrictions and dislikes
-6) Add variety - don't repeat key ingredients from meals already generated today
-
-${ragContext || ''}
-
-CRITICAL: (1 sentence, just states what the meal is)
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
-
-}
-
-function buildDinnerPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
-  const { protein, avoid } = suggestion;
-  
-  // Check if tomorrow's training is intense for carb-loading
-  const tomorrowIntense = training?.tomorrow?.intensity?.toLowerCase() === 'high' ||
-    training?.tomorrow?.type?.toLowerCase().includes('long') ||
-    training?.tomorrow?.type?.toLowerCase().includes('distance');
-  
-  const carbNote = tomorrowIntense 
-    ? 'Tomorrow has intense training - include good carbs for fuel.' 
-    : '';
-  
-  // Format already generated meals for variety
-  const alreadyGenerated = formatTodaysMeals(todaysMeals);
-  
-  return `You are a sports nutritionist creating a dinner.
-
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-- Favorite Cuisines: ${foodPreferences?.cuisines || 'Any'}
-
-TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''} (${training?.today?.intensity || 'medium'} intensity)
-TOMORROW'S TRAINING: ${training?.tomorrow?.type || 'Rest'} ${training?.tomorrow?.distance || ''}
-
-${alreadyGenerated}
-
-REQUIREMENTS:
-1) Use ${protein || 'a quality protein'} as the main protein - THIS IS REQUIRED
-2) ${avoid?.length ? `DO NOT use these proteins (already used this week): ${avoid.join(', ')}` : ''}
-3) ${carbNote}
-4) Respect dietary restrictions and dislikes
-5) Make it a satisfying, complete dinner
-6) Add variety - don't repeat key ingredients from meals already generated today
-
-${ragContext || ''}
-
-CRITICAL:
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
-}
-
-function buildSnacksPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
-  const { type, avoid } = suggestion;
-  
-  // Format already generated meals for variety
-  const alreadyGenerated = formatTodaysMeals(todaysMeals);
-  
-  return `You are a sports nutritionist creating a snack.
-
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-
-TODAY'S TRAINING: ${training?.today?.type || 'Rest'} ${training?.today?.distance || ''}
-
-${alreadyGenerated}
-
-REQUIREMENTS:
-1) Create a ${type || 'healthy'}-based snack
-2) ${avoid?.length ? `AVOID these types (already had this week): ${avoid.join(', ')}` : ''}
-3) Keep it simple and portable
-4) Good for an athlete's energy needs
-5) Add variety - don't repeat key ingredients from meals already generated today
-
-${ragContext || ''}
-
-CRITICAL:
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
-}
-
-function buildDessertPrompt({ userProfile, foodPreferences, suggestion, training, ragContext, todaysMeals = {} }) {
-  const { category, avoid } = suggestion;
-  
-  // Format already generated meals for variety
-  const alreadyGenerated = formatTodaysMeals(todaysMeals);
-  
-  return `You are a sports nutritionist creating a dessert.
-
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
-
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes'}
-
-${alreadyGenerated}
-
-REQUIREMENTS:
-1) Create a ${category} dessert - THIS CATEGORY IS REQUIRED
-2) ${avoid?.length ? `AVOID these categories (already had this week): ${avoid.join(', ')}` : ''}
-3) Keep portions reasonable for an athlete
-4) Respect dietary restrictions
-5) Add variety - don't repeat key ingredients from meals already generated today
-
-Category definitions:
-- baked: brownies, cakes, cookies, tarts, crumbles
-- frozen: ice cream, gelato, sorbet, frozen yogurt
-- chocolate: chocolate-forward desserts
-- fruit: fresh fruit-based desserts
-- pastry/cream: custards, panna cotta, mousse, tiramisu
-
-${ragContext || ''}
-
-CRITICAL:
-Return ONLY the meal name and very short description. No macros, no cooking instructions, no "Key ingredients" text.
-Good: 'Greek yogurt parfait with granola, honey, and mixed berries'
-Bad: 'A delicious layered parfait made with creamy Greek yogurt, crunchy granola, fresh mixed berries, and a drizzle of golden honey for natural sweetness'
-Good: 'Salmon tacos with cabbage slaw, avocado, and mango salsa'
-Bad: 'Salmon tacos with cabbage slaw, avocado, and mango salsa. Key ingredients: salmon, corn tortillas, avocado, mango, lime, cilantro, and salsa'`;
-}
-
-/* ---------------------- Generate single meal ---------------------- */
-async function generateMeal({ mealType, userProfile, foodPreferences, suggestion, training, userId, todaysMeals = {} }) {
-  // Get RAG personalization
-  const ragContext = await getPersonalizationContext({
-    userId,
-    mealType,
-    foodPreferences,
-    userProfile,
-    training,
-  });
-
-  // Build prompt based on meal type
-  const promptBuilders = {
-    breakfast: buildBreakfastPrompt,
-    lunch: buildLunchPrompt,
-    dinner: buildDinnerPrompt,
-    snacks: buildSnacksPrompt,
-    dessert: buildDessertPrompt,
-  };
-
-  const prompt = promptBuilders[mealType]({
-    userProfile,
-    foodPreferences,
-    suggestion,
-    training,
-    ragContext,
-    todaysMeals,
-  });
-
-  // Generate with OpenAI
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-    max_tokens: 150,
-  });
-
-  let mealDescription = completion.choices?.[0]?.message?.content?.trim() || '';
-
-  // Clean up formatting
-  mealDescription = mealDescription
-    .replace(/^["']|["']$/g, '')
-    .replace(/^\d+\.\s*/, '')
-    .replace(/^[-•]\s*/, '')
-    .trim();
-
-  // Attach macros
-  const macros = await getMacrosFromML(mealDescription, mealType);
-  return attachMacrosText(mealDescription, macros);
-}
-
-/* ---------------------- Save to database ---------------------- */
-async function saveDayMeals({ userId, weekStarting, day, meals }) {
-  if (!userId || !weekStarting) return;
-
-  try {
-    const { data: existing } = await supabase
-      .from('meal_plans')
-      .select('id, meals')
-      .eq('user_id', userId)
-      .eq('week_starting', weekStarting)
-      .maybeSingle();
-
-    if (existing) {
-      const updatedMeals = {
-        ...existing.meals,
-        [day]: {
-          ...(existing.meals?.[day] || {}),
-          ...meals,
-        },
-      };
-
-      await supabase
-        .from('meal_plans')
-        .update({ meals: updatedMeals, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
-    } else {
-      await supabase
-        .from('meal_plans')
-        .insert({
-          user_id: userId,
-          meals: { [day]: meals },
-          week_starting: weekStarting,
-        });
-    }
-  } catch (error) {
-    console.error('Error saving day meals:', error);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+// Map frontend keys to internal keys and back
+const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
+const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
+
+function parseJSON(text) {
+  let s = text.trim();
+  if (s.startsWith('```json')) s = s.slice(7);
+  else if (s.startsWith('```')) s = s.slice(3);
+  if (s.endsWith('```')) s = s.slice(0, -3);
+  s = s.trim();
+  try { return JSON.parse(s); } catch {
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+    throw new Error('Failed to parse AI JSON');
   }
 }
 
-/* ---------------------- Get existing meals for the week ---------------------- */
-async function getExistingMeals(userId, weekStarting) {
-  if (!userId || !weekStarting) return {};
-
-  try {
-    const { data } = await supabase
-      .from('meal_plans')
-      .select('meals')
-      .eq('user_id', userId)
-      .eq('week_starting', weekStarting)
-      .maybeSingle();
-
-    return data?.meals || {};
-  } catch (error) {
-    console.error('Error fetching existing meals:', error);
-    return {};
-  }
+function toMealString(name, macros) {
+  if (!macros) return name;
+  return `${name} (Cal: ${macros.calories}, P: ${macros.protein}g, C: ${macros.carbs}g, F: ${macros.fat}g)`;
 }
 
-/* --------------------------------- Handler -------------------------------- */
+/**
+ * Extract protein ingredient names from a meal string for variety tracking.
+ * e.g., "Grilled Salmon with Quinoa (Cal: 500, ...)" → ["salmon"]
+ */
+function extractProteins(mealStr) {
+  if (!mealStr || typeof mealStr !== 'string') return [];
+  const desc = mealStr.replace(/\(Cal:.*?\)/g, '').toLowerCase();
+  const proteins = [
+    'chicken', 'salmon', 'tuna', 'beef', 'pork', 'turkey', 'shrimp',
+    'tofu', 'tempeh', 'eggs', 'egg', 'cod', 'tilapia', 'lentil', 'chickpea',
+  ];
+  return proteins.filter((p) => desc.includes(p));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  sseHeaders(res);
+  const {
+    userId,
+    day,
+    userProfile,
+    foodPreferences,
+    trainingPlan,
+    weekStarting,
+    existingMeals,  // optional: { breakfast: "...", lunch: "", dinner: "...", ... }
+    ragContext,      // optional: string from RAG pipeline
+  } = req.body;
 
-  const keepAlive = setInterval(() => {
-    res.write(':\n\n');
-  }, 15000);
+  if (!userProfile || !day) {
+    return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
+  }
+
+  // ── SSE setup ──
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
 
   try {
-    const { userId, day, userProfile, foodPreferences, weekStarting } = req.body || {};
+    // ── Step 1: Load existing meals for the week (for variety) ──
+    let weekMeals = existingMeals ? { [day]: existingMeals } : {};
 
-    // Validate
-    if (!day || !DAYS.includes(day)) {
-      sendEvent(res, 'error', { message: 'Invalid or missing day' });
-      clearInterval(keepAlive);
-      res.end();
-      return;
-    }
-
-    const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1);
-    sendStatus(res, `Preparing ${capitalizedDay}'s meals...`);
-
-    // Get existing meals for the week (for variety checking)
-    const existingMeals = await getExistingMeals(userId, weekStarting);
-    
-    // Get existing meals for this day
-    const existingDayMeals = existingMeals[day] || {};
-    
-    // Find empty meal slots
-    const emptyMealTypes = MEAL_TYPES.filter(mt => {
-      const meal = existingDayMeals[mt];
-      return !meal || typeof meal !== 'string' || !meal.trim();
-    });
-
-    if (emptyMealTypes.length === 0) {
-      sendEvent(res, 'done', { 
-        success: true, 
-        message: 'All meals already filled for this day',
-        day,
-      });
-      clearInterval(keepAlive);
-      res.end();
-      return;
-    }
-
-    sendStatus(res, `Generating ${emptyMealTypes.length} meals for ${capitalizedDay}...`);
-
-    // Get all suggestions for the day (includes training context)
-    const suggestions = await getDaySuggestions(userId, day, existingMeals, foodPreferences);
-    
-    // Track meals generated in this session (for variety enforcement)
-    const generatedMeals = { ...existingDayMeals };
-    const todaysMeals = {}; // Only newly generated meals for this session
-
-    // Generate each empty meal
-    for (const mealType of emptyMealTypes) {
-      const mealLabel = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-      sendStatus(res, `Creating ${mealLabel}...`);
-
+    if (userId && weekStarting && !existingMeals) {
       try {
-        const meal = await generateMeal({
-          mealType,
-          userProfile,
-          foodPreferences,
-          suggestion: suggestions[mealType],
-          training: suggestions.training,
-          userId,
-          todaysMeals, // Pass what we've generated so far today
-        });
-
-        generatedMeals[mealType] = meal;
-        todaysMeals[mealType] = meal; // Track for next meal generation
-
-        // Send progress event
-        sendEvent(res, 'meal', { 
-          mealType, 
-          meal,
-          day,
-        });
-      } catch (error) {
-        console.error(`Error generating ${mealType}:`, error);
-        sendEvent(res, 'error', { 
-          mealType, 
-          message: `Failed to generate ${mealType}` 
-        });
+        const { data } = await supabase
+          .from('meal_plans')
+          .select('meals')
+          .eq('user_id', userId)
+          .eq('week_starting', weekStarting)
+          .maybeSingle();
+        if (data?.meals) weekMeals = data.meals;
+      } catch (e) {
+        console.warn('Could not load existing meals:', e.message);
       }
     }
 
-    // Save all generated meals to database
-    if (userId && weekStarting) {
-      await saveDayMeals({ userId, weekStarting, day, meals: generatedMeals });
-    }
+    const dayMeals = weekMeals[day] || {};
 
-    sendEvent(res, 'done', { 
-      success: true, 
-      day,
-      meals: generatedMeals,
+    // Determine which slots are empty
+    const emptySlots = MEAL_TYPES.filter((mt) => {
+      const key = toOutputKey(mt);
+      const val = dayMeals[key] || dayMeals[mt];
+      return !val || (typeof val === 'string' && val.trim() === '');
     });
 
-    clearInterval(keepAlive);
-    res.end();
+    if (emptySlots.length === 0) {
+      send('done', { success: true, day, meals: [], message: 'All slots already filled' });
+      return res.end();
+    }
 
-  } catch (error) {
-    clearInterval(keepAlive);
-    console.error('generate-day error:', error);
-    sendEvent(res, 'error', { message: error.message });
+    // ── Step 2: TDEE + meal budgets ──
+    const dayWorkouts = trainingPlan?.[day]?.workouts || [];
+    const dayTiming = trainingPlan?.[day]?.timing || null;
+    const timingMap = { 'Morning': 'am', 'Afternoon': 'pm', 'Evening': 'pm' };
+
+    const nutrition = computeNutritionTargets({
+      userProfile,
+      todayWorkouts: dayWorkouts,
+      workoutTiming: timingMap[dayTiming] || null,
+    });
+
+    send('status', { message: `Generating ${emptySlots.length} meals for ${day}`, dailyMacros: nutrition.dailyMacros });
+
+    // ── Step 3: Build avoid list from existing meals (variety) ──
+    const usedProteins = [];
+    for (const [d, meals] of Object.entries(weekMeals)) {
+      if (typeof meals !== 'object') continue;
+      for (const val of Object.values(meals)) {
+        usedProteins.push(...extractProteins(val));
+      }
+    }
+    const avoidIngredients = [...new Set(usedProteins)];
+
+    // Training context
+    const dayIndex = DAYS.indexOf(day);
+    const tomorrowDay = DAYS[(dayIndex + 1) % 7];
+    const todayTraining = formatTrainingDay(dayWorkouts);
+    const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
+
+    // ── Step 4: Generate each empty meal ──
+    const generatedMeals = [];
+    const alreadyGeneratedToday = [];
+
+    // Include existing meals in the "already generated" list for variety
+    for (const mt of MEAL_TYPES) {
+      const key = toOutputKey(mt);
+      const existing = dayMeals[key] || dayMeals[mt];
+      if (existing && typeof existing === 'string' && existing.trim()) {
+        alreadyGeneratedToday.push(existing.replace(/\(Cal:.*?\)/g, '').trim());
+      }
+    }
+
+    for (const mealType of MEAL_TYPES) {
+      const outKey = toOutputKey(mealType);
+
+      // Skip if slot is already filled
+      if (!emptySlots.includes(mealType)) {
+        send('status', { mealType: outKey, status: 'skipped' });
+        continue;
+      }
+
+      send('status', { mealType: outKey, status: 'generating' });
+
+      const budget = nutrition.mealBudgets[mealType];
+      if (!budget) {
+        send('meal', { mealType: outKey, error: 'No budget', day });
+        continue;
+      }
+
+      try {
+        const prompt = buildSingleMealPrompt({
+          mealType,
+          macroBudget: budget,
+          foodPreferences,
+          dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
+          todayTraining,
+          tomorrowTraining,
+          avoidIngredients,
+          alreadyGeneratedToday,
+          ragContext: ragContext || null,
+        });
+
+        const response = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 800,
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+        });
+
+        const mealData = parseJSON(response.choices[0].message.content);
+        const ingredients = (mealData.ingredients || [])
+          .filter((ing) => ing.name && ing.type && ing.grams > 0)
+          .map((ing) => ({
+            name: String(ing.name).trim(),
+            type: String(ing.type).trim().toLowerCase(),
+            grams: Math.round(parseFloat(ing.grams) || 0),
+          }));
+
+        let mealString;
+        if (ingredients.length > 0) {
+          const result = estimateAndAdjust(ingredients, budget);
+          const macros = {
+            calories: Math.round(result.macros.calories),
+            protein: Math.round(result.macros.protein),
+            carbs: Math.round(result.macros.carbs),
+            fat: Math.round(result.macros.fat),
+          };
+          mealString = toMealString(mealData.meal_name || mealType, macros);
+        } else {
+          mealString = mealData.meal_name || `Generated ${mealType}`;
+        }
+
+        generatedMeals.push({ mealType: outKey, meal: mealString });
+        alreadyGeneratedToday.push(mealData.meal_name || '');
+
+        send('meal', { mealType: outKey, meal: mealString, day });
+      } catch (err) {
+        console.error(`Error generating ${mealType}:`, err.message);
+        send('meal', { mealType: outKey, error: err.message, day });
+      }
+    }
+
+    // ── Step 5: Optionally save to DB ──
+    if (userId && weekStarting) {
+      try {
+        const updatedDayMeals = { ...dayMeals };
+        for (const { mealType, meal } of generatedMeals) {
+          updatedDayMeals[mealType] = meal;
+        }
+        const updatedWeekMeals = { ...weekMeals, [day]: updatedDayMeals };
+
+        await supabase.from('meal_plans').upsert(
+          {
+            user_id: userId,
+            week_starting: weekStarting,
+            meals: updatedWeekMeals,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,week_starting' }
+        );
+      } catch (e) {
+        console.warn('Failed to save meals to DB:', e.message);
+      }
+    }
+
+    // ── Step 6: Done ──
+    send('done', {
+      success: true,
+      day,
+      meals: generatedMeals,
+      dailyTargets: nutrition.dailyMacros,
+    });
+  } catch (err) {
+    console.error('generate-day error:', err);
+    send('error', { message: err.message });
+  } finally {
     res.end();
   }
 }

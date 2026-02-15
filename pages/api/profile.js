@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       const { data: userProfile, error: upError } = await supabaseAdmin
         .from('user_profiles')
         .select(
-          'age, height, weight, goal, activity_level, dietary_restrictions, objective'
+          'age, height, weight, goal, activity_level, dietary_restrictions, objective, gender'
         )
         .eq('user_id', userId)
         .maybeSingle();
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
         success: true,
         name: baseProfile?.name || '',
         age: userProfile?.age ?? '',
+        gender: userProfile?.gender ?? '',
         height: userProfile?.height ?? '',
         weight: userProfile?.weight ?? '',
         goal: userProfile?.goal ?? '',
@@ -110,6 +111,7 @@ export default async function handler(req, res) {
           {
             user_id: userId,
             age: profile.age ? parseInt(profile.age) : null,
+            gender: profile.gender || null,
             height: profile.height || null,
             weight: profile.weight || null,
             goal: profile.goal || null,

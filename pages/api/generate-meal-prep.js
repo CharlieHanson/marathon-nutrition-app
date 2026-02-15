@@ -1,36 +1,40 @@
-// api/generate-meal-prep.js
+/**
+ * generate-meal-prep.js
+ * pages/api/generate-meal-prep.js
+ *
+ * Suggests 4 meal-prep options for a given meal type across specified days.
+ * Averages the TDEE-based budget across those days, then asks OpenAI for
+ * batch-friendly recipes that hit the per-serving targets.
+ *
+ * NEW PIPELINE: avg TDEE budget → OpenAI (4 options) → density per option
+ *
+ * Body: { mealType, days, userProfile, foodPreferences, trainingPlan }
+ *   mealType: "breakfast" | "lunch" | "dinner"
+ *   days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+ *
+ * Returns: { success, options: [...], mealType, days }
+ */
+
 import OpenAI from 'openai';
+import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const ML_API_URL = process.env.NEXT_PUBLIC_ML_API_URL || 'https://alimenta-ml-service.onrender.com';
 
-async function getMacrosFromML(mealDescription, mealType) {
-  try {
-    const endpointMap = {
-      breakfast: '/predict-breakfast',
-      lunch: '/predict-lunch',
-      dinner: '/predict-dinner',
-    };
-    const endpoint = endpointMap[mealType];
-    if (!endpoint) return null;
+const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
 
-    const resp = await fetch(`${ML_API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meal: mealDescription })
-    });
-    const data = await resp.json();
-    if (data?.success) return data.predictions;
-  } catch (e) {
-    console.error('ML prediction error:', e);
+function parseJSON(text) {
+  let s = text.trim();
+  if (s.startsWith('```json')) s = s.slice(7);
+  else if (s.startsWith('```')) s = s.slice(3);
+  if (s.endsWith('```')) s = s.slice(0, -3);
+  s = s.trim();
+  try { return JSON.parse(s); } catch {
+    const start = s.indexOf('{');
+    const end = s.lastIndexOf('}');
+    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+    throw new Error('Failed to parse AI JSON');
   }
-  return null;
-}
-
-function attachMacrosText(desc, macros) {
-  if (!macros) return desc;
-  const c = (n) => Math.round(Number(n) || 0);
-  return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
 }
 
 export default async function handler(req, res) {
@@ -39,114 +43,178 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { mealType, days, userProfile, foodPreferences } = req.body;
+    const {
+      mealType: rawMealType,
+      days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      userProfile,
+      foodPreferences,
+      trainingPlan,
+    } = req.body;
 
-    if (!mealType || !days || days.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing mealType or days' 
-      });
+    if (!userProfile || !rawMealType) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    const prompt = `You are a sports nutritionist specializing in meal prep. Generate exactly 4 meal prep options for ${mealType.toUpperCase()} that will be eaten on ${days.length} days (${days.join(', ')}).
+    const mealType = toInternalKey(rawMealType);
 
-USER PROFILE:
-- Goal: ${userProfile?.goal || 'maintain weight'}
-- Dietary Restrictions: ${userProfile?.dietaryRestrictions || 'None'}
+    // ── Step 1: Average the macro budget across specified days ──
+    const budgets = [];
+    for (const day of days) {
+      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
+      const dayTiming = trainingPlan?.[day]?.timing || null;
+      const timingMap = { 'Morning': 'am', 'Afternoon': 'pm', 'Evening': 'pm' };
 
-FOOD PREFERENCES:
-- Likes: ${foodPreferences?.likes || 'No preferences specified'}
-- Dislikes: ${foodPreferences?.dislikes || 'No dislikes specified'}
+      const nutrition = computeNutritionTargets({
+        userProfile,
+        todayWorkouts: dayWorkouts,
+        workoutTiming: timingMap[dayTiming] || null,
+      });
 
-MEAL PREP REQUIREMENTS:
-- Must reheat well (microwave-friendly)
-- Must stay fresh in fridge for 5+ days
-- Easy to batch cook (scales to 4-6 servings)
-- Good for portioning into containers
-- Simple and quick to prepare
-- Only have max 2 be chicken based meals, and have at least one vegetarian option and one meat option that isn't chicken.
+      const b = nutrition.mealBudgets[mealType];
+      if (b) budgets.push(b);
+    }
 
-For each option, provide:
-1. A concise meal name and description (ingredients)
-2. Why it's great for meal prep (1 short sentence)
-3. Estimated prep time
+    if (budgets.length === 0) {
+      return res.status(400).json({ success: false, error: `No budget for meal type: ${rawMealType}` });
+    }
 
-Return ONLY valid JSON in this exact format:
+    const avgBudget = {
+      calories: Math.round(budgets.reduce((s, b) => s + b.calories, 0) / budgets.length),
+      protein: Math.round(budgets.reduce((s, b) => s + b.protein, 0) / budgets.length),
+      carbs: Math.round(budgets.reduce((s, b) => s + b.carbs, 0) / budgets.length),
+      fat: Math.round(budgets.reduce((s, b) => s + b.fat, 0) / budgets.length),
+    };
+
+    const numServings = days.length;
+
+    // ── Step 2: Build prompt ──
+    const likes = foodPreferences?.likes || '';
+    const dislikes = foodPreferences?.dislikes || '';
+    const cuisines = foodPreferences?.cuisine_favorites || foodPreferences?.cuisines || '';
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
+
+    const prompt = `You are a sports nutritionist creating meal prep options for an athlete.
+
+TASK: Create exactly 4 different ${rawMealType} meal prep recipes, each making ${numServings} servings.
+
+PER-SERVING MACRO TARGETS:
+- Calories: ~${avgBudget.calories} kcal
+- Protein: ~${avgBudget.protein}g
+- Carbs: ~${avgBudget.carbs}g
+- Fat: ~${avgBudget.fat}g
+
+Density guide (to size portions):
+- 1g protein food ≈ 0.25g protein, 0.10g fat
+- 1g cooked carb food ≈ 0.23g carbs
+- 1g vegetable ≈ 0.06g carbs
+- 1g added fat (oil/butter) ≈ 1.0g fat
+
+${dietaryRestrictions ? `DIETARY RESTRICTIONS: ${dietaryRestrictions}` : ''}
+${likes ? `PREFERRED FOODS: ${likes}` : ''}
+${dislikes ? `DISLIKED FOODS (NEVER use): ${dislikes}` : ''}
+${cuisines ? `PREFERRED CUISINES: ${cuisines}` : ''}
+
+RULES:
+1. Recipes must be batch-cookable and reheat well
+2. Return PER-SERVING ingredient amounts (cooked weights)
+3. Each option should use a different protein source
+4. Include a brief prep description and estimated prep time
+5. Ingredient types must be: protein, carb, vegetable, or fat
+
+Respond with ONLY valid JSON:
 {
   "options": [
     {
-      "name": "Meal name",
-      "description": "Brief description with main ingredients",
-      "prepReason": "Why it's good for meal prep",
-      "prepTime": "30 min"
+      "meal_name": "...",
+      "description": "Brief description of the dish",
+      "prep_time": "30 mins",
+      "prep_reason": "Why this is good for meal prep",
+      "ingredients": [
+        { "name": "...", "type": "protein|carb|vegetable|fat", "grams": 0 }
+      ]
     }
   ]
-}
+}`;
 
-Generate 4 diverse options that match the user's preferences. Do NOT include macro information.`;
+    // ── Step 3: Call OpenAI ──
+    console.log(`🥘 Generating ${rawMealType} meal prep (${numServings} servings, ${avgBudget.calories} kcal/serving)...`);
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 800,
+      max_tokens: 3000,
+      temperature: 0.8,
+      response_format: { type: 'json_object' },
     });
 
-    let options = [];
-    try {
-      const content = response.choices?.[0]?.message?.content || '{}';
-      const parsed = JSON.parse(content);
-      options = parsed.options || [];
-    } catch (e) {
-      // Try to extract JSON from response
-      const content = response.choices?.[0]?.message?.content || '';
-      const match = content.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          const parsed = JSON.parse(match[0]);
-          options = parsed.options || [];
-        } catch {}
-      }
-    }
+    const data = parseJSON(response.choices[0].message.content);
+    const rawOptions = data.options || [];
 
-    if (options.length === 0) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to generate meal prep options'
-      });
-    }
+    // ── Step 4: Process each option through density lookup ──
+    const options = rawOptions.map((opt) => {
+      const ingredients = (opt.ingredients || [])
+        .filter((ing) => ing.name && ing.type && ing.grams > 0)
+        .map((ing) => ({
+          name: String(ing.name).trim(),
+          type: String(ing.type).trim().toLowerCase(),
+          grams: Math.round(parseFloat(ing.grams) || 0),
+        }));
 
-    // Add macros to each option
-    const optionsWithMacros = await Promise.all(
-      options.map(async (option) => {
-        const fullDescription = `${option.name}: ${option.description}`;
-        const macros = await getMacrosFromML(fullDescription, mealType);
-        
+      if (ingredients.length === 0) {
         return {
-          ...option,
-          fullDescription: attachMacrosText(fullDescription, macros),
-          macros: macros ? {
-            calories: Math.round(macros.calories),
-            protein: Math.round(macros.protein),
-            carbs: Math.round(macros.carbs),
-            fat: Math.round(macros.fat),
-          } : null
+          name: opt.meal_name || 'Unknown',
+          description: opt.description || '',
+          prepReason: opt.prep_reason || '',
+          prepTime: opt.prep_time || '',
+          macros: null,
+          fullDescription: `${opt.meal_name || 'Meal prep option'}`,
+          ingredients: [],
         };
-      })
-    );
+      }
 
-    return res.status(200).json({
+      // Density lookup + scaler against the average budget
+      const result = estimateAndAdjust(ingredients, avgBudget);
+      const macros = {
+        calories: Math.round(result.macros.calories),
+        protein: Math.round(result.macros.protein),
+        carbs: Math.round(result.macros.carbs),
+        fat: Math.round(result.macros.fat),
+      };
+
+      const mealName = opt.meal_name || 'Meal prep option';
+      const fullDescription = `${mealName} (Cal: ${macros.calories}, P: ${macros.protein}g, C: ${macros.carbs}g, F: ${macros.fat}g)`;
+
+      return {
+        name: mealName,
+        description: opt.description || '',
+        prepReason: opt.prep_reason || '',
+        prepTime: opt.prep_time || '',
+        macros,
+        fullDescription,
+        ingredients: result.ingredients,
+        perServingBudget: avgBudget,
+        totalForPrep: {
+          servings: numServings,
+          totalCalories: macros.calories * numServings,
+          totalProtein: macros.protein * numServings,
+          totalCarbs: macros.carbs * numServings,
+          totalFat: macros.fat * numServings,
+        },
+        scaled: result.scaled,
+      };
+    });
+
+    console.log(`✅ Generated ${options.length} meal prep options`);
+
+    res.status(200).json({
       success: true,
-      options: optionsWithMacros,
-      mealType,
-      days
+      options,
+      mealType: rawMealType,
+      days,
+      perServingBudget: avgBudget,
     });
-
   } catch (error) {
-    console.error('Meal prep generation error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('generate-meal-prep error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
