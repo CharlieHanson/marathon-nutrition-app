@@ -92,6 +92,7 @@ export async function saveUserProfile(userId, profileData) {
           // 🚫 name removed (lives in profiles)
           // 🚫 role removed (lives in profiles.type)
           age: profileData.age ? parseInt(profileData.age) : null,
+          gender: profileData.gender || null,
           height: profileData.height || null,
           weight: profileData.weight || null,
           goal: profileData.goal || null,
@@ -433,6 +434,22 @@ export async function fetchSavedMealsByType(userId, mealType) {
 export async function saveMeal(userId, mealData) {
   console.log('💾 Saving meal:', { userId, mealData });
 
+  // Check for duplicates
+  const { data: existing } = await supabase
+    .from('saved_meals')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('meal_type', mealData.mealType)
+    .eq('name', mealData.name)
+    .single();
+
+  if (existing) {
+    return { 
+      data: null, 
+      error: { message: 'This meal is already saved' } 
+    };
+  }
+
   // Extract macros from description if present
   const macros = extractMacrosFromDescription(mealData.fullDescription || '');
 
@@ -447,6 +464,7 @@ export async function saveMeal(userId, mealData) {
       protein: macros.protein || null,
       carbs: macros.carbs || null,
       fat: macros.fat || null,
+      times_used: 1,
     })
     .select()
     .single();
