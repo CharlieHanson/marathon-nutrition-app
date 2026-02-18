@@ -21,12 +21,14 @@ const SINGLE_MEAL_FORMAT = `Respond with ONLY valid JSON, no other text:
 {
   "meal_name": "Short descriptive name with key ingredients",
   "ingredients": [
-    { "name": "chicken breast", "type": "protein", "grams": 170 },
-    { "name": "brown rice cooked", "type": "carb", "grams": 220 },
-    { "name": "broccoli", "type": "vegetable", "grams": 150 },
-    { "name": "olive oil", "type": "fat", "grams": 12 }
+    { "name": "ingredient name", "type": "protein|carb|vegetable|fat", "grams": 0 }
   ]
-}`;
+}
+
+Example meals for reference (DO NOT copy these — create something different):
+- Seared salmon with couscous and roasted bell peppers
+- Turkey meatballs with penne and sauteed spinach
+- Tofu stir-fry with jasmine rice and snap peas`;
 
 const DAY_MEALS_FORMAT = `Respond with ONLY valid JSON, no other text:
 {
@@ -66,7 +68,7 @@ function buildPreferencesBlock({ foodPreferences, dietaryRestrictions }) {
     block += `DIETARY RESTRICTIONS (MUST follow): ${dietaryRestrictions}\n`;
   }
   if (likes) {
-    block += `PREFERRED FOODS/CUISINES: ${likes}\n`;
+    block += `FOODS/CUISINES THE USER ENJOYS (draw from these but DO NOT repeat the same ones across meals — rotate through them): ${likes}\n`;
   }
   if (dislikes) {
     block += `DISLIKED FOODS (NEVER use): ${dislikes}\n`;
@@ -92,17 +94,19 @@ function formatTrainingDay(workouts) {
   );
   if (active.length === 0) return 'Rest';
   return active
-    .map((w) => `${w.type}${w.distance ? ' ' + w.distance : ''} (intensity ${w.intensity || 5}/10)`)
+    .map((w) => `${w.type}${w.distance ? ' ' + w.distance : ''} (intensity ${w.intensity || 'Medium'})`)
     .join(' + ');
 }
 
 function buildVarietyBlock({ avoidIngredients, alreadyGeneratedToday, ragContext }) {
   let block = '';
   if (avoidIngredients?.length) {
-    block += `AVOID THESE (already used recently): ${avoidIngredients.join(', ')}\n`;
+    block += `DO NOT USE these ingredients (already used in other meals today): ${avoidIngredients.join(', ')}\n`;
+    block += `Pick a DIFFERENT protein source, a DIFFERENT carb, and a DIFFERENT vegetable.\n`;
   }
   if (alreadyGeneratedToday?.length) {
-    block += `ALREADY GENERATED TODAY (add variety): ${alreadyGeneratedToday.join('; ')}\n`;
+    block += `Meals already created today: ${alreadyGeneratedToday.join('; ')}\n`;
+    block += `You MUST use completely different main ingredients from those meals.\n`;
   }
   if (ragContext) {
     block += `\nPERSONALIZATION CONTEXT:\n${ragContext}\n`;
@@ -180,7 +184,7 @@ export function buildSingleMealPrompt({
 /**
  * Build a prompt for generating all meals for one day.
  *
- * Used by: generate-day.js (mobile)
+ * Used by: generate-day.js
  */
 export function buildDayPrompt({
   mealBudgets,
@@ -189,14 +193,25 @@ export function buildDayPrompt({
   todayTraining = null,
   tomorrowTraining = null,
   avoidIngredients = [],
+  previousDayMealNames = [],
   ragContext = null,
 }) {
   const budgetSummary = Object.entries(mealBudgets)
     .map(([meal, b]) => `  ${meal}: ${b.calories} kcal | ${b.protein}P ${b.carbs}C ${b.fat}F`)
     .join('\n');
 
+  // Extract cuisine preferences separately for emphasis
+  const cuisines = foodPreferences?.cuisine_favorites || foodPreferences?.cuisines || '';
+
+  // Build cross-day variety block
+  let crossDayBlock = '';
+  if (previousDayMealNames.length > 0) {
+    crossDayBlock = `DISHES ALREADY USED ON OTHER DAYS THIS WEEK (DO NOT repeat any of these — create completely different meals):\n${previousDayMealNames.join(', ')}\n`;
+  }
+
   const lines = [
     'You are a sports nutritionist creating a full day of meals for an athlete.',
+    'Think of real, named dishes from real cuisines — not generic ingredient combos.',
     '',
     `MACRO BUDGETS PER MEAL:`,
     budgetSummary,
@@ -210,14 +225,21 @@ export function buildDayPrompt({
     '',
     buildPreferencesBlock({ foodPreferences, dietaryRestrictions }),
     buildTrainingBlock({ todayTraining, tomorrowTraining }),
+    crossDayBlock,
     buildVarietyBlock({ avoidIngredients, alreadyGeneratedToday: [], ragContext }),
-    'RULES:',
+    'CRITICAL VARIETY RULES:',
+    '1. Use a DIFFERENT protein source for EACH of the 5 meals (e.g. eggs for breakfast, salmon for lunch, pork for dinner, beans for snack, dairy for dessert)',
+    '2. Use a DIFFERENT carb source for at least 3 of the 5 meals (e.g. toast, rice, pasta — not rice for everything)',
+    '3. Use a DIFFERENT vegetable for each meal that has one — do NOT default to broccoli for everything',
+    '4. Each meal should be a recognizable dish from a real cuisine, not just "[protein] with [carb] and [vegetable]"',
+    cuisines ? `5. Draw from these cuisines across the day: ${cuisines}` : '5. Vary cuisines across meals',
+    '6. Dessert must be a real dessert (cake, pudding, ice cream, fruit crisp, etc.) — not a smoothie bowl or yogurt',
+    '7. Snack should be simple (1-3 ingredients) and different from the main meals',
+    '',
+    'ADDITIONAL RULES:',
     '1. Each meal must have ingredients with types (protein, carb, vegetable, fat) and gram weights',
     '2. Use COOKED weights for grains, pasta, potatoes',
-    '3. Ensure variety across meals — don\'t repeat the same protein or carb source',
-    '4. Dessert should be a real dessert (not just yogurt), but keep it within the macro budget',
-    '5. Snack can be simple (1-3 ingredients)',
-    '6. Meal names should be short and descriptive',
+    '3. Meal names should be short and descriptive',
     '',
     TYPE_DESCRIPTIONS,
     '',

@@ -2,6 +2,52 @@
 // - Web: uses relative paths (e.g., '/api/generate-meals')
 // - React Native: uses full production URL (e.g., 'https://alimenta-nutrition.vercel.app/api/generate-meals')
 
+/**
+ * Thrown when API returns 401 Unauthorized (session expired).
+ * Use ApiErrorContext.handleApiError to sign out and redirect to login.
+ */
+export class AuthError extends Error {
+  constructor(message = 'Session expired. Please sign in again.') {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+/**
+ * Wraps fetch with timeout, 401/500+ handling, and network error detection.
+ * @param {string} url - Request URL
+ * @param {RequestInit} options - Fetch options (method, headers, body, etc.)
+ * @param {number} timeoutMs - Timeout in ms (default 30000)
+ * @returns {Promise<Response>} - Response on success
+ * @throws {AuthError} - On 401 response
+ * @throws {Error} - On 500+, timeout, or network failure
+ */
+export async function apiRequest(url, options = {}, timeoutMs = 30000) {
+  try {
+    const response = await fetchWithTimeout(url, options, timeoutMs);
+
+    if (response.status === 401) {
+      throw new AuthError('Session expired. Please sign in again.');
+    }
+    if (response.status >= 500) {
+      throw new Error('Something went wrong on our end. Please try again later.');
+    }
+
+    return response;
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+    if (error.name === 'AbortError' || (error.message && error.message.includes('timed out'))) {
+      throw new Error('Request timed out. Please try again.');
+    }
+    if (error instanceof TypeError && error.message === 'Network request failed') {
+      throw new Error('No internet connection. Please check your network.');
+    }
+    throw error;
+  }
+}
+
 // Platform detection: Check if we're in a React Native environment
 function isReactNative() {
   // Method 1: Check navigator.product (most reliable for React Native)
@@ -40,6 +86,33 @@ function getBaseUrl() {
 }
 
 const BASE_URL = getBaseUrl();
+
+/**
+ * Wraps fetch with a configurable timeout.
+ * @param {string} url - Request URL
+ * @param {RequestInit} options - Fetch options
+ * @param {number} timeoutMs - Timeout in ms (default 30000)
+ * @returns {Promise<Response>}
+ */
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 30000) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 // Helper function to build the full API endpoint URL
 function getApiUrl(endpoint) {
@@ -157,7 +230,10 @@ function streamSSEDay(url, data, onProgress) {
           try {
             const payload = JSON.parse(dataStr);
 
-            if (currentEvent === 'status' && payload.message) {
+            if (currentEvent === 'debug') {
+              console.log('🟠 [streamSSEDay] Debug event received');
+              if (onProgress) onProgress({ type: 'debug', prompt: payload.prompt, rawResponse: payload.rawResponse });
+            } else if (currentEvent === 'status' && payload.message) {
               if (onProgress) onProgress({ type: 'status', message: payload.message });
             } else if (currentEvent === 'meal' && payload.mealType && payload.meal) {
               finalResult.meals[payload.mealType] = payload.meal;
@@ -285,11 +361,15 @@ export const apiClient = {
   },
 
   async regenerateMeal(data) {
-    const response = await fetch(getApiUrl('/api/regenerate-meal'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const response = await apiRequest(
+      getApiUrl('/api/regenerate-meal'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+      30000
+    );
     return response.json();
   },
 
@@ -334,7 +414,10 @@ export const apiClient = {
               try {
                 const payload = JSON.parse(line.slice(6));
 
-                if (currentEvent === 'status' && payload.message) {
+                if (currentEvent === 'debug') {
+                  console.log('🟠 Debug event parsed in api.js:', payload);
+                  if (onProgress) onProgress({ type: 'debug', prompt: payload.prompt, rawResponse: payload.rawResponse });
+                } else if (currentEvent === 'status' && payload.message) {
                   if (onProgress) onProgress({ type: 'status', message: payload.message });
                 } else if (currentEvent === 'meal' && payload.mealType && payload.meal) {
                   meals[payload.mealType] = payload.meal;
@@ -414,21 +497,25 @@ export const apiClient = {
   },
 
   async getRecipe(data) {
-    const response = await fetch(getApiUrl('/api/get-recipe'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const response = await apiRequest(
+      getApiUrl('/api/get-recipe'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+      30000
+    );
     return response.json();
   },
 
   async deleteAccount(data) {
     try {
-      const response = await fetch(getApiUrl('/api/delete-account'), {
+      const response = await fetchWithTimeout(getApiUrl('/api/delete-account'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
+      }, 30000);
 
       // Check if response is OK
       if (!response.ok) {
@@ -466,11 +553,11 @@ export const apiClient = {
 
   async estimateMacros(data) {
     try {
-      const response = await fetch(getApiUrl('/api/estimate-macros'), {
+      const response = await fetchWithTimeout(getApiUrl('/api/estimate-macros'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
+      }, 30000);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -501,29 +588,41 @@ export const apiClient = {
   },
 
   async generateGroceryList(data) {
-    const response = await fetch(getApiUrl('/api/generate-grocery-list'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const response = await apiRequest(
+      getApiUrl('/api/generate-grocery-list'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+      30000
+    );
     return response.json();
   },
 
   async generateMealPrep(data) {
-    const response = await fetch(getApiUrl('/api/generate-meal-prep'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const response = await apiRequest(
+      getApiUrl('/api/generate-meal-prep'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+      30000
+    );
     return response.json();
   },
 
   async validateNutrition(mealData) {
-    const response = await fetch(getApiUrl('/api/validate-nutrition'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(mealData),
-    });
+    const response = await apiRequest(
+      getApiUrl('/api/validate-nutrition'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mealData),
+      },
+      30000
+    );
     return response.json();
   },
 };

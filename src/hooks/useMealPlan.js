@@ -199,60 +199,42 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         }),
       });
 
-      // Handle SSE response
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const rawText = await response.text();
+      console.log('Raw response length:', rawText.length);
+      console.log('Raw response first 200 chars:', rawText.substring(0, 200));
+      console.log('Raw response last 200 chars:', rawText.substring(rawText.length - 200));
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            const eventType = line.slice(7).trim();
-            continue;
-          }
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              
-              if (data.day && data.meals) {
-                // Update meal plan as each day comes in
-                setMealPlan(prev => ({
-                  ...prev,
-                  [data.day]: { ...prev[data.day], ...data.meals }
-                }));
-              }
-              
-              if (data.message) {
-                setStatusMessage(`🔄 ${data.message}`);
-              }
-              
-              if (data.success !== undefined) {
-                // Done event
-                setStatusMessage('✅ Meal plan generated successfully!');
-                setTimeout(() => setStatusMessage(''), 3000);
-              }
-              
-              if (data.error) {
-                console.error('Generation error:', data.error);
-              }
-            } catch (e) {
-              // Ignore parse errors for keepalive comments
-            }
-          }
-        }
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error('JSON parse failed:', parseError.message);
+        console.error('Response was truncated or malformed');
+        throw new Error('Response parsing failed - response may be too large');
       }
+
+      if (result.success && result.meals) {
+        setMealPlan((prev) => {
+          const next = { ...prev };
+          Object.keys(result.meals).forEach((day) => {
+            if (next[day]) next[day] = { ...next[day], ...result.meals[day] };
+          });
+          return next;
+        });
+        setStatusMessage('✅ Meal plan generated successfully!');
+        setTimeout(() => setStatusMessage(''), 3000);
+      }
+
+      console.log('Meals received:', Object.keys(result.meals || {}));
+      console.log('Has meals_v2:', !!result.meals_v2);
 
       return { success: true };
     } catch (error) {
       setStatusMessage(`❌ Error: ${error.message}`);
-      setTimeout(() => setStatusMessage(''), 5000);
+      setTimeout(() => setStatusMessage(''), 30000);
       return { success: false, error: error.message };
     } finally {
       setIsGenerating(false);

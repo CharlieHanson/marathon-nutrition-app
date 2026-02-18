@@ -1,27 +1,29 @@
 /**
- * generate-day.js (Mobile + Web — Single Day, SSE)
+ * generate-day.js (Single Day, SSE)
  * pages/api/generate-day.js
  *
- * Fills EMPTY meal slots for one day. Skips meals that already exist.
- * Streams each meal as it's generated via SSE.
+ * Fills EMPTY meal slots for one day using ONE OpenAI call for all 5 meals.
+ * Streams each meal from the parsed response via SSE.
  *
- * NEW PIPELINE: TDEE → budget → OpenAI (per meal) → density → scaler
+ * ARCHITECTURE: TDEE → budgets → OpenAI (single call, all meals) → density + scaler per meal
  *
  * Body: { userId, day, userProfile, foodPreferences, trainingPlan,
- *         weekStarting?, existingMeals?, ragContext? }
+ *         weekStarting?, existingMeals?, ragContext?, debug? }
  *
  * SSE events:
- *   status  → { mealType, status: "generating"|"skipped" }
- *   meal    → { mealType, meal: "Name (Cal: X, P: Xg, C: Xg, F: Xg)", day }
- *   done    → { success, day, meals: [...], dailyTotals, dailyTargets }
- *   error   → { message }
+ *   debug     → { prompt, rawResponse } (only if debug=true in body)
+ *   nutrition → { dailyMacros, mealBudgets, bmr, tdee, adjustedTdee }
+ *   status    → { mealType, status: "generating"|"skipped"|"processing" }
+ *   meal      → { mealType, meal: "Name (Cal: X, P: Xg, C: Xg, F: Xg)", day }
+ *   done      → { success, day, meals: [...], dailyTotals, dailyTargets }
+ *   error     → { message }
  */
 
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
-import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -33,9 +35,8 @@ const supabase = createClient(
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Map frontend keys to internal keys and back
-const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
 const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
+const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
 
 function parseJSON(text) {
   let s = text.trim();
@@ -57,17 +58,28 @@ function toMealString(name, macros) {
 }
 
 /**
- * Extract protein ingredient names from a meal string for variety tracking.
- * e.g., "Grilled Salmon with Quinoa (Cal: 500, ...)" → ["salmon"]
+ * Extract key protein names from previous days' meals for cross-day variety.
+ * Keeps the avoid list SHORT (just proteins) so the model doesn't get overwhelmed.
  */
-function extractProteins(mealStr) {
-  if (!mealStr || typeof mealStr !== 'string') return [];
-  const desc = mealStr.replace(/\(Cal:.*?\)/g, '').toLowerCase();
+function extractProteinsFromWeek(weekMeals, currentDay) {
   const proteins = [
     'chicken', 'salmon', 'tuna', 'beef', 'pork', 'turkey', 'shrimp',
     'tofu', 'tempeh', 'eggs', 'egg', 'cod', 'tilapia', 'lentil', 'chickpea',
+    'lamb', 'duck', 'sausage', 'bacon', 'ham', 'prawn',
   ];
-  return proteins.filter((p) => desc.includes(p));
+  const found = new Set();
+
+  for (const [day, meals] of Object.entries(weekMeals)) {
+    if (day === currentDay || typeof meals !== 'object') continue;
+    for (const val of Object.values(meals)) {
+      if (!val || typeof val !== 'string') continue;
+      const desc = val.replace(/\(Cal:.*?\)/g, '').toLowerCase();
+      for (const p of proteins) {
+        if (desc.includes(p)) found.add(p);
+      }
+    }
+  }
+  return [...found];
 }
 
 export default async function handler(req, res) {
@@ -82,8 +94,9 @@ export default async function handler(req, res) {
     foodPreferences,
     trainingPlan,
     weekStarting,
-    existingMeals,  // optional: { breakfast: "...", lunch: "", dinner: "...", ... }
-    ragContext,      // optional: string from RAG pipeline
+    existingMeals,
+    ragContext,
+    debug = false,
   } = req.body;
 
   if (!userProfile || !day) {
@@ -102,31 +115,44 @@ export default async function handler(req, res) {
   };
 
   try {
-    // ── Step 1: Load existing meals for the week (for variety) ──
+    // ── Step 1: Load existing meals for cross-day variety ──
     let weekMeals = existingMeals ? { [day]: existingMeals } : {};
 
-    if (userId && weekStarting && !existingMeals) {
+    if (userId && !existingMeals) {
       try {
-        const { data } = await supabase
+        let query = supabase
           .from('meal_plans')
           .select('meals')
-          .eq('user_id', userId)
-          .eq('week_starting', weekStarting)
-          .maybeSingle();
+          .eq('user_id', userId);
+
+        if (weekStarting) {
+          query = query.eq('week_starting', weekStarting);
+        } else {
+          // No weekStarting provided — grab the most recent meal plan
+          query = query.order('updated_at', { ascending: false }).limit(1);
+        }
+
+        const { data } = await query.maybeSingle();
         if (data?.meals) weekMeals = data.meals;
       } catch (e) {
         console.warn('Could not load existing meals:', e.message);
       }
     }
 
+    // Check which slots are already filled for this day
     const dayMeals = weekMeals[day] || {};
+    const filledSlots = {};
+    const emptySlots = [];
 
-    // Determine which slots are empty
-    const emptySlots = MEAL_TYPES.filter((mt) => {
-      const key = toOutputKey(mt);
-      const val = dayMeals[key] || dayMeals[mt];
-      return !val || (typeof val === 'string' && val.trim() === '');
-    });
+    for (const mt of MEAL_TYPES) {
+      const outKey = toOutputKey(mt);
+      const val = dayMeals[outKey] || dayMeals[mt];
+      if (val && typeof val === 'string' && val.trim()) {
+        filledSlots[mt] = val;
+      } else {
+        emptySlots.push(mt);
+      }
+    }
 
     if (emptySlots.length === 0) {
       send('done', { success: true, day, meals: [], message: 'All slots already filled' });
@@ -144,109 +170,191 @@ export default async function handler(req, res) {
       workoutTiming: timingMap[dayTiming] || null,
     });
 
-    send('status', { message: `Generating ${emptySlots.length} meals for ${day}`, dailyMacros: nutrition.dailyMacros });
+    send('nutrition', {
+      dailyMacros: nutrition.dailyMacros,
+      mealBudgets: nutrition.mealBudgets,
+      bmr: nutrition.bmr,
+      tdee: nutrition.tdee,
+      adjustedTdee: nutrition.adjustedTdee,
+    });
 
-    // ── Step 3: Build avoid list from existing meals (variety) ──
-    const usedProteins = [];
-    for (const [d, meals] of Object.entries(weekMeals)) {
-      if (typeof meals !== 'object') continue;
-      for (const val of Object.values(meals)) {
-        usedProteins.push(...extractProteins(val));
+    // ── Step 3: Build cross-day variety from previous 2 days' dish names ──
+    const previousDayMealNames = [];
+    const dayIndex = DAYS.indexOf(day);
+    // Get the 2 days before current day (wraps around: Monday looks at Sat/Sun)
+    const recentDayIndices = [
+      (dayIndex - 1 + 7) % 7,
+      (dayIndex - 2 + 7) % 7,
+    ];
+    for (const di of recentDayIndices) {
+      const d = DAYS[di];
+      const meals = weekMeals[d];
+      if (!meals || typeof meals !== 'object') continue;
+      for (const [key, val] of Object.entries(meals)) {
+        if (!val || typeof val !== 'string' || key.includes('_rating')) continue;
+        const name = val.replace(/\(Cal:.*?\).*$/, '').trim();
+        if (name && !previousDayMealNames.includes(name)) {
+          previousDayMealNames.push(name);
+        }
       }
     }
-    const avoidIngredients = [...new Set(usedProteins)];
 
     // Training context
-    const dayIndex = DAYS.indexOf(day);
     const tomorrowDay = DAYS[(dayIndex + 1) % 7];
     const todayTraining = formatTrainingDay(dayWorkouts);
     const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
 
-    // ── Step 4: Generate each empty meal ──
-    const generatedMeals = [];
-    const alreadyGeneratedToday = [];
+    // ── Step 4: Build budgets for empty slots only ──
+    const budgetsToGenerate = {};
+    for (const mt of emptySlots) {
+      budgetsToGenerate[mt] = nutrition.mealBudgets[mt];
+    }
 
-    // Include existing meals in the "already generated" list for variety
+    // Mark filled slots as skipped
     for (const mt of MEAL_TYPES) {
-      const key = toOutputKey(mt);
-      const existing = dayMeals[key] || dayMeals[mt];
-      if (existing && typeof existing === 'string' && existing.trim()) {
-        alreadyGeneratedToday.push(existing.replace(/\(Cal:.*?\)/g, '').trim());
+      if (!emptySlots.includes(mt)) {
+        send('status', { mealType: toOutputKey(mt), status: 'skipped' });
       }
     }
 
-    for (const mealType of MEAL_TYPES) {
+    // ── Step 5: ONE OpenAI call for all empty meals ──
+    send('status', { message: `Generating ${emptySlots.length} meals for ${day}...` });
+
+    const prompt = buildDayPrompt({
+      mealBudgets: budgetsToGenerate,
+      foodPreferences,
+      dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
+      todayTraining,
+      tomorrowTraining,
+      avoidIngredients: [],  // dish names handle cross-day variety now
+      previousDayMealNames,
+      ragContext: ragContext || null,
+    });
+
+    const aiResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 3000,
+      temperature: 0.8,
+      response_format: { type: 'json_object' },
+    });
+
+    const rawResponse = aiResponse.choices[0].message.content;
+    const dayMealData = parseJSON(rawResponse);
+
+    // ── Send debug info if requested ──
+    if (debug) {
+      send('debug', { prompt, rawResponse });
+    }
+
+    // ── Step 6: Process each meal (density + scaler) and stream ──
+    const generatedMeals = [];
+    const dailyTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+    for (const mealType of emptySlots) {
       const outKey = toOutputKey(mealType);
+      send('status', { mealType: outKey, status: 'processing' });
 
-      // Skip if slot is already filled
-      if (!emptySlots.includes(mealType)) {
-        send('status', { mealType: outKey, status: 'skipped' });
+      // AI might return 'snack' or 'snacks' — check both
+      const mealData = dayMealData[mealType] || dayMealData[toOutputKey(mealType)];
+
+      if (!mealData || !mealData.ingredients || !Array.isArray(mealData.ingredients)) {
+        send('meal', { mealType: outKey, error: 'No data returned for this meal', day });
         continue;
       }
 
-      send('status', { mealType: outKey, status: 'generating' });
+      const ingredients = mealData.ingredients
+        .filter((ing) => ing.name && ing.type && ing.grams > 0)
+        .map((ing) => ({
+          name: String(ing.name).trim(),
+          type: String(ing.type).trim().toLowerCase(),
+          grams: Math.round(parseFloat(ing.grams) || 0),
+        }));
 
-      const budget = nutrition.mealBudgets[mealType];
-      if (!budget) {
-        send('meal', { mealType: outKey, error: 'No budget', day });
-        continue;
-      }
+      // ── Validation A: Remove disliked foods that slipped through ──
+      const dislikedList = (
+        userProfile.dietary_restrictions || userProfile.dietaryRestrictions || ''
+      ).toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
-      try {
-        const prompt = buildSingleMealPrompt({
-          mealType,
-          macroBudget: budget,
-          foodPreferences,
-          dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
-          todayTraining,
-          tomorrowTraining,
-          avoidIngredients,
-          alreadyGeneratedToday,
-          ragContext: ragContext || null,
-        });
+      const dislikesRaw = foodPreferences?.dislikes || '';
+      const dislikedFoods = dislikesRaw.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+      const allBanned = [...dislikedList, ...dislikedFoods];
 
-        const response = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 800,
-          temperature: 0.7,
-          response_format: { type: 'json_object' },
-        });
-
-        const mealData = parseJSON(response.choices[0].message.content);
-        const ingredients = (mealData.ingredients || [])
-          .filter((ing) => ing.name && ing.type && ing.grams > 0)
-          .map((ing) => ({
-            name: String(ing.name).trim(),
-            type: String(ing.type).trim().toLowerCase(),
-            grams: Math.round(parseFloat(ing.grams) || 0),
-          }));
-
-        let mealString;
-        if (ingredients.length > 0) {
-          const result = estimateAndAdjust(ingredients, budget);
-          const macros = {
-            calories: Math.round(result.macros.calories),
-            protein: Math.round(result.macros.protein),
-            carbs: Math.round(result.macros.carbs),
-            fat: Math.round(result.macros.fat),
-          };
-          mealString = toMealString(mealData.meal_name || mealType, macros);
-        } else {
-          mealString = mealData.meal_name || `Generated ${mealType}`;
+      const cleanedIngredients = ingredients.filter((ing) => {
+        const nameLower = ing.name.toLowerCase();
+        const isBanned = allBanned.some((banned) =>
+          nameLower.includes(banned) || banned.includes(nameLower)
+        );
+        if (isBanned) {
+          console.warn(`⚠️ Removed disliked ingredient: "${ing.name}" from ${mealType}`);
         }
+        return !isBanned;
+      });
 
-        generatedMeals.push({ mealType: outKey, meal: mealString });
-        alreadyGeneratedToday.push(mealData.meal_name || '');
+      // ── Validation B: Fix common type misclassifications ──
+      const TYPE_CORRECTIONS = {
+        // Sauces labeled as "fat" that are really carb/negligible
+        'teriyaki sauce': 'carb',
+        'soy sauce': 'carb',
+        'hoisin sauce': 'carb',
+        'bbq sauce': 'carb',
+        'ketchup': 'carb',
+        'honey': 'carb',
+        'maple syrup': 'carb',
+        'sugar': 'carb',
+        'sriracha': 'carb',
+        'hot sauce': 'carb',
+        'salsa': 'vegetable',
+        // Foods sometimes mistyped
+        'avocado': 'fat',
+        'cheese': 'protein',
+        'mozzarella': 'protein',
+        'hummus': 'protein',
+        'beans': 'protein',
+        'black beans': 'protein',
+        'chia seeds': 'fat',
+      };
 
-        send('meal', { mealType: outKey, meal: mealString, day });
-      } catch (err) {
-        console.error(`Error generating ${mealType}:`, err.message);
-        send('meal', { mealType: outKey, error: err.message, day });
+      for (const ing of cleanedIngredients) {
+        const key = ing.name.toLowerCase();
+        for (const [pattern, correctType] of Object.entries(TYPE_CORRECTIONS)) {
+          if (key.includes(pattern) && ing.type !== correctType) {
+            console.log(`🔧 Type fix: "${ing.name}" ${ing.type} → ${correctType}`);
+            ing.type = correctType;
+            break;
+          }
+        }
       }
+
+      if (cleanedIngredients.length === 0) {
+        const fallback = mealData.meal_name || `Generated ${mealType}`;
+        generatedMeals.push({ mealType: outKey, meal: fallback });
+        send('meal', { mealType: outKey, meal: fallback, day });
+        continue;
+      }
+
+      const budget = budgetsToGenerate[mealType];
+      const result = estimateAndAdjust(cleanedIngredients, budget);
+      const macros = {
+        calories: Math.round(result.macros.calories),
+        protein: Math.round(result.macros.protein),
+        carbs: Math.round(result.macros.carbs),
+        fat: Math.round(result.macros.fat),
+      };
+
+      dailyTotals.calories += macros.calories;
+      dailyTotals.protein += macros.protein;
+      dailyTotals.carbs += macros.carbs;
+      dailyTotals.fat += macros.fat;
+
+      const mealName = mealData.meal_name || `${mealType} meal`;
+      const mealString = toMealString(mealName, macros);
+
+      generatedMeals.push({ mealType: outKey, meal: mealString });
+      send('meal', { mealType: outKey, meal: mealString, day });
     }
 
-    // ── Step 5: Optionally save to DB ──
+    // ── Step 7: Optionally save to DB ──
     if (userId && weekStarting) {
       try {
         const updatedDayMeals = { ...dayMeals };
@@ -269,11 +377,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── Step 6: Done ──
+    // ── Step 8: Done ──
     send('done', {
       success: true,
       day,
       meals: generatedMeals,
+      dailyTotals,
       dailyTargets: nutrition.dailyMacros,
     });
   } catch (err) {
