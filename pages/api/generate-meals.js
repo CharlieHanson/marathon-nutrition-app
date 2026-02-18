@@ -2,27 +2,24 @@
  * generate-meals.js (Web — Full Week)
  * pages/api/generate-meals.js
  *
- * NEW ARCHITECTURE:
+ * ARCHITECTURE:
  *   1. TDEE + meal budgets (deterministic)
  *   2. OpenAI generates meals with structured ingredients + grams
- *   3. Density lookup computes actual macros
- *   4. Algebraic scaler adjusts portions to close gaps
+ *   3. Validate: remove disliked foods, fix type misclassifications
+ *   4. Density lookup computes actual macros
+ *   5. Algebraic scaler adjusts portions to close gaps
  *
  * BACKWARD COMPATIBLE: Returns the same response shape the frontend expects:
  *   { success: true, meals: { monday: { breakfast: "Meal name (Cal: X, P: Xg, C: Xg, F: Xg)", ... } } }
- *
- * Also includes the new structured data in a separate field for when you
- * migrate the frontend: meals_v2, dailyTotals, dailyTargets
  */
 
 import OpenAI from 'openai';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildWeekPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -42,12 +39,12 @@ function parseAIResponse(text) {
   }
 }
 
-function processMeal(mealData, macroBudget) {
+function processMeal(mealData, macroBudget, dislikes, dietaryRestrictions) {
   if (!mealData || !mealData.ingredients || !Array.isArray(mealData.ingredients)) {
     return null;
   }
 
-  const validIngredients = mealData.ingredients
+  let ingredients = mealData.ingredients
     .filter((ing) => ing.name && ing.type && ing.grams > 0)
     .map((ing) => ({
       name: String(ing.name).trim(),
@@ -55,9 +52,12 @@ function processMeal(mealData, macroBudget) {
       grams: Math.round(parseFloat(ing.grams) || 0),
     }));
 
-  if (validIngredients.length === 0) return null;
+  // Validate: remove disliked foods + fix type misclassifications
+  ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
 
-  const result = estimateAndAdjust(validIngredients, macroBudget);
+  if (ingredients.length === 0) return null;
+
+  const result = estimateAndAdjust(ingredients, macroBudget);
 
   return {
     meal_name: mealData.meal_name || 'Unnamed meal',
@@ -73,10 +73,6 @@ function processMeal(mealData, macroBudget) {
   };
 }
 
-/**
- * Convert structured meal data to the old string format:
- * "Grilled Salmon with Quinoa (Cal: 550, P: 42g, C: 48g, F: 18g)"
- */
 function toMealString(processed) {
   if (!processed || !processed.macros) {
     return processed?.meal_name || '';
@@ -99,6 +95,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Missing user profile' });
     }
 
+    const dislikes = foodPreferences?.dislikes || '';
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
+
     // ── Step 1: Compute per-day nutrition targets ────────────────────────
     console.log('📊 Computing weekly nutrition targets...');
 
@@ -109,22 +108,18 @@ export default async function handler(req, res) {
     for (const day of days) {
       const dayTraining = trainingPlan?.[day]?.workouts || [];
       const dayTiming = trainingPlan?.[day]?.timing || null;
-
-      // Map timing display values to tdeeCalc values
       const timingMap = { 'Morning': 'am', 'Afternoon': 'pm', 'Evening': 'pm' };
-      const workoutTiming = timingMap[dayTiming] || null;
 
       const nutrition = computeNutritionTargets({
         userProfile,
         todayWorkouts: dayTraining,
-        workoutTiming,
+        workoutTiming: timingMap[dayTiming] || null,
       });
 
       weekNutrition[day] = nutrition;
       weekMealBudgets[day] = nutrition.mealBudgets;
     }
 
-    // Format training schedule for the prompt
     const trainingSchedule = days
       .map((day) => {
         const workouts = trainingPlan?.[day]?.workouts || [];
@@ -138,7 +133,7 @@ export default async function handler(req, res) {
     const prompt = buildWeekPrompt({
       weekMealBudgets,
       foodPreferences,
-      dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
+      dietaryRestrictions,
       trainingSchedule,
     });
 
@@ -157,19 +152,10 @@ export default async function handler(req, res) {
     console.log('⚖️ Computing macros and adjusting portions...');
 
     const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
-    const normalizeKey = (key) => {
-      if (key === 'snacks') return 'snack';
-      return key;
-    };
-    // For old format output, use the keys the frontend expects
-    const outputKey = (mealType) => {
-      if (mealType === 'snack') return 'snacks';
-      return mealType;
-    };
+    const normalizeKey = (key) => (key === 'snacks' ? 'snack' : key);
+    const outputKey = (mealType) => (mealType === 'snack' ? 'snacks' : mealType);
 
-    // Old format (backward compat): { monday: { breakfast: "string", ... } }
     const mealsOldFormat = {};
-    // New structured format
     const mealsStructured = {};
     const weekTotals = {};
 
@@ -189,7 +175,7 @@ export default async function handler(req, res) {
         if (!mealTypes.includes(mealType)) continue;
 
         const budget = weekMealBudgets[day]?.[mealType];
-        const processed = processMeal(dayMeals[rawKey], budget);
+        const processed = processMeal(dayMeals[rawKey], budget, dislikes, dietaryRestrictions);
         const outKey = outputKey(mealType);
 
         if (processed) {
@@ -201,7 +187,6 @@ export default async function handler(req, res) {
           weekTotals[day].carbs += processed.macros.carbs;
           weekTotals[day].fat += processed.macros.fat;
         } else {
-          // Fallback: use meal_name without macros
           const name = dayMeals[rawKey]?.meal_name || '';
           mealsOldFormat[day][outKey] = name;
           mealsStructured[day][outKey] = { meal_name: name, ingredients: [], macros: null };
@@ -212,7 +197,6 @@ export default async function handler(req, res) {
     // ── Step 4: Return response ──────────────────────────────────────────
     console.log('✅ Meal plan complete');
 
-    // Log accuracy summary
     for (const day of days) {
       const target = weekNutrition[day].dailyMacros;
       const actual = weekTotals[day];
@@ -223,9 +207,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       success: true,
-      // Old format — what the frontend currently reads
       meals: mealsOldFormat,
-      // New structured data — use when you migrate the frontend
       meals_v2: mealsStructured,
       dailyTotals: weekTotals,
       dailyTargets: Object.fromEntries(
@@ -234,9 +216,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('API Error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 }

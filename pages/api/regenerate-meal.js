@@ -3,7 +3,7 @@
  * pages/api/regenerate-meal.js
  *
  * Regenerates a single meal based on user feedback.
- * Uses the new pipeline: TDEE budget → OpenAI (structured) → density → scaler
+ * PIPELINE: TDEE budget → OpenAI (structured) → validate → density → scaler
  *
  * BACKWARD COMPATIBLE: Returns { success, meal: "Name (Cal: X, P: Xg, C: Xg, F: Xg)" }
  */
@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -56,6 +57,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
+    const dislikes = foodPreferences?.dislikes || '';
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
+
     // ── Step 1: Compute this meal's macro budget ─────────────────────────
     const dayWorkouts = trainingPlan?.[day]?.workouts || [];
     const dayTiming = trainingPlan?.[day]?.timing || null;
@@ -67,7 +71,6 @@ export default async function handler(req, res) {
       workoutTiming: timingMap[dayTiming] || null,
     });
 
-    // Normalize mealType for budget lookup (frontend sends 'snacks', budget uses 'snack')
     const budgetKey = mealType === 'snacks' ? 'snack' : mealType;
     const budget = nutrition.mealBudgets[budgetKey];
 
@@ -86,7 +89,7 @@ export default async function handler(req, res) {
       mealType: budgetKey,
       macroBudget: budget,
       foodPreferences,
-      dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
+      dietaryRestrictions,
       todayTraining: formatTrainingDay(dayWorkouts),
       tomorrowTraining: formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []),
       reason,
@@ -106,8 +109,8 @@ export default async function handler(req, res) {
 
     const mealData = parseJSON(response.choices[0].message.content);
 
-    // ── Step 4: Density lookup + scaler ──────────────────────────────────
-    const ingredients = (mealData.ingredients || [])
+    // ── Step 4: Validate + Density + Scaler ─────────────────────────────
+    let ingredients = (mealData.ingredients || [])
       .filter((ing) => ing.name && ing.type && ing.grams > 0)
       .map((ing) => ({
         name: String(ing.name).trim(),
@@ -115,8 +118,10 @@ export default async function handler(req, res) {
         grams: Math.round(parseFloat(ing.grams) || 0),
       }));
 
+    // Remove disliked foods + fix type misclassifications
+    ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
+
     if (ingredients.length === 0) {
-      // Fallback: return just the meal name without macros
       return res.status(200).json({
         success: true,
         meal: mealData.meal_name || 'Generated meal',
@@ -135,12 +140,9 @@ export default async function handler(req, res) {
 
     console.log(`✅ ${mealName}: ${macros.calories} kcal (target: ${budget.calories}), scaled: ${result.scaled}`);
 
-    // ── Step 5: Return backward-compatible response ──────────────────────
     res.status(200).json({
       success: true,
-      // Old format — what useMealPlan.js reads
       meal: toMealString(mealName, macros),
-      // New structured data — available when frontend migrates
       meal_v2: {
         meal_name: mealName,
         ingredients: result.ingredients,

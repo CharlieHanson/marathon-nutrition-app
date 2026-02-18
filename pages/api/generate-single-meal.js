@@ -3,13 +3,12 @@
  * pages/api/generate-single-meal.js
  *
  * Generate ONE meal for a specific slot. Supports optional userPrompt hint.
- * NEW PIPELINE: TDEE → budget → OpenAI → density → scaler
+ * PIPELINE: TDEE → budget → OpenAI → validate → density → scaler
  *
  * Body: { userId, day, mealType, userProfile, foodPreferences, trainingPlan,
  *         weekStarting?, userPrompt?, ragContext? }
  *
  * Returns: { success, meal: "Name (Cal: X, ...)", day, mealType, meal_v2: {...} }
- * Optionally upserts to meal_plans table.
  */
 
 import OpenAI from 'openai';
@@ -17,6 +16,7 @@ import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       foodPreferences,
       trainingPlan,
       weekStarting,
-      userPrompt,  // optional: "I want something with salmon" or "high protein snack"
+      userPrompt,
       ragContext,
     } = req.body;
 
@@ -83,6 +83,8 @@ export default async function handler(req, res) {
 
     const mealType = toInternalKey(rawMealType);
     const outKey = toOutputKey(mealType);
+    const dislikes = foodPreferences?.dislikes || '';
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
     // ── Step 1: TDEE + budget for this meal ──
     const dayWorkouts = trainingPlan?.[day]?.workouts || [];
@@ -116,7 +118,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Build avoid list + already-generated-today list
     const usedProteins = [];
     const alreadyToday = [];
     for (const [d, meals] of Object.entries(weekMeals)) {
@@ -130,13 +131,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // Training context
     const dayIndex = DAYS.indexOf(day);
     const tomorrowDay = DAYS[(dayIndex + 1) % 7];
 
     // ── Step 3: Build prompt ──
-    // If user provided a hint, prepend it to the prompt as a preference
-    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
     const enhancedPreferences = userPrompt
       ? { ...foodPreferences, likes: [foodPreferences?.likes, userPrompt].filter(Boolean).join(', ') }
       : foodPreferences;
@@ -166,14 +164,17 @@ export default async function handler(req, res) {
 
     const mealData = parseJSON(response.choices[0].message.content);
 
-    // ── Step 5: Density + scaler ──
-    const ingredients = (mealData.ingredients || [])
+    // ── Step 5: Validate + Density + Scaler ──
+    let ingredients = (mealData.ingredients || [])
       .filter((ing) => ing.name && ing.type && ing.grams > 0)
       .map((ing) => ({
         name: String(ing.name).trim(),
         type: String(ing.type).trim().toLowerCase(),
         grams: Math.round(parseFloat(ing.grams) || 0),
       }));
+
+    // Remove disliked foods + fix type misclassifications
+    ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
 
     let mealString;
     let mealV2 = null;

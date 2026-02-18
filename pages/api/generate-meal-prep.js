@@ -6,7 +6,7 @@
  * Averages the TDEE-based budget across those days, then asks OpenAI for
  * batch-friendly recipes that hit the per-serving targets.
  *
- * NEW PIPELINE: avg TDEE budget → OpenAI (4 options) → density per option
+ * PIPELINE: avg TDEE budget → OpenAI (4 options) → validate → density per option
  *
  * Body: { mealType, days, userProfile, foodPreferences, trainingPlan }
  *   mealType: "breakfast" | "lunch" | "dinner"
@@ -18,6 +18,7 @@
 import OpenAI from 'openai';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
+import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -56,6 +57,8 @@ export default async function handler(req, res) {
     }
 
     const mealType = toInternalKey(rawMealType);
+    const dislikes = foodPreferences?.dislikes || '';
+    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
     // ── Step 1: Average the macro budget across specified days ──
     const budgets = [];
@@ -89,9 +92,7 @@ export default async function handler(req, res) {
 
     // ── Step 2: Build prompt ──
     const likes = foodPreferences?.likes || '';
-    const dislikes = foodPreferences?.dislikes || '';
     const cuisines = foodPreferences?.cuisine_favorites || foodPreferences?.cuisines || '';
-    const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
     const prompt = `You are a sports nutritionist creating meal prep options for an athlete.
 
@@ -109,10 +110,9 @@ Density guide (to size portions):
 - 1g vegetable ≈ 0.06g carbs
 - 1g added fat (oil/butter) ≈ 1.0g fat
 
-${dietaryRestrictions ? `DIETARY RESTRICTIONS: ${dietaryRestrictions}` : ''}
-${likes ? `PREFERRED FOODS: ${likes}` : ''}
-${dislikes ? `DISLIKED FOODS (NEVER use): ${dislikes}` : ''}
-${cuisines ? `PREFERRED CUISINES: ${cuisines}` : ''}
+${dietaryRestrictions ? `DIETARY RESTRICTIONS (MUST follow): ${dietaryRestrictions}` : ''}
+${likes ? `FOODS/CUISINES THE USER ENJOYS (rotate through these): ${likes}${cuisines ? ', ' + cuisines : ''}` : ''}
+${dislikes ? `DISLIKED FOODS (NEVER use any of these): ${dislikes}` : ''}
 
 RULES:
 1. Recipes must be batch-cookable and reheat well
@@ -120,6 +120,7 @@ RULES:
 3. Each option should use a different protein source
 4. Include a brief prep description and estimated prep time
 5. Ingredient types must be: protein, carb, vegetable, or fat
+6. NEVER include any disliked foods — double check each ingredient
 
 Respond with ONLY valid JSON:
 {
@@ -150,15 +151,18 @@ Respond with ONLY valid JSON:
     const data = parseJSON(response.choices[0].message.content);
     const rawOptions = data.options || [];
 
-    // ── Step 4: Process each option through density lookup ──
+    // ── Step 4: Validate + density for each option ──
     const options = rawOptions.map((opt) => {
-      const ingredients = (opt.ingredients || [])
+      let ingredients = (opt.ingredients || [])
         .filter((ing) => ing.name && ing.type && ing.grams > 0)
         .map((ing) => ({
           name: String(ing.name).trim(),
           type: String(ing.type).trim().toLowerCase(),
           grams: Math.round(parseFloat(ing.grams) || 0),
         }));
+
+      // Remove disliked foods + fix type misclassifications
+      ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
 
       if (ingredients.length === 0) {
         return {
@@ -172,7 +176,6 @@ Respond with ONLY valid JSON:
         };
       }
 
-      // Density lookup + scaler against the average budget
       const result = estimateAndAdjust(ingredients, avgBudget);
       const macros = {
         calories: Math.round(result.macros.calories),
