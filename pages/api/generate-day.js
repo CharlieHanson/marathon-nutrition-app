@@ -19,14 +19,16 @@
  *   error     → { message }
  */
 
-import OpenAI from 'openai';
+// import OpenAI from 'openai';
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -44,10 +46,50 @@ function parseJSON(text) {
   else if (s.startsWith('```')) s = s.slice(3);
   if (s.endsWith('```')) s = s.slice(0, -3);
   s = s.trim();
-  try { return JSON.parse(s); } catch {
-    const start = s.indexOf('{');
-    const end = s.lastIndexOf('}');
-    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+
+  // Try direct parse first
+  try { return JSON.parse(s); } catch (e) { /* continue */ }
+
+  // Try extracting JSON object
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(s.slice(start, end + 1)); } catch (e) { /* continue */ }
+  }
+
+  // Handle truncated JSON — attempt to close open structures
+  // This happens when the model hits maxOutputTokens mid-response
+  let truncated = s;
+  if (start !== -1) truncated = s.slice(start);
+
+  // Count open brackets/braces to close them
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escaped = false;
+  for (const ch of truncated) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') openBraces++;
+    if (ch === '}') openBraces--;
+    if (ch === '[') openBrackets++;
+    if (ch === ']') openBrackets--;
+  }
+
+  // Remove trailing comma or partial value, then close structures
+  truncated = truncated.replace(/,\s*$/, '');
+  // Remove incomplete key-value pair at end (e.g. `"name": "chi`)
+  truncated = truncated.replace(/,\s*"[^"]*":\s*"[^"]*$/, '');
+  // Remove incomplete object at end of array (e.g. `{ "name": "chi`)
+  truncated = truncated.replace(/,\s*\{[^}]*$/, '');
+
+  for (let i = 0; i < openBrackets; i++) truncated += ']';
+  for (let i = 0; i < openBraces; i++) truncated += '}';
+
+  try { return JSON.parse(truncated); } catch (e) {
+    console.error('parseJSON failed even after truncation repair. First 500 chars:', s.slice(0, 500));
     throw new Error('Failed to parse AI JSON');
   }
 }
@@ -204,7 +246,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── Step 5: ONE OpenAI call for all empty meals ──
+    // ── Step 5: ONE Gemini call for all empty meals ──
     send('status', { message: `Generating ${emptySlots.length} meals for ${day}...` });
 
     const prompt = buildDayPrompt({
@@ -218,16 +260,46 @@ export default async function handler(req, res) {
       ragContext: ragContext || null,
     });
 
-    const aiResponse = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 3000,
-      temperature: 0.8,
-      response_format: { type: 'json_object' },
-    });
+    // ── OpenAI (commented out) ──
+    // const aiResponse = await openai.chat.completions.create({
+    //   model: 'gpt-4o-mini',
+    //   messages: [{ role: 'user', content: prompt }],
+    //   max_tokens: 3000,
+    //   temperature: 0.8,
+    //   response_format: { type: 'json_object' },
+    // });
+    // const rawResponse = aiResponse.choices[0].message.content;
 
-    const rawResponse = aiResponse.choices[0].message.content;
-    const dayMealData = parseJSON(rawResponse);
+    // ── Gemini ──
+    const geminiModel = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.8,
+        maxOutputTokens: 50000,
+      },
+    });
+    
+    let aiResult;
+    try {
+      aiResult = await geminiModel.generateContent(prompt);
+    } catch (geminiError) {
+      console.error('Gemini API error:', geminiError);
+      send('error', { message: `Gemini API failed: ${geminiError.message}` });
+      return res.end();
+    }
+    
+    const rawResponse = aiResult.response.text();
+    
+    let dayMealData;
+    try {
+      dayMealData = parseJSON(rawResponse);
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response. Raw text:', rawResponse);
+      console.error('Parse error:', parseError);
+      send('error', { message: 'Failed to parse AI response' });
+      return res.end();
+    }
 
     if (debug) {
       send('debug', { prompt, rawResponse });
