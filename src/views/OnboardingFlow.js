@@ -36,10 +36,11 @@ export const OnboardingFlow = ({ user, onComplete }) => {
     setPreferences((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleProfileNext = async () => {
+  const handleProfileNext = async (profileToSave) => {
     setIsSaving(true);
     try {
-      const { error } = await saveUserProfile(user.id, profile);
+      const profileData = profileToSave ?? profile;
+      const { error } = await saveUserProfile(user.id, profileData);
       if (error) {
         alert('Failed to save profile. Please try again.');
       } else {
