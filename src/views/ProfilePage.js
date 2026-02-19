@@ -3,7 +3,7 @@ import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { Input } from '../components/shared/Input';
 import { Select } from '../components/shared/Select';
-import { Save, Lock, User, Target, FileText, AlertCircle } from 'lucide-react';
+import { Save, Lock, User, Target, FileText, AlertCircle, Calculator } from 'lucide-react';
 import { parseHeightCm, parseWeightKg, computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 
 const GOAL_OPTIONS = [
@@ -467,35 +467,18 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
         <div className="mt-8 pt-6 border-t border-gray-200">
           {!isGuest ? (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Button onClick={handleSave} disabled={isSaving} icon={Save} size="lg">
                   {isSaving ? 'Saving...' : 'Save Profile'}
                 </Button>
-
+                <Button onClick={handleTestTdee} icon={Calculator} size="lg">
+                  Calculate my Macros
+                </Button>
                 {showSaveConfirmation && (
                   <div className="px-4 py-3 bg-green-50 border border-green-500 rounded-lg text-green-700 flex items-center gap-2 shadow-sm">
                     <span className="text-xl">✓</span>
                     <span className="font-medium">Profile saved successfully!</span>
                   </div>
-                )}
-              </div>
-
-              {/* TDEE Test Button - FOR LOCAL TESTING ONLY */}
-              <div className="flex items-center gap-4">
-                <Button 
-                  onClick={handleTestTdee} 
-                  className="bg-purple-600 hover:bg-purple-700"
-                  size="md"
-                >
-                  🧪 Test TDEE Calculator
-                </Button>
-                {showTdeeTest && (
-                  <button
-                    onClick={() => setShowTdeeTest(false)}
-                    className="text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Hide Results
-                  </button>
                 )}
               </div>
             </div>
@@ -515,76 +498,36 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
         </div>
       </Card>
 
-      {/* Profile Completion Card - only show if not guest */}
-      {!isGuest && <ProfileCompletionCard profile={profile} />}
-
-      {/* TDEE Test Results - FOR LOCAL TESTING ONLY */}
-      {showTdeeTest && tdeeResults && (
-        <Card className="bg-purple-50 border-2 border-purple-300">
+      {/* Macros Calculator Results - above profile completion */}
+      {!isGuest && showTdeeTest && tdeeResults && (
+        <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200">
           <div className="mb-4">
-            <h3 className="text-xl font-bold text-purple-900 mb-2">🧪 TDEE Calculator Test Results</h3>
-            <p className="text-sm text-purple-700">Testing all tdeeCalc.js functions with your current profile</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Your Daily Nutrition Targets</h3>
+            <p className="text-sm text-gray-600">Based on your profile and goals</p>
           </div>
 
-          {/* Parsed Values */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-purple-200">
-            <h4 className="font-semibold text-gray-900 mb-3">📊 Parsed Input Values</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-              <div>
-                <span className="text-gray-600">Height:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.heightCm} cm</span>
-                <div className="text-xs text-gray-500">from: "{profile.height}"</div>
-              </div>
-              <div>
-                <span className="text-gray-600">Weight:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.weightKg.toFixed(1)} kg</span>
-                <div className="text-xs text-gray-500">from: "{profile.weight}"</div>
-              </div>
-              <div>
-                <span className="text-gray-600">Age:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.age}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Gender:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.gender}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Goal:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.goal}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Activity:</span>
-                <span className="ml-2 font-mono font-semibold">{tdeeResults.noWorkouts.parsed.activityMultiplier}x</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Rest Day (No Workouts) */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-purple-200">
-            <h4 className="font-semibold text-gray-900 mb-3">😴 Rest Day (No Workouts)</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {/* Rest Day */}
+          <div className="mb-6 p-4 bg-white rounded-lg border border-orange-100 shadow-sm">
+            <h4 className="font-semibold text-gray-900 mb-3">Rest days</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-3 bg-blue-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">BMR</div>
+                <div className="text-xs text-gray-600 mb-1">Base metabolism (BMR)</div>
                 <div className="text-2xl font-bold text-blue-600">{tdeeResults.noWorkouts.bmr}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
               <div className="text-center p-3 bg-green-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">TDEE</div>
+                <div className="text-xs text-gray-600 mb-1">Daily burn (TDEE)</div>
                 <div className="text-2xl font-bold text-green-600">{tdeeResults.noWorkouts.tdee}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
               <div className="text-center p-3 bg-orange-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">Adjusted TDEE</div>
+                <div className="text-xs text-gray-600 mb-1">Target calories</div>
                 <div className="text-2xl font-bold text-orange-600">{tdeeResults.noWorkouts.adjustedTdee}</div>
-                <div className="text-xs text-gray-500">for goal</div>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">Goal Multiplier</div>
-                <div className="text-2xl font-bold text-purple-600">{tdeeResults.noWorkouts.goalMultiplier}x</div>
+                <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
             <div className="p-3 bg-gray-50 rounded">
-              <div className="text-sm font-semibold text-gray-700 mb-2">Daily Macros:</div>
+              <div className="text-sm font-semibold text-gray-700 mb-2">Daily macros</div>
               <div className="flex gap-4 text-sm">
                 <span><strong>Protein:</strong> {tdeeResults.noWorkouts.dailyMacros.protein}g</span>
                 <span><strong>Carbs:</strong> {tdeeResults.noWorkouts.dailyMacros.carbs}g</span>
@@ -593,49 +536,44 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
             </div>
           </div>
 
-          {/* Training Day (With Workouts) */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-purple-200">
-            <h4 className="font-semibold text-gray-900 mb-3">🏃 Training Day (Sample: 10k Run, High Intensity, AM)</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {/* Training Day */}
+          <div className="mb-6 p-4 bg-white rounded-lg border border-orange-100 shadow-sm">
+            <h4 className="font-semibold text-gray-900 mb-3">Training days (example: 10k run)</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-3 bg-blue-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">BMR</div>
+                <div className="text-xs text-gray-600 mb-1">Base metabolism (BMR)</div>
                 <div className="text-2xl font-bold text-blue-600">{tdeeResults.withWorkouts.bmr}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
               <div className="text-center p-3 bg-green-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">TDEE</div>
+                <div className="text-xs text-gray-600 mb-1">Daily burn (TDEE)</div>
                 <div className="text-2xl font-bold text-green-600">{tdeeResults.withWorkouts.tdee}</div>
-                <div className="text-xs text-gray-500">+{tdeeResults.withWorkouts.parsed.trainingMultiplier}x training</div>
+                <div className="text-xs text-gray-500">cal/day (includes workout)</div>
               </div>
               <div className="text-center p-3 bg-orange-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">Adjusted TDEE</div>
+                <div className="text-xs text-gray-600 mb-1">Target calories</div>
                 <div className="text-2xl font-bold text-orange-600">{tdeeResults.withWorkouts.adjustedTdee}</div>
-                <div className="text-xs text-gray-500">for goal</div>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded">
-                <div className="text-xs text-gray-600 mb-1">Difference</div>
-                <div className="text-2xl font-bold text-red-600">+{tdeeResults.withWorkouts.adjustedTdee - tdeeResults.noWorkouts.adjustedTdee}</div>
-                <div className="text-xs text-gray-500">vs rest day</div>
+                <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
             <div className="p-3 bg-gray-50 rounded mb-3">
-              <div className="text-sm font-semibold text-gray-700 mb-2">Daily Macros:</div>
+              <div className="text-sm font-semibold text-gray-700 mb-2">Daily macros</div>
               <div className="flex gap-4 text-sm">
                 <span><strong>Protein:</strong> {tdeeResults.withWorkouts.dailyMacros.protein}g</span>
                 <span><strong>Carbs:</strong> {tdeeResults.withWorkouts.dailyMacros.carbs}g</span>
                 <span><strong>Fat:</strong> {tdeeResults.withWorkouts.dailyMacros.fat}g</span>
               </div>
             </div>
-            <div className="p-3 bg-blue-50 rounded">
-              <div className="text-sm font-semibold text-gray-700 mb-2">Meal Budgets (AM workout):</div>
+            <div className="p-3 bg-orange-50 rounded">
+              <div className="text-sm font-semibold text-gray-700 mb-2">Per-meal targets (morning workout)</div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                 {Object.entries(tdeeResults.withWorkouts.mealBudgets).map(([meal, macros]) => (
                   <div key={meal} className="p-2 bg-white rounded border">
                     <div className="font-semibold text-gray-800 mb-1 capitalize">{meal}</div>
                     <div className="text-gray-600">
-                      <div>P: {macros.protein}g</div>
-                      <div>C: {macros.carbs}g</div>
-                      <div>F: {macros.fat}g</div>
+                      <div>Protein: {macros.protein}g</div>
+                      <div>Carbs: {macros.carbs}g</div>
+                      <div>Fat: {macros.fat}g</div>
                     </div>
                   </div>
                 ))}
@@ -643,11 +581,17 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
             </div>
           </div>
 
-          <div className="text-xs text-purple-600 italic">
-            ⚠️ This test panel is for local development only. Remove before deploying to production.
-          </div>
+          <button
+            onClick={() => setShowTdeeTest(false)}
+            className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+          >
+            Hide results
+          </button>
         </Card>
       )}
+
+      {/* Profile Completion Card - only show if not guest */}
+      {!isGuest && <ProfileCompletionCard profile={profile} />}
     </div>
   );
 };
