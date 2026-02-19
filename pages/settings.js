@@ -2,12 +2,14 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../src/context/AuthContext';
+import { useUserProfile } from '../src/hooks/useUserProfile';
 import { SettingsPage } from '../src/views/SettingsPage';
 import { Layout } from '../src/components/layout/Layout';
 
 export default function Settings() {
   const router = useRouter();
   const { user, loading, isGuest, signOut, disableGuestMode } = useAuth();
+  const { profile } = useUserProfile(user, isGuest);
 
   // Guard: if no auth and not a guest, redirect to /login once loading is done
   React.useEffect(() => {
@@ -26,7 +28,7 @@ export default function Settings() {
     return (
       <Layout
         user={user}
-        userName={user?.user_metadata?.name}
+        userName={profile?.name}
         isGuest={isGuest}
         onSignOut={signOut}
         onDisableGuestMode={disableGuestMode}
@@ -48,7 +50,7 @@ export default function Settings() {
   return (
     <Layout
       user={user}
-      userName={user?.user_metadata?.name}
+      userName={profile?.name}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

@@ -12,6 +12,8 @@ import { Tooltip } from '../components/shared/Tooltip';
 import { MealPrepModal } from '../components/modals/MealPrepModal';
 import { AnalyticsModal } from '../components/modals/AnalyticsModal';
 import { Dropdown } from '../components/shared/Dropdown';
+import { useAuth } from '../context/AuthContext';
+import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -37,6 +39,7 @@ export const MealPlanPage = ({
   onUseSavedMeal,
   onDeleteSavedMeal
 }) => {
+  const { user } = useAuth();
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [currentRecipe, setCurrentRecipe] = useState('');
   const [recipeTitle, setRecipeTitle] = useState('');
@@ -58,8 +61,33 @@ export const MealPlanPage = ({
   const [showMealPrepModal, setShowMealPrepModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
+  // Servings picker state
+  const [showServingsPicker, setShowServingsPicker] = useState(false);
+  const [recipeContext, setRecipeContext] = useState({ day: '', mealType: '' });
+
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Test day generation state
+  const [selectedTestDay, setSelectedTestDay] = useState('monday');
+  const [isTestGenerating, setIsTestGenerating] = useState(false);
+  const [testResults, setTestResults] = useState(null);
+  const [testStatus, setTestStatus] = useState('');
+  const [showTestResults, setShowTestResults] = useState(false);
+
+  // Build Day (Test) state
+  const [selectedBuildDay, setSelectedBuildDay] = useState('monday');
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [showDebug, setShowDebug] = useState(true);
+  const [debugData, setDebugData] = useState(null);
+  const [nutritionData, setNutritionData] = useState(null);
+  const [builtMeals, setBuiltMeals] = useState([]);
+  const [mealStatuses, setMealStatuses] = useState({});
+  const [dailyTotals, setDailyTotals] = useState(null);
+  const [dailyTargets, setDailyTargets] = useState(null);
+  const [buildStatus, setBuildStatus] = useState('');
+  const [showBuildResults, setShowBuildResults] = useState(false);
+  const [debugTab, setDebugTab] = useState('prompt');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -146,7 +174,16 @@ export const MealPlanPage = ({
   const isPlanComplete = filled === total && total > 0;
 
   const getRecipe = async (day, mealType) => {
-    setLoadingRecipe({ day, mealType }); // Add this line
+    // Show servings picker first
+    setRecipeContext({ day, mealType });
+    setShowServingsPicker(true);
+  };
+
+  const handleServingsConfirm = async (servings) => {
+    setShowServingsPicker(false);
+    const { day, mealType } = recipeContext;
+
+    setLoadingRecipe({ day, mealType });
     setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
@@ -157,6 +194,9 @@ export const MealPlanPage = ({
           meal: mealPlan[day][mealType],
           day,
           mealType,
+          servings: servings,
+          dislikes: foodPreferences?.dislikes || '',
+          dietaryRestrictions: userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
         }),
       });
 
@@ -174,7 +214,7 @@ export const MealPlanPage = ({
       setLocalStatusMessage(`❌ Error getting recipe: ${error.message}`);
     }
 
-    setLoadingRecipe(null); // Add this line
+    setLoadingRecipe(null);
     setTimeout(() => setLocalStatusMessage(''), 3000);
   };
 
@@ -297,6 +337,219 @@ export const MealPlanPage = ({
     const weekStarting = monday.toISOString().split('T')[0];
     if (onLoadWeek) {
       await onLoadWeek(weekStarting);
+    }
+  };
+
+  const handleTestDayGeneration = async () => {
+    setIsTestGenerating(true);
+    setTestStatus('Connecting to server...');
+    setShowTestResults(true);
+    
+    const initialResults = {
+      nutrition: null,
+      meals: {},
+      mealStatuses: {},
+      dailyTotals: null,
+      dailyTargets: null,
+      error: null
+    };
+    setTestResults(initialResults);
+
+    try {
+      const response = await fetch('/api/generate-day-web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userProfile,
+          foodPreferences,
+          trainingPlan,
+          day: selectedTestDay
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          // Parse SSE format: "event: type" followed by "data: {...}"
+          if (line.startsWith('event:')) {
+            currentEvent = line.slice(6).trim();
+            continue;
+          }
+
+          if (line.startsWith('data:')) {
+            try {
+              const data = JSON.parse(line.slice(5).trim());
+              
+              setTestResults(prev => {
+                const updated = { ...prev };
+
+                if (currentEvent === 'nutrition') {
+                  updated.nutrition = data;
+                  setTestStatus(`📊 Calculated TDEE: ${data.adjustedTdee} kcal/day`);
+                }
+                else if (currentEvent === 'status') {
+                  updated.mealStatuses = {
+                    ...updated.mealStatuses,
+                    [data.mealType]: data.status
+                  };
+                  setTestStatus(`🔄 Generating ${data.mealType}...`);
+                }
+                else if (currentEvent === 'meal') {
+                  updated.meals = {
+                    ...updated.meals,
+                    [data.mealType]: data.meal
+                  };
+                  updated.mealStatuses = {
+                    ...updated.mealStatuses,
+                    [data.mealType]: 'complete'
+                  };
+                  setTestStatus(`✅ ${data.mealType} complete!`);
+                }
+                else if (currentEvent === 'complete') {
+                  updated.dailyTotals = data.dailyTotals;
+                  updated.dailyTargets = data.dailyTargets;
+                  setTestStatus(`✅ All meals generated for ${selectedTestDay}!`);
+                }
+                else if (currentEvent === 'error') {
+                  updated.error = data.message;
+                  setTestStatus(`❌ Error: ${data.message}`);
+                }
+
+                return updated;
+              });
+
+              currentEvent = null; // Reset after processing
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e, line);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Test generation error:', error);
+      setTestStatus(`❌ Error: ${error.message}`);
+      setTestResults(prev => ({ ...prev, error: error.message }));
+    } finally {
+      setIsTestGenerating(false);
+    }
+  };
+
+  const handleBuildDay = async () => {
+    setIsBuilding(true);
+    setBuildStatus('Connecting...');
+    setShowBuildResults(true);
+    setDebugData(null);
+    setNutritionData(null);
+    setBuiltMeals([]);
+    setMealStatuses({});
+    setDailyTotals(null);
+    setDailyTargets(null);
+
+    try {
+      const response = await fetch('/api/generate-day', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day: selectedBuildDay,
+          userProfile,
+          foodPreferences,
+          trainingPlan,
+          weekStarting: currentWeekStarting,
+          existingMeals: mealPlan, // Pass current meal plan for cross-day variety
+          forceRegenerate: true, // Always regenerate all meals for testing
+          debug: showDebug,
+          userId: user?.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          if (line.startsWith('event:')) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
+
+          if (line.startsWith('data:')) {
+            try {
+              const data = JSON.parse(line.slice(6).trim());
+
+              if (currentEvent === 'debug') {
+                setDebugData(data);
+              } else if (currentEvent === 'nutrition') {
+                setNutritionData(data);
+                setBuildStatus(`📊 Nutrition calculated`);
+              } else if (currentEvent === 'status') {
+                if (data.mealType && data.status === 'processing') {
+                  // Show loading indicator for this specific meal slot
+                  onUpdate(selectedBuildDay, data.mealType, '__generating__');
+                  setMealStatuses(prev => ({ ...prev, [data.mealType]: 'processing' }));
+                } else {
+                  setMealStatuses(prev => ({ ...prev, [data.mealType]: data.status }));
+                }
+                setBuildStatus(`🔄 ${data.message || `Generating ${data.mealType}...`}`);
+              } else if (currentEvent === 'meal') {
+                // Immediately update the meal plan for this slot
+                if (data.meal && data.mealType && !data.error) {
+                  onUpdate(selectedBuildDay, data.mealType, data.meal);
+                }
+                setBuiltMeals(prev => [...prev, { mealType: data.mealType, meal: data.meal, error: data.error }]);
+                setMealStatuses(prev => ({ ...prev, [data.mealType]: data.error ? 'error' : 'done' }));
+                setBuildStatus(data.error ? `❌ ${data.mealType} failed` : `✅ ${data.mealType} complete`);
+              } else if (currentEvent === 'done') {
+                setDailyTotals(data.dailyTotals);
+                setDailyTargets(data.dailyTargets);
+                setBuildStatus(`✅ ${selectedBuildDay} complete!`);
+              } else if (currentEvent === 'error') {
+                setBuildStatus(`❌ Error: ${data.message}`);
+              }
+
+              currentEvent = null;
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e, line);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Build day error:', error);
+      setBuildStatus(`❌ Error: ${error.message}`);
+    } finally {
+      setIsBuilding(false);
     }
   };
 
@@ -490,6 +743,390 @@ export const MealPlanPage = ({
           </div>
         )}
 
+        {/* TEST: Generate Day with New Architecture */}
+        <div className="mb-6 p-4 bg-indigo-50 border-2 border-indigo-300 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-indigo-900">🧪 Test: Generate Day (New Architecture)</h3>
+            {showTestResults && (
+              <button
+                onClick={() => setShowTestResults(false)}
+                className="text-xs text-indigo-600 hover:text-indigo-800"
+              >
+                Hide Results
+              </button>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={selectedTestDay}
+              onChange={(e) => setSelectedTestDay(e.target.value)}
+              disabled={isTestGenerating}
+              className="px-3 py-2 border border-indigo-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {DAYS.map(day => (
+                <option key={day} value={day}>{day.charAt(0).toUpperCase() + day.slice(1)}</option>
+              ))}
+            </select>
+
+            <Button
+              onClick={handleTestDayGeneration}
+              disabled={isTestGenerating || !userProfile || !foodPreferences}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              size="sm"
+            >
+              {isTestGenerating ? 'Generating...' : 'Generate Day (Test)'}
+            </Button>
+
+            {testStatus && (
+              <span className="text-sm text-indigo-700 font-medium">{testStatus}</span>
+            )}
+          </div>
+
+          {!userProfile || !foodPreferences ? (
+            <p className="text-xs text-indigo-600 mt-2">
+              Complete your profile and preferences to test day generation
+            </p>
+          ) : null}
+        </div>
+
+        {/* Test Results Panel */}
+        {showTestResults && testResults && (
+          <div className="mb-6 p-6 bg-white border-2 border-indigo-300 rounded-lg shadow-lg">
+            <h3 className="text-lg font-bold text-indigo-900 mb-4">
+              Test Results: {selectedTestDay.charAt(0).toUpperCase() + selectedTestDay.slice(1)}
+            </h3>
+
+            {testResults.error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-300 rounded-lg text-red-800">
+                <strong>Error:</strong> {testResults.error}
+              </div>
+            )}
+
+            {testResults.nutrition && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-blue-900 mb-3">📊 TDEE & Daily Targets</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div>
+                    <span className="text-blue-700">BMR:</span>
+                    <span className="ml-2 font-mono font-semibold">{testResults.nutrition.bmr} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">TDEE:</span>
+                    <span className="ml-2 font-mono font-semibold">{testResults.nutrition.tdee} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Adjusted:</span>
+                    <span className="ml-2 font-mono font-semibold">{testResults.nutrition.adjustedTdee} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Training:</span>
+                    <span className="ml-2 font-mono font-semibold">{testResults.nutrition.parsed.trainingMultiplier}x</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-4 text-sm">
+                  <span><strong>P:</strong> {testResults.nutrition.dailyMacros.protein}g</span>
+                  <span><strong>C:</strong> {testResults.nutrition.dailyMacros.carbs}g</span>
+                  <span><strong>F:</strong> {testResults.nutrition.dailyMacros.fat}g</span>
+                </div>
+              </div>
+            )}
+
+            {/* Meals */}
+            <div className="space-y-4">
+              {['breakfast', 'lunch', 'dinner', 'snack', 'dessert'].map(mealType => {
+                const meal = testResults.meals[mealType];
+                const status = testResults.mealStatuses[mealType];
+                const budget = testResults.nutrition?.mealBudgets?.[mealType];
+
+                return (
+                  <div key={mealType} className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900 capitalize">{mealType}</h4>
+                      {status === 'generating' && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600">
+                          <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                          Generating...
+                        </div>
+                      )}
+                      {status === 'complete' && !meal && (
+                        <span className="text-sm text-green-600">✓ Complete</span>
+                      )}
+                    </div>
+
+                    {budget && (
+                      <div className="mb-2 text-xs text-gray-600">
+                        <strong>Budget:</strong> P: {budget.protein}g | C: {budget.carbs}g | F: {budget.fat}g | {Math.round(budget.protein * 4 + budget.carbs * 4 + budget.fat * 9)} kcal
+                      </div>
+                    )}
+
+                    {meal && (
+                      <div className="space-y-2">
+                        <div className="font-medium text-gray-800">{meal.meal_name}</div>
+                        
+                        {meal.ingredients && meal.ingredients.length > 0 && (
+                          <div className="text-sm space-y-1">
+                            <div className="font-semibold text-gray-700">Ingredients:</div>
+                            {meal.ingredients.map((ing, idx) => (
+                              <div key={idx} className="text-gray-600 pl-4">
+                                • {ing.name} <span className="text-gray-500">({ing.type})</span> — {ing.grams}g
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-4 text-sm mt-2">
+                          <div className="font-semibold text-gray-700">Macros:</div>
+                          <div className="flex gap-3">
+                            <span className={budget && Math.abs(meal.macros.protein - budget.protein) > 5 ? 'text-orange-600' : 'text-gray-700'}>
+                              P: {meal.macros.protein}g
+                            </span>
+                            <span className={budget && Math.abs(meal.macros.carbs - budget.carbs) > 10 ? 'text-orange-600' : 'text-gray-700'}>
+                              C: {meal.macros.carbs}g
+                            </span>
+                            <span className={budget && Math.abs(meal.macros.fat - budget.fat) > 5 ? 'text-orange-600' : 'text-gray-700'}>
+                              F: {meal.macros.fat}g
+                            </span>
+                            <span className="text-gray-700">
+                              {meal.macros.calories} kcal
+                            </span>
+                          </div>
+                        </div>
+
+                        {meal.scaled && (
+                          <div className="text-xs text-orange-600 mt-2">
+                            ⚠️ Scaled by {(meal.scaleFactors?.overall || 1).toFixed(2)}x to match budget
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Daily Totals */}
+            {testResults.dailyTotals && testResults.dailyTargets && (
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-green-900 mb-3">📈 Daily Totals vs Targets</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-green-700">Protein</div>
+                    <div className="font-mono font-semibold">
+                      {testResults.dailyTotals.protein}g / {testResults.dailyTargets.protein}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Carbs</div>
+                    <div className="font-mono font-semibold">
+                      {testResults.dailyTotals.carbs}g / {testResults.dailyTargets.carbs}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Fat</div>
+                    <div className="font-mono font-semibold">
+                      {testResults.dailyTotals.fat}g / {testResults.dailyTargets.fat}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Calories</div>
+                    <div className="font-mono font-semibold">
+                      {testResults.dailyTotals.calories} / {testResults.dailyTargets.calories} kcal
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BUILD DAY (TEST) - with Debug Output */}
+        <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-blue-900">🔧 Build Day (Test) - Old Pipeline with Debug</h3>
+            {showBuildResults && (
+              <button
+                onClick={() => setShowBuildResults(false)}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                Hide Results
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={selectedBuildDay}
+              onChange={(e) => setSelectedBuildDay(e.target.value)}
+              disabled={isBuilding}
+              className="px-3 py-2 border border-blue-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {DAYS.map(day => (
+                <option key={day} value={day}>{day.charAt(0).toUpperCase() + day.slice(1)}</option>
+              ))}
+            </select>
+
+            <Button
+              onClick={handleBuildDay}
+              disabled={isBuilding || !userProfile}
+              className="bg-blue-600 hover:bg-blue-700"
+              size="sm"
+            >
+              {isBuilding ? 'Building...' : 'Build Day'}
+            </Button>
+
+            <label className="flex items-center gap-2 text-sm text-blue-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDebug}
+                onChange={(e) => setShowDebug(e.target.checked)}
+                className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+              />
+              Show Debug
+            </label>
+
+            {buildStatus && (
+              <span className="text-sm text-blue-700 font-medium">{buildStatus}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Build Day Results */}
+        {showBuildResults && (
+          <div className="mb-6 space-y-4">
+            {/* Debug Box */}
+            {showDebug && debugData && (
+              <div className="p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-3">🐛 Debug Output</h4>
+                
+                <div className="flex gap-2 mb-3">
+                  <button
+                    onClick={() => setDebugTab('prompt')}
+                    className={`px-3 py-1 text-sm rounded ${
+                      debugTab === 'prompt'
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Prompt Sent
+                  </button>
+                  <button
+                    onClick={() => setDebugTab('response')}
+                    className={`px-3 py-1 text-sm rounded ${
+                      debugTab === 'response'
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    AI Response
+                  </button>
+                </div>
+
+                <div className="bg-white border border-gray-300 rounded p-3 max-h-96 overflow-auto">
+                  <pre className="text-xs font-mono whitespace-pre-wrap break-words">
+                    {debugTab === 'prompt' ? debugData.prompt : debugData.rawResponse}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Nutrition Summary */}
+            {nutritionData && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-semibold text-blue-900 mb-3">📊 Nutrition Targets</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div>
+                    <span className="text-blue-700">BMR:</span>
+                    <span className="ml-2 font-mono font-semibold">{nutritionData.bmr || 'N/A'} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">TDEE:</span>
+                    <span className="ml-2 font-mono font-semibold">{nutritionData.tdee || 'N/A'} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Adjusted:</span>
+                    <span className="ml-2 font-mono font-semibold">{nutritionData.adjustedTdee || 'N/A'} kcal</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Training:</span>
+                    <span className="ml-2 font-mono font-semibold">{nutritionData.trainingMultiplier || '1.0'}x</span>
+                  </div>
+                </div>
+                {nutritionData.dailyMacros && (
+                  <div className="mt-3 flex gap-4 text-sm">
+                    <span><strong>Target P:</strong> {nutritionData.dailyMacros.protein}g</span>
+                    <span><strong>C:</strong> {nutritionData.dailyMacros.carbs}g</span>
+                    <span><strong>F:</strong> {nutritionData.dailyMacros.fat}g</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Meals */}
+            {builtMeals.length > 0 && (
+              <div className="space-y-3">
+                {builtMeals.map((item, idx) => {
+                  const status = mealStatuses[item.mealType];
+                  const isGenerating = status === 'generating' || status === 'processing';
+
+                  return (
+                    <div key={idx} className="p-4 bg-white border border-gray-300 rounded-lg shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-semibold text-gray-900 capitalize">{item.mealType}</h5>
+                        {isGenerating && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600">
+                            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                            Generating...
+                          </div>
+                        )}
+                      </div>
+
+                      {item.error ? (
+                        <div className="text-sm text-red-600">Error: {item.error}</div>
+                      ) : item.meal ? (
+                        <div className="text-sm text-gray-800">{item.meal}</div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Daily Totals */}
+            {dailyTotals && dailyTargets && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-green-900 mb-3">📈 Daily Totals vs Targets</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="text-green-700">Protein</div>
+                    <div className="font-mono font-semibold">
+                      {dailyTotals.protein}g / {dailyTargets.protein}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Carbs</div>
+                    <div className="font-mono font-semibold">
+                      {dailyTotals.carbs}g / {dailyTargets.carbs}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Fat</div>
+                    <div className="font-mono font-semibold">
+                      {dailyTotals.fat}g / {dailyTargets.fat}g
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-green-700">Calories</div>
+                    <div className="font-mono font-semibold">
+                      {dailyTotals.calories} / {dailyTargets.calories} kcal
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {!hasMeals && !isGenerating ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">
@@ -627,6 +1264,13 @@ export const MealPlanPage = ({
         onDeleteSavedMeal={onDeleteSavedMeal} // Add
         isGuest={isGuest}                     // Add
       />
+
+      <ServingsPickerModal
+        isOpen={showServingsPicker}
+        onClose={() => setShowServingsPicker(false)}
+        onConfirm={handleServingsConfirm}
+        mealName={recipeContext.day && recipeContext.mealType ? mealPlan?.[recipeContext.day]?.[recipeContext.mealType] : ''}
+      />
     </div>
   );
 };
@@ -649,11 +1293,29 @@ const MealCard = ({
 }) => {
   const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
   const isSaved = isMealSaved?.(mealType, meal);
+  const isGenerating = meal === '__generating__';
 
   const handleSave = async () => {
     if (!meal || isGuest) return;
     await onSaveMeal(mealType, meal);
   };
+
+  // Show loading spinner while generating
+  if (isGenerating) {
+    return (
+      <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm">
+        <div className="flex justify-between items-center">
+          <label className="block text-sm font-semibold text-gray-700 capitalize">
+            {mealType}
+          </label>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-3 text-sm text-gray-600">Generating {mealType}...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">

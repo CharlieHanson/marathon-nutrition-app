@@ -13,6 +13,7 @@ export const OnboardingFlow = ({ user, onComplete }) => {
   const [profile, setProfile] = useState({
     name: '',
     age: '',
+    gender: '',
     height: '',
     weight: '',
     goal: '',

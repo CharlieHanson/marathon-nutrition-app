@@ -108,6 +108,19 @@ const Auth = ({ presetRole }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/redirect`,
+      },
+    });
+  
+    if (error) {
+      console.error('Google sign-in error:', error);
+    }
+  };
+
   const handleGuest = () => enableGuestMode();
 
   const isNutritionist = role === 'nutritionist';
@@ -217,6 +230,14 @@ const Auth = ({ presetRole }) => {
           >
             {isNutritionist ? <Briefcase className="w-4 h-4" /> : <User className="w-4 h-4" />}
             {pending ? 'Please wait...' : submitText}
+          </button>
+
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full py-3 px-4 bg-white border border-gray-300 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50"
+          >
+            <img src="/google_icon.jpg" alt="" className="w-5 h-5 object-contain" />
+            Continue with Google
           </button>
 
           <div className="text-center text-sm space-y-2">

@@ -196,6 +196,9 @@ export function buildDayPrompt({
   previousDayMealNames = [],
   ragContext = null,
 }) {
+  const mealsToGenerate = Object.keys(mealBudgets);
+  const numMeals = mealsToGenerate.length;
+  
   const budgetSummary = Object.entries(mealBudgets)
     .map(([meal, b]) => `  ${meal}: ${b.calories} kcal | ${b.protein}P ${b.carbs}C ${b.fat}F`)
     .join('\n');
@@ -210,8 +213,10 @@ export function buildDayPrompt({
   }
 
   const lines = [
-    'You are a sports nutritionist creating a full day of meals for an athlete.',
-    'Think of real, named dishes from real cuisines — not generic ingredient combos.',
+    'You are a sports nutritionist creating meals for an athlete.',
+    'Think of real, named dishes from real cuisines — not generic ingredient combos. Do not state the cuisine name, just the meal name.',
+    '',
+    `Generate ONLY these meals: ${mealsToGenerate.join(', ')}. Do not include any other meals.`,
     '',
     `MACRO BUDGETS PER MEAL:`,
     budgetSummary,
@@ -228,13 +233,13 @@ export function buildDayPrompt({
     crossDayBlock,
     buildVarietyBlock({ avoidIngredients, alreadyGeneratedToday: [], ragContext }),
     'CRITICAL VARIETY RULES:',
-    '1. Use a DIFFERENT protein source for EACH of the 5 meals (e.g. eggs for breakfast, salmon for lunch, pork for dinner, beans for snack, dairy for dessert)',
-    '2. Use a DIFFERENT carb source for at least 3 of the 5 meals (e.g. toast, rice, pasta — not rice for everything)',
+    `1. Use a DIFFERENT protein source for EACH meal (e.g. eggs, salmon, pork, beans, dairy)`,
+    numMeals >= 3 ? `2. Use a DIFFERENT carb source where possible (e.g. toast, rice, pasta — not rice for everything)` : '2. Use a DIFFERENT carb source where possible',
     '3. Use a DIFFERENT vegetable for each meal that has one — do NOT default to broccoli for everything',
     '4. Each meal should be a recognizable dish from a real cuisine, not just "[protein] with [carb] and [vegetable]"',
     cuisines ? `5. Draw from these cuisines across the day: ${cuisines}` : '5. Vary cuisines across meals',
-    '6. Dessert must be a real dessert (cake, pudding, ice cream, fruit crisp, etc.) — not a smoothie bowl or yogurt',
-    '7. Snack should be simple (1-3 ingredients) and different from the main meals',
+    mealsToGenerate.includes('dessert') ? '6. Dessert must be a real dessert (cake, pudding, ice cream, fruit crisp, etc.) — not a smoothie bowl or yogurt' : '',
+    mealsToGenerate.includes('snack') ? '7. Snack should be simple (1-3 ingredients) and different from the main meals' : '',
     '',
     'ADDITIONAL RULES:',
     '1. Each meal must have ingredients with types (protein, carb, vegetable, fat) and gram weights',
@@ -243,8 +248,15 @@ export function buildDayPrompt({
     '',
     TYPE_DESCRIPTIONS,
     '',
-    DAY_MEALS_FORMAT,
-  ];
+  ].filter(line => line !== ''); // Remove empty strings from conditional rules
+
+  // Build dynamic format based on meals to generate
+  const formatEntries = mealsToGenerate
+    .map(m => `  "${m}": { "meal_name": "...", "ingredients": [{ "name": "...", "type": "protein|carb|vegetable|fat", "grams": 0 }, ...] }`)
+    .join(',\n');
+  const dynamicFormat = `Respond with ONLY valid JSON, no other text:\n{\n${formatEntries}\n}`;
+  
+  lines.push(dynamicFormat);
 
   return lines.join('\n');
 }
@@ -310,8 +322,8 @@ export function buildWeekPrompt({
     '1. Each meal has ingredients with type (protein/carb/vegetable/fat) and gram weight',
     '2. Use COOKED weights for grains, pasta, potatoes',
     '3. NEVER repeat the same dinner protein on consecutive days',
-    '4. Vary cuisines across the week',
-    '5. Desserts should be creative (not just yogurt variations)',
+    '4. Vary cuisines across the week. But, do not state the cuisine name, just the meal name.',
+    '5. Desserts should be creative (not just yogurt or pudding variations)',
     '6. Snacks can be simple (1-3 ingredients)',
     '7. Respect dietary restrictions absolutely',
     '8. Never use disliked foods',

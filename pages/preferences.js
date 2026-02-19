@@ -3,12 +3,14 @@ import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { FoodPreferencesPage } from '../src/views/FoodPreferencesPage';
 import { useFoodPreferences } from '../src/hooks/useFoodPreferences';
+import { useUserProfile } from '../src/hooks/useUserProfile';
 import { Layout } from '../src/components/layout/Layout';
 
 export default function Preferences() {
   const router = useRouter();
   const { user, loading, isGuest, signOut, disableGuestMode } = useAuth();
   const [reloadKey, setReloadKey] = React.useState(0);
+  const { profile } = useUserProfile(user, isGuest, reloadKey);
   const preferences = useFoodPreferences(user, isGuest, reloadKey);
 
   React.useEffect(() => {
@@ -32,7 +34,7 @@ export default function Preferences() {
   return (
     <Layout
       user={user}
-      userName={user?.user_metadata?.name}
+      userName={profile?.name}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

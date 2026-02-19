@@ -9,13 +9,13 @@ import {
 } from '../dataClient';
 
 const EMPTY_WEEK = {
-  monday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  tuesday:   { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  wednesday: { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  thursday:  { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  friday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  saturday:  { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
-  sunday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '' }] },
+  monday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  tuesday:   { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  wednesday: { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  thursday:  { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  friday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  saturday:  { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
+  sunday:    { workouts: [{ type: '', distance: '', intensity: 'Medium', notes: '', timing: '' }] },
 };
 
 // src/hooks/useTrainingPlan.js

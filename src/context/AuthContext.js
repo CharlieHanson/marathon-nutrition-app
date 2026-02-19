@@ -12,7 +12,8 @@ const AuthContext = createContext(undefined);
 /**
  * Seed / ensure base profile data for any authenticated user.
  * - profiles.id = auth.user.id
- * - profiles.name, profiles.type
+ * - New users: name + type seeded from auth metadata
+ * - Existing users: only type updated if needed; name is never overwritten
  * - user_profiles row for clients
  *
  * This function is *best effort* and must never block the app from loading.
@@ -25,20 +26,41 @@ const ensureProfile = async (authedUser) => {
     const seedName = meta.name ?? null;
     const seedType = meta.role === 'nutritionist' ? 'nutritionist' : 'client';
 
-    // 1) Upsert into profiles (canonical source of name/type)
-    const { error: profErr } = await supabase
+    // 1) Check if profile already exists (do not overwrite saved name)
+    const { data: existing, error: fetchErr } = await supabase
       .from('profiles')
-      .upsert(
-        {
+      .select('id, name')
+      .eq('id', authedUser.id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.warn('ensureProfile: profiles fetch error:', fetchErr.message);
+      return;
+    }
+
+    if (!existing) {
+      // No profile: insert with name from signup/OAuth metadata
+      const { error: insertErr } = await supabase
+        .from('profiles')
+        .insert({
           id: authedUser.id,
           name: seedName,
           type: seedType,
-        },
-        { onConflict: 'id' }
-      );
+        });
 
-    if (profErr) {
-      console.warn('ensureProfile: profiles upsert error:', profErr.message);
+      if (insertErr) {
+        console.warn('ensureProfile: profiles insert error:', insertErr.message);
+      }
+    } else {
+      // Profile exists: only update type if needed, never touch name
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ type: seedType })
+        .eq('id', authedUser.id);
+
+      if (updateErr) {
+        console.warn('ensureProfile: profiles type update error:', updateErr.message);
+      }
     }
 
     // 2) If client, ensure there is a user_profiles row

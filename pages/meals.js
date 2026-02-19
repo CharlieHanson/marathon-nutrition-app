@@ -41,7 +41,7 @@ export default function MealsPage() {
   return (
     <Layout
       user={user}
-      userName={user?.user_metadata?.name}
+      userName={profile.profile?.name}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

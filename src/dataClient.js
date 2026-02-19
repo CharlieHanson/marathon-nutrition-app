@@ -92,6 +92,7 @@ export async function saveUserProfile(userId, profileData) {
           // 🚫 name removed (lives in profiles)
           // 🚫 role removed (lives in profiles.type)
           age: profileData.age ? parseInt(profileData.age) : null,
+          gender: profileData.gender || null,
           height: profileData.height || null,
           weight: profileData.weight || null,
           goal: profileData.goal || null,

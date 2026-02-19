@@ -44,6 +44,7 @@ const DEFAULT_WORKOUT = {
   distance: '',
   intensity: 'Medium',
   notes: '',
+  timing: '',
 };
 
 export const TrainingPlanPage = ({
@@ -338,7 +339,7 @@ export const TrainingPlanPage = ({
                       <select
                         value={workout.type || ''}
                         onChange={(e) => updateWorkout(day, index, 'type', e.target.value)}
-                        className="md:col-span-4 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="md:col-span-3 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Select workout</option>
                         {WORKOUT_TYPES.map((type) => (
@@ -354,11 +355,11 @@ export const TrainingPlanPage = ({
                         placeholder="Distance/Duration"
                         value={workout.distance || ''}
                         onChange={(e) => updateWorkout(day, index, 'distance', e.target.value)}
-                        className="md:col-span-4 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="md:col-span-3 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
                       />
 
                       {/* Intensity */}
-                      <div className="md:col-span-3 flex flex-col">
+                      <div className="md:col-span-2 flex flex-col">
                         <label className="text-xs text-gray-600 mb-1">Intensity</label>
                         <select
                           value={workout.intensity || 'Medium'}
@@ -370,6 +371,21 @@ export const TrainingPlanPage = ({
                               {level}
                             </option>
                           ))}
+                        </select>
+                      </div>
+
+                      {/* Workout Time */}
+                      <div className="md:col-span-2 flex flex-col">
+                        <label className="text-xs text-gray-600 mb-1">Workout Time</label>
+                        <select
+                          value={workout.timing ?? ''}
+                          onChange={(e) => updateWorkout(day, index, 'timing', e.target.value)}
+                          className="text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">—</option>
+                          <option value="Morning">Morning</option>
+                          <option value="Afternoon">Afternoon</option>
+                          <option value="Evening">Evening</option>
                         </select>
                       </div>
 

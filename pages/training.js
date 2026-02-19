@@ -5,10 +5,12 @@ import { useAuth } from '../src/context/AuthContext';
 import { Layout } from '../src/components/layout/Layout';
 import { TrainingPlanPage } from '../src/views/TrainingPlanPage';
 import { useTrainingPlan } from '../src/hooks/useTrainingPlan';
+import { useUserProfile } from '../src/hooks/useUserProfile';
 
 export default function TrainingPage() {
   const router = useRouter();
   const { user, loading, isGuest, signOut, disableGuestMode } = useAuth();
+  const { profile } = useUserProfile(user, isGuest);
 
   const {
     plan,
@@ -49,7 +51,7 @@ export default function TrainingPage() {
   return (
     <Layout
       user={user}
-      userName={user?.user_metadata?.name}
+      userName={profile?.name}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

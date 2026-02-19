@@ -7,6 +7,7 @@ import { Layout } from '../src/components/layout/Layout';
 const defaultProfile = {
   name: '',
   age: '',
+  gender: '',
   height: '',
   weight: '',
   goal: '',
@@ -71,6 +72,7 @@ export default function Profile() {
         setProfile({
           name: data.name || '',
           age: data.age ?? '',
+          gender: data.gender || '',
           height: data.height || '',
           weight: data.weight || '',
           goal: data.goal || '',
@@ -153,7 +155,7 @@ export default function Profile() {
   return (
     <Layout
       user={user}
-      userName={user?.user_metadata?.name}
+      userName={profile.name}
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}

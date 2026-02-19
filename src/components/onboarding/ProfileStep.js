@@ -17,6 +17,12 @@ const ACTIVITY_LEVEL_OPTIONS = [
   { value: 'high', label: 'High (active job, lots of movement)' },
 ];
 
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other / Prefer not to say' },
+];
+
 export const ProfileStep = ({ profile, onUpdate, onNext, onBack, isSaving }) => {
   const isValid = profile.name && profile.age && profile.height && profile.weight && profile.goal;
 
@@ -51,6 +57,16 @@ export const ProfileStep = ({ profile, onUpdate, onNext, onBack, isSaving }) => 
               required
             />
 
+            <Select
+              label="Gender"
+              value={profile.gender}
+              onChange={(e) => onUpdate('gender', e.target.value)}
+              options={GENDER_OPTIONS}
+              placeholder="Select gender"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Height"
               type="text"
@@ -59,9 +75,7 @@ export const ProfileStep = ({ profile, onUpdate, onNext, onBack, isSaving }) => 
               onChange={(e) => onUpdate('height', e.target.value)}
               required
             />
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Weight"
               type="text"
@@ -70,7 +84,9 @@ export const ProfileStep = ({ profile, onUpdate, onNext, onBack, isSaving }) => 
               onChange={(e) => onUpdate('weight', e.target.value)}
               required
             />
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <Select
               label="Weight Goal"
               value={profile.goal}
