@@ -743,6 +743,7 @@ export const MealPlanPage = ({
           </div>
         )}
 
+        {false && (<>
         {/* TEST: Generate Day with New Architecture */}
         <div className="mb-6 p-4 bg-indigo-50 border-2 border-indigo-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
@@ -939,7 +940,9 @@ export const MealPlanPage = ({
             )}
           </div>
         )}
+        </>)}
 
+        {false && (<>
         {/* BUILD DAY (TEST) - with Debug Output */}
         <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
@@ -1126,6 +1129,7 @@ export const MealPlanPage = ({
             )}
           </div>
         )}
+        </>)}
 
         {!hasMeals && !isGenerating ? (
           <div className="text-center py-12">

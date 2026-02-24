@@ -1,5 +1,6 @@
 // src/hooks/useMealPlan.js
 import { useState, useEffect } from 'react';
+import { apiClient } from '../../shared/services/api';
 
 const EMPTY_DAY = {
   breakfast: '',
@@ -186,52 +187,43 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     );
 
     try {
-      const response = await fetch('/api/generate-meals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userProfile, 
-          foodPreferences, 
-          trainingPlan,
-          userId: user?.id,
-          weekStarting: currentWeekStarting,
-          existingMeals: mealPlan  // Pass current meals
-        }),
-      });
+      const data = {
+        userProfile,
+        foodPreferences,
+        trainingPlan,
+        userId: user?.id,
+        weekStarting: currentWeekStarting,
+        existingMeals: mealPlan,
+      };
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      const onProgress = (event) => {
+        if (event.type === 'status' && event.message) {
+          setStatusMessage(event.message);
+        } else if (event.type === 'day' && event.day && event.meals) {
+          setMealPlan((prev) => ({
+            ...prev,
+            [event.day]: { ...prev[event.day], ...event.meals },
+          }));
+        }
+      };
 
-      const rawText = await response.text();
-      console.log('Raw response length:', rawText.length);
-      console.log('Raw response first 200 chars:', rawText.substring(0, 200));
-      console.log('Raw response last 200 chars:', rawText.substring(rawText.length - 200));
+      const result = await apiClient.generateMeals(data, onProgress);
 
-      let result;
-      try {
-        result = JSON.parse(rawText);
-      } catch (parseError) {
-        console.error('JSON parse failed:', parseError.message);
-        console.error('Response was truncated or malformed');
-        throw new Error('Response parsing failed - response may be too large');
-      }
-
-      if (result.success && result.meals) {
+      if (result.success && result.week) {
         setMealPlan((prev) => {
           const next = { ...prev };
-          Object.keys(result.meals).forEach((day) => {
-            if (next[day]) next[day] = { ...next[day], ...result.meals[day] };
+          Object.keys(result.week).forEach((day) => {
+            if (next[day]) next[day] = { ...next[day], ...result.week[day] };
           });
           return next;
         });
         setStatusMessage('✅ Meal plan generated successfully!');
         setTimeout(() => setStatusMessage(''), 3000);
+      } else if (result.error) {
+        throw new Error(result.error);
       }
 
-      console.log('Meals received:', Object.keys(result.meals || {}));
-      console.log('Has meals_v2:', !!result.meals_v2);
-
-      return { success: true };
+      return { success: !!result.success };
     } catch (error) {
       setStatusMessage(`❌ Error: ${error.message}`);
       setTimeout(() => setStatusMessage(''), 30000);
