@@ -270,7 +270,7 @@ export const TrainingPlanPage = ({
         </div>
 
         {/* Detailed per-day panels ONLY (top week-at-a-glance boxes removed) */}
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {DAYS.map((day) => {
             const dayData = trainingPlan[day] || { workouts: [{ ...DEFAULT_WORKOUT }] };
             const workouts = dayData.workouts?.length ? dayData.workouts : [{ ...DEFAULT_WORKOUT }];
@@ -331,69 +331,71 @@ export const TrainingPlanPage = ({
                   {workouts.map((workout, index) => (
                     <div
                       key={index}
-                      className={`grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm border-l-4 ${intensityAccent(
+                      className={`flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm border-l-4 ${intensityAccent(
                         workout.intensity
                       )}`}
                     >
-                      {/* Workout type */}
-                      <select
-                        value={workout.type || ''}
-                        onChange={(e) => updateWorkout(day, index, 'type', e.target.value)}
-                        className="md:col-span-3 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="">Select workout</option>
-                        {WORKOUT_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* Distance/Duration */}
-                      <input
-                        type="text"
-                        placeholder="Distance/Duration"
-                        value={workout.distance || ''}
-                        onChange={(e) => updateWorkout(day, index, 'distance', e.target.value)}
-                        className="md:col-span-3 text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-
-                      {/* Intensity */}
-                      <div className="md:col-span-2 flex flex-col">
-                        <label className="text-xs text-gray-600 mb-1">Intensity</label>
-                        <select
-                          value={workout.intensity || 'Medium'}
-                          onChange={(e) => updateWorkout(day, index, 'intensity', e.target.value)}
-                          className="text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          {INTENSITY_LEVELS.map((level) => (
-                            <option key={level} value={level}>
-                              {level}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
+                        {/* Row 1: Workout type | Distance */}
+                        <div className="flex flex-col">
+                          <label className="text-xs text-gray-600 mb-1">Workout</label>
+                          <select
+                            value={workout.type || ''}
+                            onChange={(e) => updateWorkout(day, index, 'type', e.target.value)}
+                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                          >
+                            <option value="">Select workout</option>
+                            {WORKOUT_TYPES.map((type) => (
+                              <option key={type} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs text-gray-600 mb-1">Distance/Duration</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 5k, 30 min"
+                            value={workout.distance || ''}
+                            onChange={(e) => updateWorkout(day, index, 'distance', e.target.value)}
+                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                          />
+                        </div>
+                        {/* Row 2: Intensity | Workout Time */}
+                        <div className="flex flex-col">
+                          <label className="text-xs text-gray-600 mb-1">Intensity</label>
+                          <select
+                            value={workout.intensity || 'Medium'}
+                            onChange={(e) => updateWorkout(day, index, 'intensity', e.target.value)}
+                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                          >
+                            {INTENSITY_LEVELS.map((level) => (
+                              <option key={level} value={level}>
+                                {level}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs text-gray-600 mb-1">Workout Time</label>
+                          <select
+                            value={workout.timing ?? ''}
+                            onChange={(e) => updateWorkout(day, index, 'timing', e.target.value)}
+                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                          >
+                            <option value="">—</option>
+                            <option value="Morning">Morning</option>
+                            <option value="Afternoon">Afternoon</option>
+                            <option value="Evening">Evening</option>
+                          </select>
+                        </div>
                       </div>
-
-                      {/* Workout Time */}
-                      <div className="md:col-span-2 flex flex-col">
-                        <label className="text-xs text-gray-600 mb-1">Workout Time</label>
-                        <select
-                          value={workout.timing ?? ''}
-                          onChange={(e) => updateWorkout(day, index, 'timing', e.target.value)}
-                          className="text-sm px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                          <option value="">—</option>
-                          <option value="Morning">Morning</option>
-                          <option value="Afternoon">Afternoon</option>
-                          <option value="Evening">Evening</option>
-                        </select>
-                      </div>
-
                       {/* Remove */}
                       {index > 0 && (
                         <button
                           onClick={() => removeWorkout(day, index)}
-                          className="md:col-span-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md flex items-center justify-center transition-colors"
+                          className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md flex items-center justify-center p-2 transition-colors self-start"
                           title="Remove workout"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -59,6 +59,12 @@ export default function MealsPage() {
             trainingPlan.plan
           )
         }
+        onGenerateDay={(day) =>
+          mealPlan.generateDay(day, profile.profile, preferences.preferences, trainingPlan.plan)
+        }
+        onGenerateSingleMeal={(day, mealType) =>
+          mealPlan.generateSingleMeal(day, mealType, profile.profile, preferences.preferences, trainingPlan.plan)
+        }
         onRegenerate={mealPlan.regenerateMeal}
         onLoadWeek={mealPlan.loadMealPlanByWeek}
         onSave={mealPlan.saveCurrentMealPlan}

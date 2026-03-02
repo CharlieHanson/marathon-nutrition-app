@@ -253,6 +253,7 @@ const Auth = ({ presetRole }) => {
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
 
+            {/*
             {!isNutritionist && (
               <button
                 type="button"
@@ -262,7 +263,8 @@ const Auth = ({ presetRole }) => {
                 Continue as Guest
               </button>
             )}
-
+            */}
+            {/*
             <div className="pt-2 border-t border-gray-200">
               {isNutritionist ? (
                 <Link href="/login" className="text-sm text-gray-600 hover:text-gray-800">
@@ -274,6 +276,7 @@ const Auth = ({ presetRole }) => {
                 </Link>
               )}
             </div>
+            */}
           </div>
         </form>
       </div>

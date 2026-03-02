@@ -209,14 +209,24 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
       
       <Card>
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+                <p className="text-sm text-gray-600">Tell us about yourself so we can personalize your nutrition plan.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
-              <p className="text-sm text-gray-600">Tell us about yourself so we can personalize your nutrition plan.</p>
-            </div>
+            <button
+              onClick={handleSave}
+              disabled={isGuest || isSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
         

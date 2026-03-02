@@ -233,8 +233,13 @@ function streamSSEDay(url, data, onProgress) {
             if (currentEvent === 'debug') {
               console.log('🟠 [streamSSEDay] Debug event received');
               if (onProgress) onProgress({ type: 'debug', prompt: payload.prompt, rawResponse: payload.rawResponse });
-            } else if (currentEvent === 'status' && payload.message) {
-              if (onProgress) onProgress({ type: 'status', message: payload.message });
+            } else if (currentEvent === 'status') {
+              if (payload.message) {
+                if (onProgress) onProgress({ type: 'status', message: payload.message });
+              }
+              if (payload.mealType && payload.status) {
+                if (onProgress) onProgress({ type: 'status', mealType: payload.mealType, status: payload.status });
+              }
             } else if (currentEvent === 'meal' && payload.mealType && payload.meal) {
               finalResult.meals[payload.mealType] = payload.meal;
               if (onProgress) onProgress({ type: 'meal', mealType: payload.mealType, meal: payload.meal, day: payload.day });
@@ -417,8 +422,13 @@ export const apiClient = {
                 if (currentEvent === 'debug') {
                   console.log('🟠 Debug event parsed in api.js:', payload);
                   if (onProgress) onProgress({ type: 'debug', prompt: payload.prompt, rawResponse: payload.rawResponse });
-                } else if (currentEvent === 'status' && payload.message) {
-                  if (onProgress) onProgress({ type: 'status', message: payload.message });
+                } else if (currentEvent === 'status') {
+                  if (payload.message) {
+                    if (onProgress) onProgress({ type: 'status', message: payload.message });
+                  }
+                  if (payload.mealType && payload.status) {
+                    if (onProgress) onProgress({ type: 'status', mealType: payload.mealType, status: payload.status });
+                  }
                 } else if (currentEvent === 'meal' && payload.mealType && payload.meal) {
                   meals[payload.mealType] = payload.meal;
                   if (onProgress) onProgress({ type: 'meal', mealType: payload.mealType, meal: payload.meal, day: payload.day });

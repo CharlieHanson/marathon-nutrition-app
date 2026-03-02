@@ -233,6 +233,131 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
+  const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const generateDay = async (day, userProfile, foodPreferences, trainingPlan) => {
+    if (!user && !isGuest) return { success: false, error: 'Not authenticated' };
+
+    const MEAL_TYPES_LIST = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+
+    // Immediately mark all empty slots as generating for instant visual feedback
+    const markedSlots = [];
+    setMealPlan((prev) => {
+      const updated = { ...prev, [day]: { ...prev[day] } };
+      MEAL_TYPES_LIST.forEach((mt) => {
+        const current = prev[day]?.[mt];
+        if (!current || !current.trim() || current === '__generating__') {
+          updated[day][mt] = '__generating__';
+          markedSlots.push(mt);
+        }
+      });
+      return updated;
+    });
+
+    setIsGenerating(true);
+    setStatusMessage(`🔄 Generating meals for ${capitalize(day)}...`);
+
+    try {
+      const result = await apiClient.generateDay(
+        {
+          userId: user?.id,
+          day,
+          userProfile,
+          foodPreferences,
+          trainingPlan,
+          weekStarting: currentWeekStarting,
+        },
+        (event) => {
+          if (event.type === 'status') {
+            if (event.message) setStatusMessage(`🔄 ${event.message}`);
+          } else if (event.type === 'meal' && event.mealType && event.meal) {
+            updateMeal(day, event.mealType, event.meal);
+            setStatusMessage(`✅ ${capitalize(event.mealType)} done!`);
+          } else if (event.type === 'done') {
+            setStatusMessage(`✅ ${capitalize(day)}'s meals generated!`);
+            setTimeout(() => setStatusMessage(''), 3000);
+          } else if (event.type === 'error') {
+            setStatusMessage(`❌ Error: ${event.message}`);
+          }
+        }
+      );
+
+      if (result.success && result.meals && Object.keys(result.meals).length > 0) {
+        // Final pass: apply any meals that may have been missed by SSE events
+        Object.keys(result.meals).forEach((mealType) => {
+          updateMeal(day, mealType, result.meals[mealType]);
+        });
+        // Clear any slots still stuck on __generating__ (skipped/error slots)
+        MEAL_TYPES_LIST.forEach((mt) => {
+          if (markedSlots.includes(mt) && !result.meals[mt]) {
+            updateMeal(day, mt, '');
+          }
+        });
+        if (user && !isGuest) {
+          const updatedPlan = { ...mealPlan, [day]: { ...mealPlan[day], ...result.meals } };
+          await fetch('/api/meal-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, weekStarting: currentWeekStarting, meals: updatedPlan }),
+          });
+        }
+      } else if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return { success: !!result.success };
+    } catch (error) {
+      // Clear any slots still showing __generating__ on failure
+      markedSlots.forEach((mt) => updateMeal(day, mt, ''));
+      setStatusMessage(`❌ Error: ${error.message}`);
+      setTimeout(() => setStatusMessage(''), 5000);
+      return { success: false, error: error.message };
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateSingleMeal = async (day, mealType, userProfile, foodPreferences, trainingPlan) => {
+    if (!user && !isGuest) return { success: false, error: 'Not authenticated' };
+
+    setStatusMessage(`🔄 Generating ${mealType} for ${capitalize(day)}...`);
+    updateMeal(day, mealType, '__generating__');
+
+    try {
+      const result = await apiClient.generateSingleMeal({
+        userId: user?.id,
+        day,
+        mealType,
+        userProfile,
+        foodPreferences,
+        trainingPlan,
+        weekStarting: currentWeekStarting,
+        existingMeals: mealPlan,
+      });
+
+      if (result?.success && result.meal) {
+        updateMeal(day, mealType, result.meal);
+        if (user && !isGuest) {
+          const updatedPlan = { ...mealPlan, [day]: { ...mealPlan[day], [mealType]: result.meal } };
+          await fetch('/api/meal-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, weekStarting: currentWeekStarting, meals: updatedPlan }),
+          });
+        }
+        setStatusMessage(`✅ ${capitalize(mealType)} for ${capitalize(day)} generated!`);
+        setTimeout(() => setStatusMessage(''), 3000);
+        return { success: true };
+      }
+      throw new Error(result?.error || 'Failed to generate meal');
+    } catch (error) {
+      updateMeal(day, mealType, '');
+      setStatusMessage(`❌ Error: ${error.message}`);
+      setTimeout(() => setStatusMessage(''), 5000);
+      return { success: false, error: error.message };
+    }
+  };
+
   const regenerateMeal = async (day, mealType, reason, context) => {
     setStatusMessage(`🔄 Regenerating ${mealType} for ${day}...`);
     try {
@@ -357,6 +482,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     updateMeal,
     rateMeal,
     generateMeals,
+    generateDay,
+    generateSingleMeal,
     regenerateMeal,
     loadMealPlanByWeek,
     saveCurrentMealPlan,

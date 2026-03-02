@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, MoreHorizontal, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat } from 'lucide-react';
+import { Plus, MoreHorizontal, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { RecipeModal } from '../components/modals/RecipeModal';
@@ -21,7 +21,9 @@ export const MealPlanPage = ({
   mealPlan, 
   onUpdate, 
   onRate,
-  onGenerate, 
+  onGenerate,
+  onGenerateDay,
+  onGenerateSingleMeal,
   onRegenerate,
   onLoadWeek,
   onSave,
@@ -59,6 +61,7 @@ export const MealPlanPage = ({
 
   const [loadingRecipe, setLoadingRecipe] = useState(null);
   const [showMealPrepModal, setShowMealPrepModal] = useState(false);
+  const [mealPrepDefaults, setMealPrepDefaults] = useState({ mealType: null, days: [] });
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   // Servings picker state
@@ -149,6 +152,19 @@ export const MealPlanPage = ({
     onUpdate(day, mealType, description);
     setLocalStatusMessage(`✅ Logged ${mealType} for ${day}!`);
     setTimeout(() => setLocalStatusMessage(''), 3000);
+  };
+
+  const handleMealPrepClick = (day, mealType) => {
+    setMealPrepDefaults({ mealType, days: [day] });
+    setShowMealPrepModal(true);
+  };
+
+  const isDayFull = (day) => {
+    const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+    return mealTypes.every((mt) => {
+      const meal = mealPlan?.[day]?.[mt];
+      return meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__';
+    });
   };
 
   // Count how many meals are filled vs total
@@ -618,37 +634,47 @@ export const MealPlanPage = ({
               )}
             </div>
 
-            {/* Right: Action buttons - single row with dropdown */}
+            {/* Right: Action buttons */}
             <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
-              <Button
-                onClick={onGenerate}
-                disabled={isGenerating}
-                icon={Plus}
-                size="lg"
-                className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-              >
-                {isGenerating ? 'Generating...' : hasPartial ? 'Generate Remaining' : 'Generate Meals'}
-              </Button>
-
               {isPlanComplete ? (
                 <>
-                  <Button onClick={() => setShowAnalyticsModal(true)} variant="outline" icon={BarChart3} size="sm">
+                  <Button
+                    onClick={() => setShowAnalyticsModal(true)}
+                    icon={BarChart3}
+                    size="lg"
+                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                  >
                     Analytics
                   </Button>
 
                   {hasMeals && (
-                    <Button onClick={generateGroceryList} variant="outline" icon={ShoppingCart} size="sm">
+                    <Button
+                      onClick={generateGroceryList}
+                      icon={ShoppingCart}
+                      size="lg"
+                      className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    >
                       Grocery List
                     </Button>
                   )}
                 </>
               ) : (
                 <>
-                  <Button onClick={() => setShowMealPrepModal(true)} variant="outline" icon={ChefHat} size="sm">
+                  <Button
+                    onClick={() => setShowMealPrepModal(true)}
+                    icon={ChefHat}
+                    size="lg"
+                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                  >
                     Meal Prep
                   </Button>
 
-                  <Button onClick={() => handleLogClick()} variant="outline" icon={UtensilsCrossed} size="sm">
+                  <Button
+                    onClick={() => handleLogClick()}
+                    icon={UtensilsCrossed}
+                    size="lg"
+                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                  >
                     Log Meal
                   </Button>
                 </>
@@ -669,21 +695,14 @@ export const MealPlanPage = ({
                     {isPlanComplete ? (
                       <>
                         <button
-                          onClick={() => {
-                            setShowMealPrepModal(true);
-                            setShowDropdown(false);
-                          }}
+                          onClick={() => { setShowMealPrepModal(true); setShowDropdown(false); }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                         >
                           <ChefHat className="w-4 h-4" />
                           Meal Prep
                         </button>
-
                         <button
-                          onClick={() => {
-                            handleLogClick();
-                            setShowDropdown(false);
-                          }}
+                          onClick={() => { handleLogClick(); setShowDropdown(false); }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                         >
                           <UtensilsCrossed className="w-4 h-4" />
@@ -693,22 +712,15 @@ export const MealPlanPage = ({
                     ) : (
                       <>
                         <button
-                          onClick={() => {
-                            setShowAnalyticsModal(true);
-                            setShowDropdown(false);
-                          }}
+                          onClick={() => { setShowAnalyticsModal(true); setShowDropdown(false); }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                         >
                           <BarChart3 className="w-4 h-4" />
                           Analytics
                         </button>
-
                         {hasMeals && (
                           <button
-                            onClick={() => {
-                              generateGroceryList();
-                              setShowDropdown(false);
-                            }}
+                            onClick={() => { generateGroceryList(); setShowDropdown(false); }}
                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                           >
                             <ShoppingCart className="w-4 h-4" />
@@ -1131,90 +1143,99 @@ export const MealPlanPage = ({
         )}
         </>)}
 
-        {!hasMeals && !isGenerating ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">
-              No meal plan generated yet. Click "Generate Meals" to create your personalized weekly meal plan, or "Log Meal" to enter what you ate!
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {DAYS.map((day) => {
-              const dayMacros = calculateDayMacros(mealPlan[day]);
-              
-              return (
-                <div key={day} className="border rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-center mb-4">
+        <div className="space-y-8">
+          {DAYS.map((day) => {
+            const dayMacros = calculateDayMacros(mealPlan[day]);
+            const dayFull = isDayFull(day);
+            
+            return (
+              <div key={day} className="border rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold text-gray-900 capitalize">
                       {day}
                     </h3>
-                    
-                    {dayMacros.hasData && (
-                      <div className="flex gap-2 text-sm flex-wrap">
-                        <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
-                          Cal: {dayMacros.calories}
-                        </span>
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-                          P: {dayMacros.protein}g
-                        </span>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
-                          C: {dayMacros.carbs}g
-                        </span>
-                        <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
-                          F: {dayMacros.fat}g
-                        </span>
-                      </div>
+                    {!dayFull && !isGenerating && (
+                      <button
+                        onClick={() => onGenerateDay && onGenerateDay(day)}
+                        disabled={isGenerating}
+                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Generate Day
+                      </button>
                     )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    {['breakfast', 'lunch', 'dinner'].map((mealType) => (
-                      <MealCard
-                        key={mealType}
-                        day={day}
-                        mealType={mealType}
-                        meal={mealPlan[day][mealType]}
-                        rating={mealPlan[day][`${mealType}_rating`] || 0}
-                        onUpdate={onUpdate}
-                        onRate={onRate}
-                        onRegenerate={handleRegenerate}
-                        onGetRecipe={getRecipe}
-                        onCopy={handleCopyClick}
-                        onLogClick={handleLogClick}
-                        loadingRecipe={loadingRecipe}
-                        onSaveMeal={onSaveMeal}
-                        isMealSaved={isMealSaved}
-                        isGuest={isGuest}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {['snacks', 'dessert'].map((mealType) => (
-                      <MealCard
-                        key={mealType}
-                        day={day}
-                        mealType={mealType}
-                        meal={mealPlan[day][mealType]}
-                        rating={mealPlan[day][`${mealType}_rating`] || 0}
-                        onUpdate={onUpdate}
-                        onRate={onRate}
-                        onRegenerate={handleRegenerate}
-                        onGetRecipe={getRecipe}
-                        onCopy={handleCopyClick}
-                        onLogClick={handleLogClick}
-                        loadingRecipe={loadingRecipe}
-                        onSaveMeal={onSaveMeal}
-                        isMealSaved={isMealSaved}
-                        isGuest={isGuest}
-                      />
-                    ))}
-                  </div>
+                  
+                  {dayMacros.hasData && (
+                    <div className="flex gap-2 text-sm flex-wrap">
+                      <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
+                        Cal: {dayMacros.calories}
+                      </span>
+                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                        P: {dayMacros.protein}g
+                      </span>
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                        C: {dayMacros.carbs}g
+                      </span>
+                      <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
+                        F: {dayMacros.fat}g
+                      </span>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {['breakfast', 'lunch', 'dinner'].map((mealType) => (
+                    <MealCard
+                      key={mealType}
+                      day={day}
+                      mealType={mealType}
+                      meal={mealPlan[day][mealType]}
+                      rating={mealPlan[day][`${mealType}_rating`] || 0}
+                      onUpdate={onUpdate}
+                      onRate={onRate}
+                      onRegenerate={handleRegenerate}
+                      onGetRecipe={getRecipe}
+                      onCopy={handleCopyClick}
+                      onLogClick={handleLogClick}
+                      onGenerateSingleMeal={onGenerateSingleMeal}
+                      onMealPrepClick={handleMealPrepClick}
+                      loadingRecipe={loadingRecipe}
+                      onSaveMeal={onSaveMeal}
+                      isMealSaved={isMealSaved}
+                      isGuest={isGuest}
+                    />
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {['snacks', 'dessert'].map((mealType) => (
+                    <MealCard
+                      key={mealType}
+                      day={day}
+                      mealType={mealType}
+                      meal={mealPlan[day][mealType]}
+                      rating={mealPlan[day][`${mealType}_rating`] || 0}
+                      onUpdate={onUpdate}
+                      onRate={onRate}
+                      onRegenerate={handleRegenerate}
+                      onGetRecipe={getRecipe}
+                      onCopy={handleCopyClick}
+                      onLogClick={handleLogClick}
+                      onGenerateSingleMeal={onGenerateSingleMeal}
+                      onMealPrepClick={handleMealPrepClick}
+                      loadingRecipe={loadingRecipe}
+                      onSaveMeal={onSaveMeal}
+                      isMealSaved={isMealSaved}
+                      isGuest={isGuest}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <RecipeModal
@@ -1249,12 +1270,14 @@ export const MealPlanPage = ({
 
       <MealPrepModal
         isOpen={showMealPrepModal}
-        onClose={() => setShowMealPrepModal(false)}
+        onClose={() => { setShowMealPrepModal(false); setMealPrepDefaults({ mealType: null, days: [] }); }}
         onApply={onUpdate}
         onSaveMeal={onSaveMeal}
         userProfile={userProfile}
         foodPreferences={foodPreferences}
         isGuest={isGuest}
+        defaultMealType={mealPrepDefaults.mealType}
+        defaultDays={mealPrepDefaults.days}
       />
 
       <LogMealModal
@@ -1290,14 +1313,18 @@ const MealCard = ({
   onGetRecipe,
   onCopy,
   onLogClick,
+  onGenerateSingleMeal,
+  onMealPrepClick,
   loadingRecipe,
   onSaveMeal,
   isMealSaved,
   isGuest
 }) => {
+  const [showAddOptions, setShowAddOptions] = React.useState(false);
   const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
   const isSaved = isMealSaved?.(mealType, meal);
-  const isGenerating = meal === '__generating__';
+  const isGeneratingMeal = meal === '__generating__';
+  const isEmpty = !meal || (typeof meal === 'string' && !meal.trim());
 
   const handleSave = async () => {
     if (!meal || isGuest) return;
@@ -1305,7 +1332,7 @@ const MealCard = ({
   };
 
   // Show loading spinner while generating
-  if (isGenerating) {
+  if (isGeneratingMeal) {
     return (
       <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm">
         <div className="flex justify-between items-center">
@@ -1321,6 +1348,62 @@ const MealCard = ({
     );
   }
 
+  // Show collapsed placeholder or expanded options when meal slot is empty
+  if (isEmpty) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 overflow-hidden transition-all h-full">
+        {/* Collapsed: click-to-add placeholder */}
+        {!showAddOptions ? (
+          <button
+            onClick={() => setShowAddOptions(true)}
+            className="w-full h-full min-h-[80px] flex flex-col items-center justify-center gap-1.5 py-5 text-gray-400 hover:text-gray-500 hover:bg-gray-50 transition-colors"
+          >
+            <span className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center">
+              <Plus className="w-4 h-4" />
+            </span>
+            <span className="text-xs capitalize">{mealType}</span>
+          </button>
+        ) : (
+          /* Expanded: show the 3 options */
+          <div className="p-3 bg-gray-50">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-xs font-semibold text-gray-500 capitalize">{mealType}</span>
+              <button
+                onClick={() => setShowAddOptions(false)}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={() => { setShowAddOptions(false); onGenerateSingleMeal && onGenerateSingleMeal(day, mealType); }}
+                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Generate with AI
+              </button>
+              <button
+                onClick={() => { setShowAddOptions(false); onLogClick(day, mealType); }}
+                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                Log Meal
+              </button>
+              <button
+                onClick={() => { setShowAddOptions(false); onMealPrepClick && onMealPrepClick(day, mealType); }}
+                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <ChefHat className="w-3.5 h-3.5" />
+                Meal Prep
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center">
@@ -1328,54 +1411,40 @@ const MealCard = ({
           {mealType}
         </label>
         <div className="flex gap-1">
-          {meal ? (
-            <>
-              {/* Save/Heart Button */}
-              {!isGuest && (
-                <Tooltip text={isSaved ? "Saved!" : "Save meal"}>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaved}
-                    className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
-                      isSaved
-                        ? 'bg-red-100 text-red-500 cursor-default'
-                        : 'bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500'
-                    }`}
-                  >
-                    <Heart className={`w-3 h-3 ${isSaved ? 'fill-red-500' : ''}`} />
-                  </button>
-                </Tooltip>
-              )}
-
-              <Tooltip text="Copy meal">
-                <button
-                  onClick={() => onCopy(day, mealType, meal)}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
-                >
-                  <Copy className="w-3 h-3" />
-                </button>
-              </Tooltip>
-
-              <Tooltip text="Regenerate meal">
-                <button
-                  onClick={() => onRegenerate(day, mealType)}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              </Tooltip>
-            </>
-          ) : (
-            <Tooltip text="Log what you ate">
+          {/* Save/Heart Button */}
+          {!isGuest && (
+            <Tooltip text={isSaved ? "Saved!" : "Save meal"}>
               <button
-                onClick={() => onLogClick(day, mealType)}
-                className="text-xs bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded text-primary flex items-center gap-1 transition-colors"
+                onClick={handleSave}
+                disabled={isSaved}
+                className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
+                  isSaved
+                    ? 'bg-red-100 text-red-500 cursor-default'
+                    : 'bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500'
+                }`}
               >
-                <UtensilsCrossed className="w-3 h-3" />
-                Log
+                <Heart className={`w-3 h-3 ${isSaved ? 'fill-red-500' : ''}`} />
               </button>
             </Tooltip>
           )}
+
+          <Tooltip text="Copy meal">
+            <button
+              onClick={() => onCopy(day, mealType, meal)}
+              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+          </Tooltip>
+
+          <Tooltip text="Regenerate meal">
+            <button
+              onClick={() => onRegenerate(day, mealType)}
+              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

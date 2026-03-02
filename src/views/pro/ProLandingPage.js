@@ -17,11 +17,11 @@ export const ProLandingPage = () => {
               <span className="text-sm font-medium text-gray-500">Pro</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/">
+              {/* <Link href="/">
                 <button className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
                   For Athletes
                 </button>
-              </Link>
+              </Link> */}
               <Link href="/login?role=nutritionist">
                 <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
                   Sign In

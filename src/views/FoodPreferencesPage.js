@@ -1,24 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
-import { Save, Lock, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Save, Lock, ThumbsUp, ThumbsDown, ChevronDown, ChevronRight } from 'lucide-react';
 
-const COMMON_FOODS = [
-  // Proteins
-  'Chicken', 'Salmon', 'Beef', 'Turkey', 'Pork', 'Shrimp', 'Tuna', 'Cod',
-  // Dairy & Eggs
-  'Eggs', 'Greek Yogurt', 'Cottage Cheese', 'Milk', 'Cheese', 'Mozzarella', 'Feta',
-  // Grains & Carbs
-  'Quinoa', 'Rice', 'Pasta', 'Oats', 'Bread', 'Tortillas', 'Couscous', 'Potatoes',
-  // Fruits
-  'Avocado', 'Banana', 'Berries', 'Apple', 'Orange', 'Mango', 'Strawberries',
-  // Vegetables
-  'Spinach', 'Broccoli', 'Sweet Potato', 'Carrots', 'Tomatoes', 'Peppers', 'Kale', 'Cauliflower', 'Zucchini',
-  // Nuts & Legumes
-  'Nuts', 'Almonds', 'Peanut Butter', 'Beans', 'Lentils', 'Chickpeas',
-  // Other
-  'Tofu', 'Mushrooms', 'Onions', 'Garlic', 'Hummus'
+// Food categories (matches mobile structure)
+const FOOD_CATEGORIES = [
+  {
+    id: 'proteins',
+    name: 'Proteins',
+    foods: ['Chicken', 'Salmon', 'Beef', 'Turkey', 'Pork', 'Shrimp', 'Tuna', 'Cod', 'Tofu'],
+  },
+  {
+    id: 'dairy',
+    name: 'Dairy & Eggs',
+    foods: ['Eggs', 'Greek Yogurt', 'Cottage Cheese', 'Milk', 'Cheese', 'Mozzarella', 'Feta', 'Butter', 'Cream Cheese'],
+  },
+  {
+    id: 'carbs',
+    name: 'Grains & Carbs',
+    foods: ['Quinoa', 'Rice', 'Pasta', 'Oats', 'Bread', 'Tortillas', 'Couscous', 'Potatoes', 'Granola'],
+  },
+  {
+    id: 'fruits',
+    name: 'Fruits',
+    foods: ['Avocado', 'Bananas', 'Berries', 'Apples', 'Oranges', 'Mango', 'Strawberries', 'Watermelon', 'Peaches'],
+  },
+  {
+    id: 'vegetables',
+    name: 'Vegetables',
+    foods: [
+      'Spinach', 'Broccoli', 'Cucumber', 'Sweet Potato', 'Carrots', 'Tomatoes',
+      'Peppers', 'Kale', 'Cauliflower', 'Zucchini', 'Mushrooms', 'Onions',
+    ],
+  },
+  {
+    id: 'nuts',
+    name: 'Nuts & Legumes',
+    foods: ['Nuts', 'Almonds', 'Peanut Butter', 'Beans', 'Lentils', 'Chickpeas'],
+  },
+  {
+    id: 'other',
+    name: 'Other',
+    foods: ['Garlic', 'Hummus', 'Olive Oil', 'Vinegar', 'Soy Sauce', 'Hot Sauce', 'Salsa', 'Honey', 'Mayonnaise'],
+  },
 ];
+
+const ALL_CATEGORY_FOODS = FOOD_CATEGORIES.flatMap((c) => c.foods);
 
 const COMMON_CUISINES = [
   'Mediterranean', 'Italian', 'Mexican', 'Chinese', 'Japanese',
@@ -41,6 +68,7 @@ export const FoodPreferencesPage = ({
   const [otherDislikes, setOtherDislikes] = useState('');
   const [favoriteCuisines, setFavoriteCuisines] = useState(new Set());
   const [otherCuisines, setOtherCuisines] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState(new Set(['proteins']));
   const onUpdateRef = useRef(onUpdate);
 
   // Keep onUpdate ref up to date
@@ -57,8 +85,8 @@ useEffect(() => {
 
   if (preferences.likes) {
     const likesArray = preferences.likes.split(',').map(f => f.trim()).filter(f => f);
-    const commonLikes = likesArray.filter(f => COMMON_FOODS.includes(f));
-    const otherLikesList = likesArray.filter(f => !COMMON_FOODS.includes(f));
+    const commonLikes = likesArray.filter(f => ALL_CATEGORY_FOODS.includes(f));
+    const otherLikesList = likesArray.filter(f => !ALL_CATEGORY_FOODS.includes(f));
     
     setLikedFoods(new Set(commonLikes));
     setOtherLikes(otherLikesList.join(', '));
@@ -69,8 +97,8 @@ useEffect(() => {
 
   if (preferences.dislikes) {
     const dislikesArray = preferences.dislikes.split(',').map(f => f.trim()).filter(f => f);
-    const commonDislikes = dislikesArray.filter(f => COMMON_FOODS.includes(f));
-    const otherDislikesList = dislikesArray.filter(f => !COMMON_FOODS.includes(f));
+    const commonDislikes = dislikesArray.filter(f => ALL_CATEGORY_FOODS.includes(f));
+    const otherDislikesList = dislikesArray.filter(f => !ALL_CATEGORY_FOODS.includes(f));
     
     setDislikedFoods(new Set(commonDislikes));
     setOtherDislikes(otherDislikesList.join(', '));
@@ -148,6 +176,15 @@ useEffect(() => {
     setDislikedFoods(newDisliked);
   };
 
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  };
+
   const toggleCuisine = (cuisine) => {
     if (isGuest) return;
     
@@ -179,62 +216,93 @@ useEffect(() => {
       </h2>
       
       <Card>
-        <div className="mb-6">
+        <div className="flex items-start justify-between gap-4 mb-6">
           <p className="text-gray-600">
-            Select foods you like or dislike using the thumbs up/down buttons. Add any other foods in the "Other" sections below.
+            Select foods you like or dislike using the thumbs up/down buttons. Add any other foods in the &quot;Other&quot; sections below. Click save to save your preferences.
           </p>
+          {!isGuest && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          )}
         </div>
 
-        {/* Common Foods Selection */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Common Foods</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {COMMON_FOODS.map((food) => {
-              const isLiked = likedFoods.has(food);
-              const isDisliked = dislikedFoods.has(food);
-              
-              return (
-                <div
-                  key={food}
-                  className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
-                    isLiked
-                      ? 'bg-green-50 border-green-300'
-                      : isDisliked
-                      ? 'bg-red-50 border-red-300'
-                      : 'bg-gray-50 border-gray-200'
-                  } ${isGuest ? 'opacity-60' : 'hover:border-primary/50'}`}
+        {/* Foods by Category */}
+        <div className="mb-8 space-y-2">
+          {FOOD_CATEGORIES.map((category) => {
+            const isExpanded = expandedCategories.has(category.id);
+            return (
+              <div key={category.id} className="rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(category.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
                 >
-                  <span className="text-sm font-medium text-gray-700 flex-1">{food}</span>
-                  <div className="flex gap-1 ml-2">
-                    <button
-                      onClick={() => toggleLike(food)}
-                      disabled={isGuest}
-                      className={`p-1 rounded transition-all ${
-                        isLiked
-                          ? 'bg-green-500 text-white'
-                          : 'bg-white text-gray-400 hover:bg-green-100 hover:text-green-600'
-                      } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                      title={isLiked ? 'Remove from likes' : 'Add to likes'}
-                    >
-                      <ThumbsUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => toggleDislike(food)}
-                      disabled={isGuest}
-                      className={`p-1 rounded transition-all ${
-                        isDisliked
-                          ? 'bg-red-500 text-white'
-                          : 'bg-white text-gray-400 hover:bg-red-100 hover:text-red-600'
-                      } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                      title={isDisliked ? 'Remove from dislikes' : 'Add to dislikes'}
-                    >
-                      <ThumbsDown className="w-4 h-4" />
-                    </button>
+                  <h3 className="text-base font-semibold text-gray-900">{category.name}</h3>
+                  {isExpanded ? (
+                    <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-gray-500 shrink-0" />
+                  )}
+                </button>
+                {isExpanded && (
+                  <div className="p-4 bg-white">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {category.foods.map((food) => {
+                        const isLiked = likedFoods.has(food);
+                        const isDisliked = dislikedFoods.has(food);
+                        return (
+                          <div
+                            key={food}
+                            className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                              isLiked
+                                ? 'bg-green-50 border-green-300'
+                                : isDisliked
+                                ? 'bg-red-50 border-red-300'
+                                : 'bg-gray-50 border-gray-200'
+                            } ${isGuest ? 'opacity-60' : 'hover:border-primary/50'}`}
+                          >
+                            <span className="text-sm font-medium text-gray-700 flex-1 truncate">{food}</span>
+                            <div className="flex gap-1 ml-2 shrink-0">
+                              <button
+                                onClick={() => toggleLike(food)}
+                                disabled={isGuest}
+                                className={`p-1 rounded transition-all ${
+                                  isLiked
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white text-gray-400 hover:bg-green-100 hover:text-green-600'
+                                } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                title={isLiked ? 'Remove from likes' : 'Add to likes'}
+                              >
+                                <ThumbsUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => toggleDislike(food)}
+                                disabled={isGuest}
+                                className={`p-1 rounded transition-all ${
+                                  isDisliked
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-white text-gray-400 hover:bg-red-100 hover:text-red-600'
+                                } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                title={isDisliked ? 'Remove from dislikes' : 'Add to dislikes'}
+                              >
+                                <ThumbsDown className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Other Foods Section */}

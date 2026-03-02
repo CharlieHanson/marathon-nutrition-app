@@ -1,6 +1,6 @@
 // api/generate-grocery-list.js
-// import OpenAI from 'openai';
-// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import OpenAI from 'openai';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -64,35 +64,35 @@ Return JSON that matches this structure:
 }`;
 
     // ── OpenAI (commented out) ──
-    // const resp = await openai.chat.completions.create({
-    //   model: "gpt-4o",
-    //   messages: [{ role: "user", content: prompt }],
-    //   temperature: 0.4,
-    //   max_tokens: 900,
-    //   response_format: { type: "json_schema", json_schema: grocerySchema() }
-    // });
-    // let text = resp.choices?.[0]?.message?.content ?? '';
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+      max_tokens: 900,
+      response_format: { type: "json_schema", json_schema: grocerySchema() }
+    });
+    let text = resp.choices?.[0]?.message?.content ?? '';
 
     // ── Gemini ──
-    const geminiModel = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: grocerySchema().schema,
-        temperature: 0.4,
-        maxOutputTokens: 900,
-      },
-    });
+    //const geminiModel = genAI.getGenerativeModel({
+    //  model: 'gemini-2.5-flash',
+    //  generationConfig: {
+    //  responseMimeType: 'application/json',
+    //  responseSchema: grocerySchema().schema,
+    //  temperature: 0.4,
+    //  maxOutputTokens: 50000,
+    //  },
+    //});
     
-    let aiResult;
-    try {
-      aiResult = await geminiModel.generateContent(prompt);
-    } catch (geminiError) {
-      console.error('Gemini API error:', geminiError);
-      throw new Error(`Gemini API failed: ${geminiError.message}`);
-    }
+    //let aiResult;
+    //try {
+    //  aiResult = await geminiModel.generateContent(prompt);
+    //} catch (geminiError) {
+    //  console.error('Gemini API error:', geminiError);
+    //  throw new Error(`Gemini API failed: ${geminiError.message}`);
+    //}
     
-    let text = aiResult.response.text();
+    //let text = aiResult.response.text();
     let parsed;
 
     try {

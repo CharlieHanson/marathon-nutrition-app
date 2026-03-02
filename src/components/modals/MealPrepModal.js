@@ -1,5 +1,5 @@
 // src/components/modals/MealPrepModal.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -12,7 +12,9 @@ export const MealPrepModal = ({
   onSaveMeal,
   userProfile,
   foodPreferences,
-  isGuest
+  isGuest,
+  defaultMealType,
+  defaultDays,
 }) => {
   const [step, setStep] = useState(1); // 1: meal type, 2: days, 3: options
   const [selectedMealType, setSelectedMealType] = useState('lunch');
@@ -22,6 +24,22 @@ export const MealPrepModal = ({
   const [error, setError] = useState('');
   const [applied, setApplied] = useState(false);
   const [saveToFavorites, setSaveToFavorites] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (defaultMealType) {
+        setSelectedMealType(defaultMealType);
+        setStep(2);
+      } else {
+        setSelectedMealType('lunch');
+        setStep(1);
+      }
+      setSelectedDays(defaultDays && defaultDays.length > 0 ? defaultDays : []);
+      setOptions([]);
+      setError('');
+      setApplied(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -23,11 +23,11 @@ export const LandingPage = () => {
               <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/pro">
+              {/* <Link href="/pro">
                 <button className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
                   For Nutritionists
                 </button>
-              </Link>
+              </Link> */}
               <Link href="/login">
                 <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
                   Sign In
@@ -58,12 +58,14 @@ export const LandingPage = () => {
                 <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
+            {/*
             <button
               onClick={handleViewDemo}
               className="px-8 py-4 bg-white text-gray-900 rounded-lg font-semibold text-lg border-2 border-gray-200 hover:border-primary transition-all"
             >
               View Demo
             </button>
+            */}
           </div>
 
           {/* Stats with RAG */}
