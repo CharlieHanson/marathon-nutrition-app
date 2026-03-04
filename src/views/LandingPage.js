@@ -87,7 +87,7 @@ export const LandingPage = () => {
           {/* Tech Badges */}
           <div className="mt-12 flex flex-wrap justify-center gap-3">
             <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
-              🤖 Powered by GPT-4o
+              🤖 Powered by GPT-4o and Gemini 2.5
             </span>
             <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
               🧠 RAG-Based Learning
@@ -214,7 +214,7 @@ export const LandingPage = () => {
                 AI-Generated Meal Plan
               </h2>
               <p className="text-lg text-gray-600 mb-6">
-                Powered by GPT-4o for meal generation and validated by 5 specialized machine learning models achieving 87% accuracy.
+                Powered by GPT-4o and Gemini 2.5 for meal generation and validated by 5 specialized machine learning models achieving 87% accuracy.
               </p>
               <ul className="space-y-4">
                 <FeaturePoint text="Macro predictions validated by ML (±75 cal, ±3g protein)" />
