@@ -59,6 +59,16 @@ export default async function handler(req, res) {
       console.error('Error deleting saved_meals:', savedMealsError);
     }
 
+    // After deleting meal_ratings, before meal_plans
+    const { error: completionsError } = await supabase
+      .from('meal_completions')
+      .delete()
+      .eq('user_id', userId);
+
+    if (completionsError) {
+      console.error('Error deleting meal_completions:', completionsError);
+    }
+
     // 3. Delete meal plans
     const { error: mealPlansError } = await supabase
       .from('meal_plans')
@@ -118,25 +128,23 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (nutritionistData) {
-      // Delete all client relationships for this nutritionist
-      const { error: nutClientError } = await supabase
+      // Delete feedback FIRST (before deleting nutritionist row)
+      await supabase
+        .from('meal_plan_feedback')
+        .delete()
+        .eq('nutritionist_id', nutritionistData.id);
+
+      // Then delete client relationships
+      await supabase
         .from('client_nutritionist')
         .delete()
         .eq('nutritionist_id', nutritionistData.id);
-      
-      if (nutClientError) {
-        console.error('Error deleting client_nutritionist (as nutritionist):', nutClientError);
-      }
 
-      // Delete nutritionist record
-      const { error: nutError } = await supabase
+      // Then delete nutritionist record
+      await supabase
         .from('nutritionists')
         .delete()
         .eq('user_id', userId);
-      
-      if (nutError) {
-        console.error('Error deleting nutritionists:', nutError);
-      }
     }
 
     // 9. Delete from profiles table
