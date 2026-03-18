@@ -1155,7 +1155,8 @@ export const MealPlanPage = ({
                     <h3 className="text-lg font-semibold text-gray-900 capitalize">
                       {day}
                     </h3>
-                    {!dayFull && !isGenerating && (
+                    {/* Temporarily disabled: removing the "+ Generate Day" action for now */}
+                    {/* {!dayFull && !isGenerating && (
                       <button
                         onClick={() => onGenerateDay && onGenerateDay(day)}
                         disabled={isGenerating}
@@ -1164,7 +1165,7 @@ export const MealPlanPage = ({
                         <Plus className="w-3.5 h-3.5" />
                         Generate Day
                       </button>
-                    )}
+                    )} */}
                   </div>
                   
                   {dayMacros.hasData && (
