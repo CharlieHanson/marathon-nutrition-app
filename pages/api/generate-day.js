@@ -1,49 +1,94 @@
 /**
- * TEST ENDPOINT: generate-day-web.js
- * pages/api/generate-day-web.js
+ * generate-day.js (Single Day, SSE)
+ * pages/api/generate-day.js
  *
- * Generates one day's meals, streaming each meal to the frontend via SSE.
- * Uses the full new pipeline: TDEE → budgets → Gemini (per meal) → density → scaler
+ * Fills EMPTY meal slots for one day using ONE Gemini call for all 5 meals.
+ * Streams each meal from the parsed response via SSE.
  *
- * Body: { userProfile, foodPreferences, trainingPlan, day }
- *   day = "monday" | "tuesday" | ... | "sunday"
+ * ARCHITECTURE: TDEE → budgets → Gemini (single call, all meals) → validate → density + scaler per meal
+ *
+ * Body: { userId, day, userProfile, foodPreferences, trainingPlan,
+ *         weekStarting?, existingMeals?, ragContext?, debug?, forceRegenerate? }
+ *
+ * SSE events:
+ *   debug     → { prompt, rawResponse } (only if debug=true in body)
+ *   nutrition → { dailyMacros, mealBudgets, bmr, tdee, adjustedTdee }
+ *   status    → { mealType, status: "generating"|"skipped"|"processing" }
+ *             → { message: string }
+ *   meal      → { mealType, meal: "Name (Cal: X, P: Xg, C: Xg, F: Xg)", day }
+ *   done      → { success, day, meals: { [mealType]: mealString }, dailyTotals, dailyTargets }
+ *   error     → { message }
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
-import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash-preview-04-17',
-  generationConfig: {
-    responseMimeType: 'application/json',
-    temperature: 0.7,
-    maxOutputTokens: 800,
-  },
-});
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
-
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
 
 function parseJSON(text) {
   let s = text.trim();
-  // Strip markdown fences if Gemini wraps them despite JSON mode
   if (s.startsWith('```json')) s = s.slice(7);
   else if (s.startsWith('```')) s = s.slice(3);
   if (s.endsWith('```')) s = s.slice(0, -3);
   s = s.trim();
-  try {
-    return JSON.parse(s);
-  } catch {
-    const start = s.indexOf('{');
-    const end = s.lastIndexOf('}');
-    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+
+  try { return JSON.parse(s); } catch (e) { /* continue */ }
+
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(s.slice(start, end + 1)); } catch (e) { /* continue */ }
+  }
+
+  // Handle truncated JSON — attempt to close open structures
+  let truncated = s;
+  if (start !== -1) truncated = s.slice(start);
+
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escaped = false;
+  for (const ch of truncated) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') openBraces++;
+    if (ch === '}') openBraces--;
+    if (ch === '[') openBrackets++;
+    if (ch === ']') openBrackets--;
+  }
+
+  truncated = truncated.replace(/,\s*$/, '');
+  truncated = truncated.replace(/,\s*"[^"]*":\s*"[^"]*$/, '');
+  truncated = truncated.replace(/,\s*\{[^}]*$/, '');
+
+  for (let i = 0; i < openBrackets; i++) truncated += ']';
+  for (let i = 0; i < openBraces; i++) truncated += '}';
+
+  try { return JSON.parse(truncated); } catch (e) {
+    console.error('parseJSON failed even after truncation repair. First 500 chars:', s.slice(0, 500));
     throw new Error('Failed to parse AI JSON');
   }
+}
+
+function toMealString(name, macros) {
+  if (!macros) return name;
+  return `${name} (Cal: ${macros.calories}, P: ${macros.protein}g, C: ${macros.carbs}g, F: ${macros.fat}g)`;
 }
 
 export default async function handler(req, res) {
@@ -51,11 +96,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { userProfile, foodPreferences, trainingPlan, day } = req.body;
+  const {
+    userId,
+    day,
+    userProfile,
+    foodPreferences,
+    trainingPlan,
+    weekStarting,
+    existingMeals,
+    ragContext,
+    debug = false,
+    forceRegenerate = false,
+  } = req.body;
 
   if (!userProfile || !day) {
     return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
   }
+
+  const dislikes = foodPreferences?.dislikes || '';
+  const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
   // ── SSE setup ──
   res.writeHead(200, {
@@ -69,116 +128,249 @@ export default async function handler(req, res) {
   };
 
   try {
-    // ── Step 1: TDEE + meal budgets ──
+    // ── Step 1: Load existing meals for cross-day variety ──
+    let weekMeals = {};
+
+    if (existingMeals) {
+      if (typeof existingMeals === 'object' && (existingMeals.monday || existingMeals.tuesday)) {
+        weekMeals = existingMeals;
+      } else {
+        weekMeals = { [day]: existingMeals };
+      }
+    } else if (userId) {
+      try {
+        let query = supabase
+          .from('meal_plans')
+          .select('meals')
+          .eq('user_id', userId);
+
+        if (weekStarting) {
+          query = query.eq('week_starting', weekStarting);
+        } else {
+          query = query.order('updated_at', { ascending: false }).limit(1);
+        }
+
+        const { data } = await query.maybeSingle();
+        if (data?.meals) weekMeals = data.meals;
+      } catch (e) {
+        console.warn('Could not load existing meals:', e.message);
+      }
+    }
+
+    // Check which slots are already filled for this day
+    const dayMeals = weekMeals[day] || {};
+    const filledSlots = {};
+    const emptySlots = [];
+
+    if (forceRegenerate) {
+      emptySlots.push(...MEAL_TYPES);
+    } else {
+      for (const mt of MEAL_TYPES) {
+        const outKey = toOutputKey(mt);
+        const val = dayMeals[outKey] || dayMeals[mt];
+        if (val && typeof val === 'string' && val.trim()) {
+          filledSlots[mt] = val;
+        } else {
+          emptySlots.push(mt);
+        }
+      }
+
+      if (emptySlots.length === 0) {
+        send('done', { success: true, day, meals: {}, message: 'All slots already filled' });
+        return res.end();
+      }
+    }
+
+    // ── Step 2: TDEE + meal budgets ──
     const dayWorkouts = trainingPlan?.[day]?.workouts || [];
     const dayTiming = trainingPlan?.[day]?.timing || null;
+    const timingMap = { 'Morning': 'am', 'Afternoon': 'pm', 'Evening': 'pm' };
 
     const nutrition = computeNutritionTargets({
       userProfile,
       todayWorkouts: dayWorkouts,
-      workoutTiming: dayTiming,
+      workoutTiming: timingMap[dayTiming] || null,
     });
 
     send('nutrition', {
       dailyMacros: nutrition.dailyMacros,
       mealBudgets: nutrition.mealBudgets,
-      parsed: nutrition.parsed,
       bmr: nutrition.bmr,
       tdee: nutrition.tdee,
       adjustedTdee: nutrition.adjustedTdee,
+      trainingMultiplier: nutrition.parsed?.trainingMultiplier || 1.0,
     });
 
-    // ── Step 2: Generate each meal sequentially ──
-    const generatedMeals = [];
-
+    // ── Step 3: Build cross-day variety from previous 2 days' dish names ──
+    const previousDayMealNames = [];
     const dayIndex = DAYS.indexOf(day);
+    const recentDayIndices = [
+      (dayIndex - 1 + 7) % 7,
+      (dayIndex - 2 + 7) % 7,
+    ];
+    for (const di of recentDayIndices) {
+      const d = DAYS[di];
+      const meals = weekMeals[d];
+      if (!meals || typeof meals !== 'object') continue;
+      for (const [key, val] of Object.entries(meals)) {
+        if (!val || typeof val !== 'string' || key.includes('_rating')) continue;
+        const name = val.replace(/\(Cal:.*?\).*$/, '').trim();
+        if (name && !previousDayMealNames.includes(name)) {
+          previousDayMealNames.push(name);
+        }
+      }
+    }
+
+    // Training context
     const tomorrowDay = DAYS[(dayIndex + 1) % 7];
     const todayTraining = formatTrainingDay(dayWorkouts);
     const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
 
-    for (const mealType of MEAL_TYPES) {
-      send('status', { mealType, status: 'generating' });
+    // ── Step 4: Build budgets for empty slots only ──
+    const budgetsToGenerate = {};
+    for (const mt of emptySlots) {
+      budgetsToGenerate[mt] = nutrition.mealBudgets[mt];
+    }
 
-      const budget = nutrition.mealBudgets[mealType];
-      if (!budget) {
-        send('meal', { mealType, error: 'No budget for this meal type' });
-        continue;
-      }
-
-      try {
-        const prompt = buildSingleMealPrompt({
-          mealType,
-          macroBudget: budget,
-          foodPreferences,
-          dietaryRestrictions:
-            userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
-          todayTraining,
-          tomorrowTraining,
-          avoidIngredients: [],
-          alreadyGeneratedToday: generatedMeals.map((m) => m.meal_name),
-        });
-
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        const mealData = parseJSON(text);
-
-        // Validate ingredients
-        const ingredients = (mealData.ingredients || [])
-          .filter((ing) => ing.name && ing.type && ing.grams > 0)
-          .map((ing) => ({
-            name: String(ing.name).trim(),
-            type: String(ing.type).trim().toLowerCase(),
-            grams: Math.round(parseFloat(ing.grams) || 0),
-          }));
-
-        if (ingredients.length === 0) {
-          send('meal', { mealType, error: 'No valid ingredients returned' });
-          continue;
-        }
-
-        // Density lookup + scaler
-        const adjusted = estimateAndAdjust(ingredients, budget);
-
-        const meal = {
-          meal_name: mealData.meal_name || `${mealType} meal`,
-          ingredients: adjusted.ingredients,
-          macros: {
-            calories: Math.round(adjusted.macros.calories),
-            protein: Math.round(adjusted.macros.protein),
-            carbs: Math.round(adjusted.macros.carbs),
-            fat: Math.round(adjusted.macros.fat),
-          },
-          budget,
-          scaled: adjusted.scaled,
-          scaleFactors: adjusted.scaleFactors,
-        };
-
-        generatedMeals.push(meal);
-        send('meal', { mealType, meal });
-      } catch (err) {
-        console.error(`Error generating ${mealType}:`, err.message);
-        send('meal', { mealType, error: err.message });
+    for (const mt of MEAL_TYPES) {
+      if (!emptySlots.includes(mt)) {
+        send('status', { mealType: toOutputKey(mt), status: 'skipped' });
       }
     }
 
-    // ── Step 3: Daily totals ──
-    const totals = generatedMeals.reduce(
-      (acc, m) => ({
-        calories: acc.calories + m.macros.calories,
-        protein: acc.protein + m.macros.protein,
-        carbs: acc.carbs + m.macros.carbs,
-        fat: acc.fat + m.macros.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    );
+    // ── Step 5: ONE Gemini call for all empty meals ──
+    send('status', { message: `Generating ${emptySlots.length} meals for ${day}...` });
 
-    send('complete', {
-      dailyTotals: totals,
+    const prompt = buildDayPrompt({
+      mealBudgets: budgetsToGenerate,
+      foodPreferences,
+      dietaryRestrictions,
+      todayTraining,
+      tomorrowTraining,
+      avoidIngredients: [],
+      previousDayMealNames,
+      ragContext: ragContext || null,
+    });
+
+    const geminiModel = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.8,
+        maxOutputTokens: 50000,
+      },
+    });
+
+    let aiResult;
+    try {
+      aiResult = await geminiModel.generateContent(prompt);
+    } catch (geminiError) {
+      console.error('Gemini API error:', geminiError);
+      send('error', { message: `Gemini API failed: ${geminiError.message}` });
+      return res.end();
+    }
+
+    const rawResponse = aiResult.response.text();
+
+    let dayMealData;
+    try {
+      dayMealData = parseJSON(rawResponse);
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response. Raw text:', rawResponse);
+      console.error('Parse error:', parseError);
+      send('error', { message: 'Failed to parse AI response' });
+      return res.end();
+    }
+
+    if (debug) {
+      send('debug', { prompt, rawResponse });
+    }
+
+    // ── Step 6: Validate + density + scaler per meal, then stream ──
+    // meals accumulated as { [mealType]: mealString } for the done event
+    const generatedMealsObj = {};
+    const dailyTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+    for (const mealType of emptySlots) {
+      const outKey = toOutputKey(mealType);
+      send('status', { mealType: outKey, status: 'processing' });
+
+      const mealData = dayMealData[mealType] || dayMealData[toOutputKey(mealType)];
+
+      if (!mealData || !mealData.ingredients || !Array.isArray(mealData.ingredients)) {
+        send('meal', { mealType: outKey, error: 'No data returned for this meal', day });
+        continue;
+      }
+
+      let ingredients = mealData.ingredients
+        .filter((ing) => ing.name && ing.type && ing.grams > 0)
+        .map((ing) => ({
+          name: String(ing.name).trim(),
+          type: String(ing.type).trim().toLowerCase(),
+          grams: Math.round(parseFloat(ing.grams) || 0),
+        }));
+
+      ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
+
+      if (ingredients.length === 0) {
+        const fallback = mealData.meal_name || `Generated ${mealType}`;
+        generatedMealsObj[outKey] = fallback;
+        send('meal', { mealType: outKey, meal: fallback, day });
+        continue;
+      }
+
+      const budget = budgetsToGenerate[mealType];
+      const result = estimateAndAdjust(ingredients, budget);
+      const macros = {
+        calories: Math.round(result.macros.calories),
+        protein: Math.round(result.macros.protein),
+        carbs: Math.round(result.macros.carbs),
+        fat: Math.round(result.macros.fat),
+      };
+
+      dailyTotals.calories += macros.calories;
+      dailyTotals.protein += macros.protein;
+      dailyTotals.carbs += macros.carbs;
+      dailyTotals.fat += macros.fat;
+
+      const mealName = mealData.meal_name || `${mealType} meal`;
+      const mealString = toMealString(mealName, macros);
+
+      generatedMealsObj[outKey] = mealString;
+      send('meal', { mealType: outKey, meal: mealString, day });
+    }
+
+    // ── Step 7: Optionally save to DB ──
+    if (userId && weekStarting) {
+      try {
+        const updatedDayMeals = { ...dayMeals, ...generatedMealsObj };
+        const updatedWeekMeals = { ...weekMeals, [day]: updatedDayMeals };
+
+        await supabase.from('meal_plans').upsert(
+          {
+            user_id: userId,
+            week_starting: weekStarting,
+            meals: updatedWeekMeals,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,week_starting' }
+        );
+      } catch (e) {
+        console.warn('Failed to save meals to DB:', e.message);
+      }
+    }
+
+    // ── Step 8: Done ──
+    // meals is { [mealType]: mealString } so the client can merge via object spread
+    send('done', {
+      success: true,
+      day,
+      meals: generatedMealsObj,
+      dailyTotals,
       dailyTargets: nutrition.dailyMacros,
-      mealsGenerated: generatedMeals.length,
     });
   } catch (err) {
-    console.error('generate-day-web error:', err);
+    console.error('generate-day error:', err);
     send('error', { message: err.message });
   } finally {
     res.end();
