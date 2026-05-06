@@ -1,4 +1,4 @@
-# Alimenta
+# Alimenta Nutrition
 
 AI-powered nutrition planning for athletes, with machine learning validation and personalized recommendations.
 
