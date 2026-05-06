@@ -3,23 +3,36 @@
  * pages/api/generate-day-web.js
  *
  * Generates one day's meals, streaming each meal to the frontend via SSE.
- * Uses the full new pipeline: TDEE → budgets → OpenAI (per meal) → density → scaler
+ * Uses the full new pipeline: TDEE → budgets → Gemini (per meal) → density → scaler
  *
  * Body: { userProfile, foodPreferences, trainingPlan, day }
  *   day = "monday" | "tuesday" | ... | "sunday"
  */
 
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
+import { generateWithRetry } from '../../src/lib/geminiWithRetry.js';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const model = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    temperature: 0.7,
+    maxOutputTokens: 800,
+  },
+});
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 
+const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
 function parseJSON(text) {
   let s = text.trim();
+  // Strip markdown fences if Gemini wraps them despite JSON mode
   if (s.startsWith('```json')) s = s.slice(7);
   else if (s.startsWith('```')) s = s.slice(3);
   if (s.endsWith('```')) s = s.slice(0, -3);
@@ -79,10 +92,8 @@ export default async function handler(req, res) {
     // ── Step 2: Generate each meal sequentially ──
     const generatedMeals = [];
 
-    // Determine today/tomorrow training for prompt context
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const dayIndex = days.indexOf(day);
-    const tomorrowDay = days[(dayIndex + 1) % 7];
+    const dayIndex = DAYS.indexOf(day);
+    const tomorrowDay = DAYS[(dayIndex + 1) % 7];
     const todayTraining = formatTrainingDay(dayWorkouts);
     const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
 
@@ -100,22 +111,17 @@ export default async function handler(req, res) {
           mealType,
           macroBudget: budget,
           foodPreferences,
-          dietaryRestrictions: userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
+          dietaryRestrictions:
+            userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '',
           todayTraining,
           tomorrowTraining,
           avoidIngredients: [],
           alreadyGeneratedToday: generatedMeals.map((m) => m.meal_name),
         });
 
-        const response = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 800,
-          temperature: 0.7,
-          response_format: { type: 'json_object' },
-        });
-
-        const mealData = parseJSON(response.choices[0].message.content);
+        const result = await generateWithRetry(model, prompt);
+        const text = result.response.text();
+        const mealData = parseJSON(text);
 
         // Validate ingredients
         const ingredients = (mealData.ingredients || [])
@@ -132,20 +138,20 @@ export default async function handler(req, res) {
         }
 
         // Density lookup + scaler
-        const result = estimateAndAdjust(ingredients, budget);
+        const adjusted = estimateAndAdjust(ingredients, budget);
 
         const meal = {
           meal_name: mealData.meal_name || `${mealType} meal`,
-          ingredients: result.ingredients,
+          ingredients: adjusted.ingredients,
           macros: {
-            calories: Math.round(result.macros.calories),
-            protein: Math.round(result.macros.protein),
-            carbs: Math.round(result.macros.carbs),
-            fat: Math.round(result.macros.fat),
+            calories: Math.round(adjusted.macros.calories),
+            protein: Math.round(adjusted.macros.protein),
+            carbs: Math.round(adjusted.macros.carbs),
+            fat: Math.round(adjusted.macros.fat),
           },
           budget,
-          scaled: result.scaled,
-          scaleFactors: result.scaleFactors,
+          scaled: adjusted.scaled,
+          scaleFactors: adjusted.scaleFactors,
         };
 
         generatedMeals.push(meal);
@@ -156,7 +162,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── Step 3: Send daily totals ──
+    // ── Step 3: Daily totals ──
     const totals = generatedMeals.reduce(
       (acc, m) => ({
         calories: acc.calories + m.macros.calories,
@@ -174,7 +180,11 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('generate-day-web error:', err);
-    send('error', { message: err.message });
+    if (err.message?.includes('503') || err.message?.includes('high demand')) {
+      send('error', { message: 'Our AI is experiencing high demand right now. Please try again in a moment.' });
+    } else {
+      send('error', { message: err.message });
+    }
   } finally {
     res.end();
   }

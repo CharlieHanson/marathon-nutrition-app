@@ -26,6 +26,7 @@ import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
+import { generateWithRetry } from '../../src/lib/geminiWithRetry.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -263,7 +264,7 @@ export default async function handler(req, res) {
 
     let aiResult;
     try {
-      aiResult = await geminiModel.generateContent(prompt);
+      aiResult = await generateWithRetry(geminiModel, prompt);
     } catch (geminiError) {
       console.error('Gemini API error:', geminiError);
       send('error', { message: `Gemini API failed: ${geminiError.message}` });
@@ -371,7 +372,11 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('generate-day error:', err);
-    send('error', { message: err.message });
+    if (err.message?.includes('503') || err.message?.includes('high demand')) {
+      send('error', { message: 'Our AI is experiencing high demand right now. Please try again in a moment.' });
+    } else {
+      send('error', { message: err.message });
+    }
   } finally {
     res.end();
   }

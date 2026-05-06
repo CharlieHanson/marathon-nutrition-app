@@ -198,6 +198,7 @@ function streamSSE(url, data, onProgress) {
 }
 
 // Stream SSE for day-based generation (handles 'meal' events instead of 'day' events)
+
 function streamSSEDay(url, data, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -250,6 +251,7 @@ function streamSSEDay(url, data, onProgress) {
               }
               if (onProgress) onProgress({ type: 'done', success: payload.success, day: payload.day });
             } else if (currentEvent === 'error') {
+              finalResult.error = payload.message;
               if (onProgress) onProgress({ type: 'error', message: payload.message });
             }
           } catch (e) {
