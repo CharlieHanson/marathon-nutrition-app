@@ -33,7 +33,7 @@ export async function completeJSON(provider, options) {
       const response = await openai.chat.completions.create({
         model: openaiModel,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: maxTokens,
+        max_completion_tokens: maxTokens,
         temperature,
         response_format: { type: 'json_object' },
       });
