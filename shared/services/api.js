@@ -121,6 +121,18 @@ function getApiUrl(endpoint) {
   return `${BASE_URL}${cleanEndpoint}`;
 }
 
+/** React Native uses OpenAI-backed meal generation routes on Vercel. */
+function mealGenApiPath(endpoint) {
+  if (!isReactNative()) return endpoint;
+  const openaiByBase = {
+    '/api/regenerate-meal': '/api/regenerate-meal-openai',
+    '/api/generate-day': '/api/generate-day-openai',
+    '/api/generate-single-meal': '/api/generate-single-meal-openai',
+    '/api/generate-meal-prep': '/api/generate-meal-prep-openai',
+  };
+  return openaiByBase[endpoint] || endpoint;
+}
+
 // Stream SSE using XMLHttpRequest (works in React Native)
 function streamSSE(url, data, onProgress) {
   return new Promise((resolve, reject) => {
@@ -369,7 +381,7 @@ export const apiClient = {
 
   async regenerateMeal(data) {
     const response = await apiRequest(
-      getApiUrl('/api/regenerate-meal'),
+      getApiUrl(mealGenApiPath('/api/regenerate-meal')),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -384,11 +396,11 @@ export const apiClient = {
     try {
       // Use XMLHttpRequest for streaming in React Native
       if (isReactNative()) {
-        return await streamSSEDay(getApiUrl('/api/generate-day'), data, onProgress);
+        return await streamSSEDay(getApiUrl(mealGenApiPath('/api/generate-day')), data, onProgress);
       }
 
       // Web: use fetch with getReader
-      const response = await fetch(getApiUrl('/api/generate-day'), {
+      const response = await fetch(getApiUrl(mealGenApiPath('/api/generate-day')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -474,7 +486,7 @@ export const apiClient = {
 
   async generateSingleMeal(data) {
     try {
-      const response = await fetch(getApiUrl('/api/generate-single-meal'), {
+      const response = await fetch(getApiUrl(mealGenApiPath('/api/generate-single-meal')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -614,7 +626,7 @@ export const apiClient = {
 
   async generateMealPrep(data) {
     const response = await apiRequest(
-      getApiUrl('/api/generate-meal-prep'),
+      getApiUrl(mealGenApiPath('/api/generate-meal-prep')),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
