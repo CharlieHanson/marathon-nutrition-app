@@ -238,7 +238,7 @@ export function buildDayPrompt({
     numMeals >= 3 ? `2. Use a DIFFERENT carb source where possible (e.g. toast, rice, pasta — not rice for everything)` : '2. Use a DIFFERENT carb source where possible',
     '3. Use a DIFFERENT vegetable for each meal that has one — do NOT default to broccoli for everything',
     '4. Each meal should be a recognizable dish from a real cuisine, not just "[protein] with [carb] and [vegetable]"',
-    cuisines ? `5. Draw from these cuisines across the day: ${cuisines}` : '5. Vary cuisines across meals',
+    cuisines ? `5. Draw from these cuisines across the day: ${cuisines} but DO NOT list the cuisine in the meal name` : '5. Vary cuisines across meals',
     mealsToGenerate.includes('dessert') ? '6. Dessert must be a real dessert (cake, pudding, ice cream, fruit crisp, etc.) — not a smoothie bowl or yogurt' : '',
     mealsToGenerate.includes('snack') ? '7. Snack should be simple (1-3 ingredients) and different from the main meals' : '',
     '',
