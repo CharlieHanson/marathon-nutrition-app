@@ -173,6 +173,7 @@ export function buildSingleMealPrompt({
   lines.push(`2. Every ingredient must have a type: protein, carb, vegetable, or fat`);
   lines.push(`3. Make it a realistic, appetizing ${mealType}`);
   lines.push(`4. Meal name should be short and descriptive (e.g., "Grilled salmon with quinoa and roasted vegetables")`);
+  lines.push(`5. Do not state the cuisine name, just the meal name.`)
   lines.push('');
   lines.push(TYPE_DESCRIPTIONS);
   lines.push('');
