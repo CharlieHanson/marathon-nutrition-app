@@ -39,25 +39,55 @@ export async function checkAndIncrementUsage(supabase, userId, actionType) {
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD (UTC)
 
-    // 2. Atomically increment via RPC — returns the new count
-    const { data: newCount, error } = await supabase.rpc('increment_usage', {
+    // 2. Try atomic RPC increment first
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('increment_usage', {
       p_user_id: userId,
       p_action_type: actionType,
       p_date: today,
     });
 
-    if (error) {
-      console.error('[rateLimiter] increment_usage RPC error:', error.message);
-      // Fail open so a DB hiccup never blocks a user entirely
-      return { allowed: true };
+    let finalCount;
+
+    if (rpcError || typeof rpcResult !== 'number' || rpcResult === null) {
+      if (rpcError) {
+        console.error('[rateLimiter] increment_usage RPC error:', rpcError.message, '— using fallback');
+      } else {
+        console.warn('[rateLimiter] RPC returned unexpected value:', rpcResult, '— using fallback');
+      }
+
+      // Fallback: read current count, increment manually, upsert
+      // Service role bypasses RLS so the write is permitted
+      const { data: row } = await supabase
+        .from('usage_limits')
+        .select('count')
+        .eq('user_id', userId)
+        .eq('action_type', actionType)
+        .eq('date', today)
+        .maybeSingle();
+
+      finalCount = (row?.count ?? 0) + 1;
+
+      const { error: upsertErr } = await supabase
+        .from('usage_limits')
+        .upsert(
+          { user_id: userId, action_type: actionType, date: today, count: finalCount },
+          { onConflict: 'user_id,action_type,date' }
+        );
+
+      if (upsertErr) {
+        console.error('[rateLimiter] fallback upsert error:', upsertErr.message);
+        return { allowed: true }; // Still fail open if DB is completely unavailable
+      }
+    } else {
+      finalCount = rpcResult;
     }
 
-    // 3. Over limit? The DB count is already incremented, which is acceptable.
-    if (newCount > limit) {
-      return { allowed: false, count: newCount, limit };
+    // 3. Over limit?
+    if (finalCount > limit) {
+      return { allowed: false, count: finalCount, limit };
     }
 
-    return { allowed: true, count: newCount, limit };
+    return { allowed: true, count: finalCount, limit };
   } catch (err) {
     console.error('[rateLimiter] unexpected error:', err.message);
     return { allowed: true }; // fail open
