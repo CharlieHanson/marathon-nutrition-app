@@ -10,6 +10,7 @@ import { buildDayPrompt, formatTrainingDay } from '../../../shared/lib/mealPromp
 import { validateIngredients } from '../../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -52,6 +53,17 @@ export function createGenerateDayHandler(provider) {
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
+    }
+
+    // Rate limit check must happen BEFORE writeHead sets SSE headers
+    const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: 'Daily limit reached.',
+        limitReached: true,
+        limit: limitCheck.limit,
+      });
     }
 
     const dislikes = foodPreferences?.dislikes || '';

@@ -2,6 +2,13 @@
 import OpenAI from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
+import { checkAndIncrementUsage } from '../pages/api/lib/rateLimiter.js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -40,9 +47,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { meals } = req.body;
+    const { userId, meals } = req.body;
     if (!meals || !Array.isArray(meals) || meals.length === 0) {
       return res.status(400).json({ success: false, error: 'meals array required' });
+    }
+
+    const limitCheck = await checkAndIncrementUsage(supabase, userId, 'grocery_list');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: 'Daily limit reached.',
+        limitReached: true,
+        limit: limitCheck.limit,
+      });
     }
 
     const prompt = `Extract ingredients from these single-serving meals and produce a consolidated shopping list with no duplicates.

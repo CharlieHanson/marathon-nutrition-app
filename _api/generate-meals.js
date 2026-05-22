@@ -4,6 +4,7 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getTopMealsByVector } from '../src/lib/rag.js'; // adjust path if needed
+import { checkAndIncrementUsage } from '../pages/api/lib/rateLimiter.js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey =
@@ -466,6 +467,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Parse body first so we can check rate limit BEFORE setting SSE headers
+  const {
+    userProfile,
+    foodPreferences,
+    trainingPlan: clientTrainingPlan,
+    userId,
+    weekStarting,
+    existingMeals,
+  } = req.body || {};
+
+  // Rate limit check must happen BEFORE sseHeaders() writes Content-Type
+  const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+  if (!limitCheck.allowed) {
+    return res.status(429).json({
+      success: false,
+      error: 'Daily limit reached.',
+      limitReached: true,
+      limit: limitCheck.limit,
+    });
+  }
+
   sseHeaders(res);
 
   const keepAlive = setInterval(() => {
@@ -473,15 +495,6 @@ export default async function handler(req, res) {
   }, 15000);
 
   try {
-    const { 
-      userProfile, 
-      foodPreferences, 
-      trainingPlan: clientTrainingPlan, 
-      userId, 
-      weekStarting,
-      existingMeals  // NEW: accept existing meals
-    } = req.body || {};
-
     const likedFoods    = foodPreferences?.likes || 'No preferences specified';
     const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
     const cuisines      = foodPreferences?.cuisines || 'No cuisines specified';

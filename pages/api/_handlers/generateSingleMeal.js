@@ -9,6 +9,7 @@ import { buildSingleMealPrompt, formatTrainingDay } from '../../../shared/lib/me
 import { validateIngredients } from '../../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -61,6 +62,16 @@ export function createGenerateSingleMealHandler(provider) {
 
       if (!userProfile || !day || !rawMealType) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
+      }
+
+      const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+      if (!limitCheck.allowed) {
+        return res.status(429).json({
+          success: false,
+          error: 'Daily limit reached.',
+          limitReached: true,
+          limit: limitCheck.limit,
+        });
       }
 
       const mealType = toInternalKey(rawMealType);

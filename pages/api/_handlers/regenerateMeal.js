@@ -2,12 +2,19 @@
  * Shared handler: regenerate a single meal from user feedback.
  */
 
+import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -29,6 +36,7 @@ export function createRegenerateMealHandler(provider) {
 
     try {
       const {
+        userId,
         userProfile,
         foodPreferences,
         trainingPlan,
@@ -40,6 +48,16 @@ export function createRegenerateMealHandler(provider) {
 
       if (!userProfile || !mealType || !day) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
+      }
+
+      const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+      if (!limitCheck.allowed) {
+        return res.status(429).json({
+          success: false,
+          error: 'Daily limit reached.',
+          limitReached: true,
+          limit: limitCheck.limit,
+        });
       }
 
       const dislikes = foodPreferences?.dislikes || '';

@@ -2,11 +2,18 @@
  * Shared handler: suggest 4 meal-prep options for a meal type across specified days.
  */
 
+import { createClient } from '@supabase/supabase-js';
 import { computeNutritionTargets } from '../../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../../shared/lib/macroEstimator.js';
 import { validateIngredients } from '../../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
 
@@ -68,6 +75,7 @@ export function createGenerateMealPrepHandler(provider) {
 
     try {
       const {
+        userId,
         mealType: rawMealType,
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         userProfile,
@@ -77,6 +85,16 @@ export function createGenerateMealPrepHandler(provider) {
 
       if (!userProfile || !rawMealType) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
+      }
+
+      const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+      if (!limitCheck.allowed) {
+        return res.status(429).json({
+          success: false,
+          error: 'Daily limit reached.',
+          limitReached: true,
+          limit: limitCheck.limit,
+        });
       }
 
       const mealType = toInternalKey(rawMealType);

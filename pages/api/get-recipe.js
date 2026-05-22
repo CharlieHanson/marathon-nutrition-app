@@ -12,8 +12,15 @@
  */
 
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
+import { checkAndIncrementUsage } from './lib/rateLimiter.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // ─── JSON Schema ─────────────────────────────────────────────────────────────
 
@@ -104,6 +111,7 @@ export default async function handler(req, res) {
 
   try {
     const {
+      userId,
       meal,
       servings = 1,
       dislikes = '',
@@ -112,6 +120,16 @@ export default async function handler(req, res) {
 
     if (!meal || typeof meal !== 'string') {
       return res.status(400).json({ success: false, error: 'Missing meal' });
+    }
+
+    const limitCheck = await checkAndIncrementUsage(supabase, userId, 'recipe_generation');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: 'Daily limit reached.',
+        limitReached: true,
+        limit: limitCheck.limit,
+      });
     }
 
     const clampedServings = Math.min(6, Math.max(1, Math.round(servings)));
