@@ -196,11 +196,14 @@ export const AuthProvider = ({ children }) => {
   // Sign up: seed metadata; profiles row is created by ensureProfile()
   const signUp = async (email, password, name, role = 'client', metadata = {}) => {
     try {
-      // For mobile, use a deep link scheme or production URL for email redirect
-      // You can configure this in your app.json scheme or use environment variable
-      const redirectUrl = process.env.EXPO_PUBLIC_API_URL 
-        ? `${process.env.EXPO_PUBLIC_API_URL}/auth/callback`
-        : 'https://alimenta-nutrition.vercel.app/auth/callback';
+      // Web app origin for email redirects (auth callback lives on Next.js, not the Express API)
+      const siteUrl = process.env.EXPO_PUBLIC_SITE_URL;
+      if (!siteUrl || !String(siteUrl).trim()) {
+        throw new Error(
+          'Missing EXPO_PUBLIC_SITE_URL. Set it in mobile/.env (local) and as an EAS secret for cloud builds.'
+        );
+      }
+      const redirectUrl = `${String(siteUrl).trim().replace(/\/$/, '')}/auth/callback`;
 
       const { data, error } = await supabase.auth.signUp({
         email,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Users, TrendingUp, Calendar, ArrowRight, User } from 'lucide-react';
+import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 
 export const NutritionistDashboard = ({ currentUser }) => {
   const [stats, setStats] = useState({
@@ -43,8 +44,8 @@ export const NutritionistDashboard = ({ currentUser }) => {
         userId
       );
 
-      const res = await fetch(
-        `/api/pro/dashboard?userId=${encodeURIComponent(userId)}`
+      const res = await authenticatedFetch(
+        getApiUrl(`/api/pro/dashboard?userId=${encodeURIComponent(userId)}`)
       );
 
       if (!res.ok) {

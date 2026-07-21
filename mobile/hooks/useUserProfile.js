@@ -14,12 +14,6 @@ const EMPTY_PROFILE = {
   dietaryRestrictions: '',
 };
 
-// Helper to get API URL for mobile
-const getApiUrl = (endpoint) => {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://alimenta-nutrition.vercel.app';
-  return `${baseUrl}${endpoint}`;
-};
-
 export const useUserProfile = (user, isGuest, reloadKey = 0) => {
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [isSaving, setIsSaving] = useState(false);

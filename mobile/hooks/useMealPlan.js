@@ -1,7 +1,7 @@
 // mobile/hooks/useMealPlan.js
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCurrentWeekMealPlan, fetchMealPlanByWeek, saveMealPlan } from '../../shared/lib/dataClient';
-import { apiClient } from '../../shared/services/api';
+import { apiClient, authenticatedFetch, getApiUrl } from '../../shared/services/api';
 import { resolveMealToggles } from '../../shared/lib/mealSlots';
 import { getDayMealToggles, getActiveMealTypes, isPastDay } from '../utils/mealHelpers';
 
@@ -41,12 +41,6 @@ const getMondayOfCurrentWeek = () => {
   monday.setDate(diff);
   monday.setHours(0, 0, 0, 0);
   return monday.toISOString().split('T')[0];
-};
-
-// Helper to get API URL for mobile
-const getApiUrl = (endpoint) => {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://alimenta-nutrition.vercel.app';
-  return `${baseUrl}${endpoint}`;
 };
 
 // Helper to check if a meal slot is filled
@@ -173,7 +167,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
       try {
         const mealDescription = mealPlan[day][mealType];
         if (mealDescription && mealDescription.trim()) {
-          await fetch(getApiUrl('/api/rate-meal'), {
+          await authenticatedFetch(getApiUrl('/api/rate-meal'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

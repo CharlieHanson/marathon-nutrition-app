@@ -13,6 +13,7 @@ import { MealPrepModal } from '../components/modals/MealPrepModal';
 import { AnalyticsModal } from '../components/modals/AnalyticsModal';
 import { Dropdown } from '../components/shared/Dropdown';
 import { useAuth } from '../context/AuthContext';
+import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -203,10 +204,11 @@ export const MealPlanPage = ({
     setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
-      const response = await fetch('/api/get-recipe', {
+      const response = await authenticatedFetch(getApiUrl('/api/get-recipe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user?.id,
           meal: mealPlan[day][mealType],
           day,
           mealType,
@@ -260,10 +262,11 @@ export const MealPlanPage = ({
         return;
       }
 
-      const response = await fetch('/api/generate-grocery-list', {
+      const response = await authenticatedFetch(getApiUrl('/api/generate-grocery-list'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user?.id,
           meals: allMeals,
           userProfile,
         }),
@@ -372,16 +375,21 @@ export const MealPlanPage = ({
     setTestResults(initialResults);
 
     try {
-      const response = await fetch('/api/generate-day-web', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userProfile,
-          foodPreferences,
-          trainingPlan,
-          day: selectedTestDay
-        }),
-      });
+      const response = await authenticatedFetch(
+        getMealGenApiUrl('/api/generate-day-web'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.id,
+            userProfile,
+            foodPreferences,
+            trainingPlan,
+            day: selectedTestDay
+          }),
+        },
+        120000
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -479,21 +487,25 @@ export const MealPlanPage = ({
     setDailyTargets(null);
 
     try {
-      const response = await fetch('/api/generate-day', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          day: selectedBuildDay,
-          userProfile,
-          foodPreferences,
-          trainingPlan,
-          weekStarting: currentWeekStarting,
-          existingMeals: mealPlan, // Pass current meal plan for cross-day variety
-          forceRegenerate: true, // Always regenerate all meals for testing
-          debug: showDebug,
-          userId: user?.id,
-        }),
-      });
+      const response = await authenticatedFetch(
+        getMealGenApiUrl('/api/generate-day'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            day: selectedBuildDay,
+            userProfile,
+            foodPreferences,
+            trainingPlan,
+            weekStarting: currentWeekStarting,
+            existingMeals: mealPlan, // Pass current meal plan for cross-day variety
+            forceRegenerate: true, // Always regenerate all meals for testing
+            debug: showDebug,
+            userId: user?.id,
+          }),
+        },
+        120000
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1274,6 +1286,7 @@ export const MealPlanPage = ({
         onClose={() => { setShowMealPrepModal(false); setMealPrepDefaults({ mealType: null, days: [] }); }}
         onApply={onUpdate}
         onSaveMeal={onSaveMeal}
+        userId={user?.id}
         userProfile={userProfile}
         foodPreferences={foodPreferences}
         isGuest={isGuest}
