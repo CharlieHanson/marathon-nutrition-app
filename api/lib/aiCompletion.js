@@ -5,7 +5,7 @@ import { generateWithRetry } from './geminiWithRetry.js';
 const PROVIDER_LABELS = { gemini: 'Gemini', openai: 'OpenAI' };
 
 /** OpenAI model for meal generation routes (generate-day, single meal, etc.) */
-export const OPENAI_MEAL_MODEL = 'gpt-5.4-nano';
+export const OPENAI_MEAL_MODEL = 'gpt-5-mini';
 
 /**
  * @param {'gemini'|'openai'} provider
