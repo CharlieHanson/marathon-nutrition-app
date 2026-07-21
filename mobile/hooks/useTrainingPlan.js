@@ -1,5 +1,5 @@
 // mobile/hooks/useTrainingPlan.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   fetchActiveTrainingPlan,
   fetchAllTrainingPlans,
@@ -25,6 +25,13 @@ export const useTrainingPlan = (user, isGuest) => {
   const [savedPlans, setSavedPlans] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  const refetchTrainingPlan = useCallback(() => {
+    setFetchError(null);
+    setRefetchTrigger((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,14 +62,17 @@ export const useTrainingPlan = (user, isGuest) => {
           setPlan(activePlan.plan_data || EMPTY_WEEK);
           setCurrentPlanId(activePlan.id);
           setCurrentPlanName(activePlan.name || '');
+          setFetchError(null);
         } else {
           console.log('useTrainingPlan: no active plan, using empty');
           setPlan(EMPTY_WEEK);
           setCurrentPlanId(null);
           setCurrentPlanName('');
+          setFetchError(null);
         }
       } catch (e) {
         console.error('useTrainingPlan: load failed', e);
+        if (!cancelled) setFetchError('Failed to load training plan');
       } finally {
         if (!cancelled) {
           console.log('useTrainingPlan: done loading');
@@ -75,7 +85,7 @@ export const useTrainingPlan = (user, isGuest) => {
       cancelled = true;
       console.log('useTrainingPlan: cleanup');
     };
-  }, [user?.id, isGuest]);
+  }, [user?.id, isGuest, refetchTrigger]);
 
   const loadSavedPlans = async () => {
     if (!user || isGuest) return;
@@ -181,6 +191,9 @@ export const useTrainingPlan = (user, isGuest) => {
     loadSavedPlans,
     isSaving,
     isLoading,
+    fetchError,
+    clearFetchError: () => setFetchError(null),
+    refetchTrainingPlan,
   };
 };
 

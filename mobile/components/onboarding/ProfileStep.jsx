@@ -1,0 +1,835 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Modal,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { parseHeightCm } from '../../../shared/lib/tdeeCalc.js';
+
+const PRIMARY = '#F6921D';
+const GRAY = '#E5E7EB';
+const GRAY_TEXT = '#9CA3AF';
+const TEXT = '#111827';
+const TEXT_SECONDARY = '#4B5563';
+
+const GOAL_OPTIONS = [
+  { value: 'lose', label: 'Lose weight' },
+  { value: 'maintain', label: 'Maintain weight' },
+  { value: 'gain', label: 'Gain weight' },
+];
+
+const ACTIVITY_LEVEL_OPTIONS = [
+  { value: 'low', label: 'Low (desk job, minimal activity)' },
+  { value: 'moderate', label: 'Moderate (some walking, active lifestyle)' },
+  { value: 'high', label: 'High (active job, lots of movement)' },
+];
+
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other / Prefer not to say' },
+];
+
+const WEIGHT_UNITS = [
+  { value: 'lbs', label: 'lbs' },
+  { value: 'kg', label: 'kg' },
+];
+
+const HEIGHT_UNITS = [
+  { value: 'm', label: 'm' },
+  { value: 'ft', label: 'ft / in' },
+];
+
+function parseWeightForDisplay(raw) {
+  if (!raw || typeof raw !== 'string') return { value: '', unit: 'lbs' };
+  const s = raw.trim().toLowerCase();
+  const kgMatch = s.match(/^(\d+\.?\d*)\s*(kg|kgs|kilos?)$/);
+  if (kgMatch) return { value: kgMatch[1], unit: 'kg' };
+  const lbMatch = s.match(/^(\d+\.?\d*)\s*(lbs?|pounds?)$/);
+  if (lbMatch) return { value: lbMatch[1], unit: 'lbs' };
+  const numMatch = s.match(/^(\d+\.?\d*)/);
+  if (numMatch) return { value: numMatch[1], unit: 'lbs' };
+  return { value: '', unit: 'lbs' };
+}
+
+function parseHeightForDisplay(raw) {
+  const emptyFt = { unit: 'ft', feet: '', inches: '', meters: '' };
+
+  if (!raw || typeof raw !== 'string') return emptyFt;
+  const s = raw.trim().toLowerCase();
+
+  const hasMetricMarker = /\s*(m|meters?|cm)\s*$/i.test(s);
+  const cm = parseHeightCm(raw);
+
+  if (cm == null && hasMetricMarker) {
+    return { unit: 'm', meters: '', feet: '', inches: '' };
+  }
+  if (cm == null) return emptyFt;
+
+  const isMetric = /^\d+\.?\d*\s*(m|meters?|cm)\s*$/i.test(s);
+  const isImperial =
+    /\d+\.?\d*\s*(?:'|'|'|′|ft|feet|foot)|(\d+\.?\d*)\s*(in|inches)|['"″']/i.test(s);
+  const plainNum = parseFloat(s);
+  const looksLikeMetric = !isNaN(plainNum) && plainNum > 100;
+
+  let unit = 'ft';
+  if (isMetric || (looksLikeMetric && !isImperial)) unit = 'm';
+  else if (isImperial) unit = 'ft';
+
+  if (unit === 'm') {
+    const mMatch = s.match(/^(\d+\.?\d*)\s*(m|meters?)$/);
+    const meters = mMatch ? mMatch[1] : String((cm / 100).toFixed(2));
+    return { unit: 'm', meters, feet: '', inches: '' };
+  }
+
+  const totalInches = cm / 2.54;
+  const feet = Math.floor(totalInches / 12);
+  const inches = Math.round((totalInches % 12) * 10) / 10;
+  return { unit: 'ft', feet: String(feet), inches: String(inches), meters: '' };
+}
+
+export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
+  const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [showActivityPicker, setShowActivityPicker] = useState(false);
+  const [showGenderPicker, setShowGenderPicker] = useState(false);
+  const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
+  const [showHeightUnitPicker, setShowHeightUnitPicker] = useState(false);
+
+  const initialHeight = parseHeightForDisplay(profile.height);
+  const initialWeight = parseWeightForDisplay(profile.weight);
+
+  const [heightUnit, setHeightUnit] = useState(initialHeight.unit);
+  const [heightMeters, setHeightMeters] = useState(initialHeight.meters || '');
+  const [heightFeet, setHeightFeet] = useState(initialHeight.feet || '');
+  const [heightInches, setHeightInches] = useState(initialHeight.inches || '');
+  const [weightValue, setWeightValue] = useState(initialWeight.value);
+  const [weightUnit, setWeightUnit] = useState(initialWeight.unit);
+
+  const buildHeightString = () => {
+    if (heightUnit === 'm') {
+      return heightMeters ? `${heightMeters} m` : '';
+    }
+    return heightFeet || heightInches
+      ? `${heightFeet || '0'} ft ${heightInches || '0'} in`
+      : '';
+  };
+
+  const buildWeightString = () => (weightValue ? `${weightValue} ${weightUnit}` : '');
+
+  const syncHeightToProfile = () => {
+    onUpdate('height', buildHeightString());
+  };
+
+  const syncWeightToProfile = () => {
+    onUpdate('weight', buildWeightString());
+  };
+
+  const isValid =
+    profile.name &&
+    profile.age &&
+    buildHeightString() &&
+    buildWeightString() &&
+    profile.goal &&
+    profile.gender &&
+    profile.activityLevel &&
+    profile.objective?.trim();
+
+  const handleContinue = () => {
+    const heightStr = buildHeightString();
+    const weightStr = buildWeightString();
+    onUpdate('height', heightStr);
+    onUpdate('weight', weightStr);
+    onNext({ ...profile, height: heightStr, weight: weightStr });
+  };
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Tell us about yourself</Text>
+        <Text style={styles.subtitle}>This helps us personalize your nutrition plan</Text>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            style={styles.input}
+            value={profile.name}
+            onChangeText={(v) => onUpdate('name', v)}
+            placeholder="Your name"
+            placeholderTextColor={GRAY_TEXT}
+            returnKeyType="done"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+            style={styles.input}
+            value={profile.age}
+            onChangeText={(v) => onUpdate('age', v.replace(/\D/g, '').slice(0, 3))}
+            placeholder="e.g., 25"
+            placeholderTextColor={GRAY_TEXT}
+            keyboardType="number-pad"
+            returnKeyType="done"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Gender</Text>
+          <TouchableOpacity style={styles.pickerButton} onPress={() => setShowGenderPicker(true)}>
+            <Text
+              style={[styles.pickerText, !profile.gender && styles.pickerPlaceholder]}
+              numberOfLines={1}
+            >
+              {profile.gender
+                ? GENDER_OPTIONS.find((o) => o.value === profile.gender)?.label ?? profile.gender
+                : 'Select gender'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Height</Text>
+          {heightUnit === 'm' ? (
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.inputFlex}
+                placeholder="e.g., 1.73"
+                placeholderTextColor={GRAY_TEXT}
+                value={heightMeters}
+                onChangeText={setHeightMeters}
+                onBlur={syncHeightToProfile}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+              />
+              <TouchableOpacity
+                style={styles.unitButton}
+                onPress={() => setShowHeightUnitPicker(true)}
+              >
+                <Text style={styles.unitButtonText}>m</Text>
+                <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.inputSmall}
+                placeholder="0"
+                placeholderTextColor={GRAY_TEXT}
+                value={heightFeet}
+                onChangeText={(text) => setHeightFeet(text.replace(/\D/g, '').slice(0, 2))}
+                onBlur={syncHeightToProfile}
+                keyboardType="number-pad"
+                returnKeyType="done"
+              />
+              <Text style={styles.unitLabel}>ft</Text>
+              <TextInput
+                style={styles.inputSmall}
+                placeholder="0"
+                placeholderTextColor={GRAY_TEXT}
+                value={heightInches}
+                onChangeText={(text) => setHeightInches(text.replace(/[^\d.]/g, '').slice(0, 5))}
+                onBlur={syncHeightToProfile}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+              />
+              <Text style={styles.unitLabel}>in</Text>
+              <TouchableOpacity
+                style={styles.unitButton}
+                onPress={() => setShowHeightUnitPicker(true)}
+              >
+                <Text style={styles.unitButtonText}>ft / in</Text>
+                <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Weight</Text>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.inputFlex}
+              placeholder="e.g., 150 or 68"
+              placeholderTextColor={GRAY_TEXT}
+              value={weightValue}
+              onChangeText={setWeightValue}
+              onBlur={syncWeightToProfile}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={styles.unitButton}
+              onPress={() => setShowWeightUnitPicker(true)}
+            >
+              <Text style={styles.unitButtonText}>{weightUnit}</Text>
+              <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Weight Goal</Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setShowGoalPicker(true)}
+          >
+            <Text
+              style={[styles.pickerText, !profile.goal && styles.pickerPlaceholder]}
+              numberOfLines={1}
+            >
+              {profile.goal
+                ? GOAL_OPTIONS.find((o) => o.value === profile.goal)?.label ?? profile.goal
+                : 'Select goal'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Activity Level (outside training)</Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setShowActivityPicker(true)}
+          >
+            <Text
+              style={[
+                styles.pickerText,
+                !profile.activityLevel && styles.pickerPlaceholder,
+              ]}
+              numberOfLines={1}
+            >
+              {profile.activityLevel
+                ? ACTIVITY_LEVEL_OPTIONS.find((o) => o.value === profile.activityLevel)
+                    ?.label ?? profile.activityLevel
+                : 'Select level'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Training Objective</Text>
+          <TextInput
+            style={styles.textArea}
+            value={profile.objective}
+            onChangeText={(v) => onUpdate('objective', v)}
+            placeholder="e.g., Training for first marathon, improve 5K time..."
+            placeholderTextColor={GRAY_TEXT}
+            multiline
+            numberOfLines={3}
+            returnKeyType="done"
+            blurOnSubmit
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Dietary Restrictions (optional)</Text>
+          <TextInput
+            style={styles.textArea}
+            value={profile.dietaryRestrictions}
+            onChangeText={(v) => onUpdate('dietaryRestrictions', v)}
+            placeholder="e.g., vegetarian, gluten-free, nut allergies..."
+            placeholderTextColor={GRAY_TEXT}
+            multiline
+            numberOfLines={3}
+            returnKeyType="done"
+            blurOnSubmit
+          />
+        </View>
+      </ScrollView>
+
+      <View style={styles.buttons}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack} disabled={isSaving}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.primaryButton, (!isValid || isSaving) && styles.primaryButtonDisabled]}
+          onPress={handleContinue}
+          disabled={!isValid || isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Continue</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <Modal
+        visible={showGoalPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGoalPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowGoalPicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Weight Goal</Text>
+              <TouchableOpacity onPress={() => setShowGoalPicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {GOAL_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.pickerOption, profile.goal === opt.value && styles.pickerOptionSelected]}
+                  onPress={() => {
+                    onUpdate('goal', opt.value);
+                    setShowGoalPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      profile.goal === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {profile.goal === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showActivityPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowActivityPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowActivityPicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Activity Level</Text>
+              <TouchableOpacity onPress={() => setShowActivityPicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {ACTIVITY_LEVEL_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.pickerOption,
+                    profile.activityLevel === opt.value && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    onUpdate('activityLevel', opt.value);
+                    setShowActivityPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      profile.activityLevel === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {opt.label}
+                  </Text>
+                  {profile.activityLevel === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showGenderPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGenderPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowGenderPicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Gender</Text>
+              <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {GENDER_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.pickerOption, profile.gender === opt.value && styles.pickerOptionSelected]}
+                  onPress={() => {
+                    onUpdate('gender', opt.value);
+                    setShowGenderPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      profile.gender === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {profile.gender === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showWeightUnitPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWeightUnitPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowWeightUnitPicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Weight Unit</Text>
+              <TouchableOpacity onPress={() => setShowWeightUnitPicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {WEIGHT_UNITS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.pickerOption, weightUnit === opt.value && styles.pickerOptionSelected]}
+                  onPress={() => {
+                    setWeightUnit(opt.value);
+                    onUpdate('weight', weightValue ? `${weightValue} ${opt.value}` : '');
+                    setShowWeightUnitPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      weightUnit === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {weightUnit === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showHeightUnitPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHeightUnitPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowHeightUnitPicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Height Unit</Text>
+              <TouchableOpacity onPress={() => setShowHeightUnitPicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {HEIGHT_UNITS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.pickerOption, heightUnit === opt.value && styles.pickerOptionSelected]}
+                  onPress={() => {
+                    setHeightUnit(opt.value);
+                    if (opt.value === 'm') {
+                      const feet = parseFloat(heightFeet) || 0;
+                      const inches = parseFloat(heightInches) || 0;
+                      const totalInches = feet * 12 + inches;
+                      const cm = totalInches * 2.54;
+                      const meters = (cm / 100).toFixed(2);
+                      setHeightMeters(meters);
+                      onUpdate('height', `${meters} m`);
+                    } else {
+                      const meters = parseFloat(heightMeters);
+                      if (!isNaN(meters)) {
+                        const cm = meters * 100;
+                        const totalInches = cm / 2.54;
+                        const feet = Math.floor(totalInches / 12);
+                        const inches = Math.round((totalInches % 12) * 10) / 10;
+                        setHeightFeet(String(feet));
+                        setHeightInches(String(inches));
+                        onUpdate('height', `${feet} ft ${inches} in`);
+                      } else {
+                        setHeightFeet('');
+                        setHeightInches('');
+                        onUpdate('height', '');
+                      }
+                    }
+                    setShowHeightUnitPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      heightUnit === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {heightUnit === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    maxHeight: '85%',
+  },
+  header: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: TEXT,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+  },
+  scroll: {
+    flex: 1,
+    maxHeight: 400,
+  },
+  scrollContent: {
+    paddingBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: TEXT,
+    backgroundColor: '#FFF',
+    minHeight: 44,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inputFlex: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: TEXT,
+    backgroundColor: '#FFF',
+    minHeight: 44,
+  },
+  inputSmall: {
+    width: 56,
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: TEXT,
+    backgroundColor: '#FFF',
+    minHeight: 44,
+    textAlign: 'center',
+  },
+  unitLabel: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    fontWeight: '500',
+  },
+  unitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 44,
+    backgroundColor: '#FFF',
+  },
+  unitButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: TEXT,
+    backgroundColor: '#FFF',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: GRAY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    minHeight: 44,
+    backgroundColor: '#FFF',
+  },
+  pickerText: {
+    fontSize: 15,
+    color: TEXT,
+    flex: 1,
+  },
+  pickerPlaceholder: {
+    color: GRAY_TEXT,
+  },
+  buttons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  backButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GRAY,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+  },
+  primaryButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '50%',
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: GRAY,
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: TEXT,
+  },
+  pickerOptions: {
+    maxHeight: 280,
+    padding: 8,
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 10,
+  },
+  pickerOptionSelected: {
+    backgroundColor: 'rgba(246, 146, 29, 0.12)',
+  },
+  pickerOptionText: {
+    fontSize: 15,
+    color: TEXT,
+    flex: 1,
+  },
+  pickerOptionTextSelected: {
+    fontWeight: '600',
+    color: PRIMARY,
+  },
+});

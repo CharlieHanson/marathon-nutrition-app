@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
+import { ErrorState } from '../../components/ErrorState';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -32,11 +34,14 @@ const WORKOUT_TYPES = [
 
 const INTENSITY_LEVELS = ['High', 'Medium', 'Low', 'Recovery'];
 
+const WORKOUT_TIMING_OPTIONS = ['—', 'Morning', 'Afternoon', 'Evening'];
+
 const DEFAULT_WORKOUT = {
   type: '',
   distance: '',
   intensity: 'Medium',
   notes: '',
+  timing: '',
 };
 
 // Picker styles function
@@ -185,6 +190,7 @@ const isWorkoutPlanned = (w) =>
 
 export default function TrainingScreen() {
   const { user, isGuest } = useAuth();
+  const { isConnected } = useNetwork();
   const { colors } = useTheme();
   const trainingPlanHook = useTrainingPlan(user, isGuest);
 
@@ -194,6 +200,7 @@ export default function TrainingScreen() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showIntensityPicker, setShowIntensityPicker] = useState(false);
+  const [showTimingPicker, setShowTimingPicker] = useState(false);
   const [pickerContext, setPickerContext] = useState({ day: null, index: null, field: null });
   
   // Initialize with current day expanded
@@ -214,6 +221,10 @@ export default function TrainingScreen() {
   }, [trainingPlanHook.currentPlanName]);
 
   const handleSave = async () => {
+    if (isConnected === false) {
+      Alert.alert('No Connection', 'Please check your internet connection and try again.');
+      return;
+    }
     const nameToUse = planName.trim() || 'Untitled Plan';
     const { error } = await trainingPlanHook.savePlan(nameToUse);
 
@@ -296,17 +307,29 @@ export default function TrainingScreen() {
       setShowTypePicker(true);
     } else if (field === 'intensity') {
       setShowIntensityPicker(true);
+    } else if (field === 'timing') {
+      setShowTimingPicker(true);
     }
   };
 
   const handlePickerValueChange = (value) => {
     if (pickerContext.day && pickerContext.index !== null) {
-      updateWorkout(pickerContext.day, pickerContext.index, pickerContext.field, value);
+      const stored = pickerContext.field === 'timing' && value === '—' ? '' : value;
+      updateWorkout(pickerContext.day, pickerContext.index, pickerContext.field, stored);
     }
   };
 
 
   const styles = getStyles(colors);
+
+  if (trainingPlanHook.fetchError && !trainingPlanHook.isLoading) {
+    return (
+      <ErrorState
+        message={trainingPlanHook.fetchError}
+        onRetry={trainingPlanHook.refetchTrainingPlan}
+      />
+    );
+  }
 
   if (trainingPlanHook.isLoading) {
     return (
@@ -501,21 +524,19 @@ export default function TrainingScreen() {
                       </View>
                     </TouchableOpacity>
 
-                    {/* Notes */}
-                    <View style={styles.workoutField}>
-                      <Text style={styles.workoutFieldLabel}>Notes (optional)</Text>
-                      <TextInput
-                        style={[styles.workoutInput, styles.workoutInputMultiline]}
-                        placeholder="Add notes..."
-                        value={workout.notes || ''}
-                        onChangeText={(text) => updateWorkout(day, index, 'notes', text)}
-                        placeholderTextColor="#9CA3AF"
-                        multiline
-                        numberOfLines={2}
-                        returnKeyType="done"
-                        blurOnSubmit={true}
-                      />
-                    </View>
+                    {/* Workout Time */}
+                    <TouchableOpacity
+                      style={styles.workoutField}
+                      onPress={() => openPicker(day, index, 'timing', WORKOUT_TIMING_OPTIONS)}
+                    >
+                      <Text style={styles.workoutFieldLabel}>Workout Time</Text>
+                      <View style={styles.workoutFieldValue}>
+                        <Text style={styles.workoutFieldText}>
+                          {workout.timing || '—'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+                      </View>
+                    </TouchableOpacity>
 
                     {/* Remove Button */}
                     {index > 0 && (
@@ -675,6 +696,21 @@ export default function TrainingScreen() {
         onValueChange={handlePickerValueChange}
         onClose={() => setShowIntensityPicker(false)}
         title="Select Intensity"
+      />
+
+      {/* Workout Time Picker */}
+      <Picker
+        visible={showTimingPicker}
+        options={WORKOUT_TIMING_OPTIONS}
+        selectedValue={
+          pickerContext.day && pickerContext.index !== null
+            ? trainingPlanHook.plan[pickerContext.day]?.workouts?.[pickerContext.index]
+                ?.timing || '—'
+            : '—'
+        }
+        onValueChange={handlePickerValueChange}
+        onClose={() => setShowTimingPicker(false)}
+        title="Workout Time"
       />
     </View>
   );

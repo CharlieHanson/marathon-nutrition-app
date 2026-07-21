@@ -137,6 +137,11 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  ratingRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   mealOptionsButton: {
     padding: 6,
   },
@@ -160,6 +165,7 @@ export const MealCard = ({
   onRate, 
   onMealPress, 
   onEmptyPress, 
+  onDelete,
   parseMeal,
   isCompleted = false,
   onToggleComplete = null,
@@ -167,8 +173,9 @@ export const MealCard = ({
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const parsed = parseMeal(meal);
-  const hasMeal = !!(meal && meal.trim());
+  const isGenerating = meal === '__generating__';
+  const parsed = isGenerating ? null : parseMeal(meal);
+  const hasMeal = !!(meal && meal.trim() && !isGenerating);
 
   // Animation for completion
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -199,6 +206,27 @@ export const MealCard = ({
       onToggleComplete();
     }
   };
+
+  // Show loading spinner while generating
+  if (isGenerating) {
+    return (
+      <View style={styles.mealCard}>
+        <View style={styles.mealCardHeader}>
+          <View style={styles.mealCardHeaderLeft}>
+            <Text style={styles.mealTypeLabel}>
+              {MEAL_LABELS[mealType]}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.emptyMeal, { paddingVertical: 32 }]}>
+          <Ionicons name="hourglass-outline" size={32} color={colors.primary} />
+          <Text style={[styles.emptyMealText, { color: colors.primary }]}>
+            Generating {MEAL_LABELS[mealType].toLowerCase()}...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -276,13 +304,24 @@ export const MealCard = ({
 
           <View style={styles.ratingRow}>
             <StarRating rating={rating || 0} onRate={onRate} />
-            <TouchableOpacity 
-              onPress={() => onMealPress(mealType, parsed)} 
-              style={styles.mealOptionsButton}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.ratingRowActions}>
+              {onDelete && (
+                <TouchableOpacity 
+                  onPress={(e) => { e?.stopPropagation?.(); onDelete(); }} 
+                  style={styles.mealOptionsButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                onPress={() => onMealPress(mealType, parsed)} 
+                style={styles.mealOptionsButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
         </>
       ) : (

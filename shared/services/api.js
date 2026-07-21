@@ -22,6 +22,17 @@ export class AuthError extends Error {
  * @throws {AuthError} - On 401 response
  * @throws {Error} - On 500+, timeout, or network failure
  */
+/**
+ * Thrown when an API route returns 429 (daily rate limit exceeded).
+ */
+export class RateLimitError extends Error {
+  constructor(message, limit) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.limit = limit;
+  }
+}
+
 export async function apiRequest(url, options = {}, timeoutMs = 30000) {
   try {
     const response = await fetchWithTimeout(url, options, timeoutMs);
@@ -29,13 +40,21 @@ export async function apiRequest(url, options = {}, timeoutMs = 30000) {
     if (response.status === 401) {
       throw new AuthError('Session expired. Please sign in again.');
     }
+    if (response.status === 429) {
+      let body = {};
+      try { body = await response.json(); } catch {}
+      throw new RateLimitError(
+        body.error || "You've hit today's limit. Limits reset at midnight.",
+        body.limit
+      );
+    }
     if (response.status >= 500) {
       throw new Error('Something went wrong on our end. Please try again later.');
     }
 
     return response;
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof AuthError || error instanceof RateLimitError) {
       throw error;
     }
     if (error.name === 'AbortError' || (error.message && error.message.includes('timed out'))) {
@@ -187,7 +206,14 @@ function streamSSE(url, data, onProgress) {
     };
 
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status === 429) {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        reject(new RateLimitError(
+          body.error || "You've hit today's limit. Limits reset at midnight.",
+          body.limit
+        ));
+      } else if (xhr.status >= 200 && xhr.status < 300) {
         resolve(finalResult);
       } else {
         reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
@@ -275,7 +301,14 @@ function streamSSEDay(url, data, onProgress) {
     };
 
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status === 429) {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        reject(new RateLimitError(
+          body.error || "You've hit today's limit. Limits reset at midnight.",
+          body.limit
+        ));
+      } else if (xhr.status >= 200 && xhr.status < 300) {
         resolve(finalResult);
       } else {
         reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
@@ -311,6 +344,12 @@ export const apiClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+
+      if (response.status === 429) {
+        let body = {};
+        try { body = await response.json(); } catch {}
+        throw new RateLimitError(body.error || "You've hit today's limit. Limits reset at midnight.", body.limit);
+      }
 
       // Check if response is SSE (text/event-stream)
       const contentType = response.headers.get('content-type') || '';
@@ -375,6 +414,9 @@ export const apiClient = {
       }
     } catch (error) {
       console.error('generateMeals error:', error);
+      if (error instanceof RateLimitError) {
+        return { success: false, error: error.message, limitReached: true, limit: error.limit };
+      }
       return { success: false, error: error.message || 'Failed to generate meals' };
     }
   },
@@ -405,6 +447,12 @@ export const apiClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
+
+      if (response.status === 429) {
+        let body = {};
+        try { body = await response.json(); } catch {}
+        throw new RateLimitError(body.error || "You've hit today's limit. Limits reset at midnight.", body.limit);
+      }
 
       // Check if response is SSE (text/event-stream)
       const contentType = response.headers.get('content-type') || '';
@@ -480,6 +528,9 @@ export const apiClient = {
       }
     } catch (error) {
       console.error('generateDay error:', error);
+      if (error instanceof RateLimitError) {
+        return { success: false, error: error.message, limitReached: true, limit: error.limit };
+      }
       return { success: false, error: error.message || 'Failed to generate day' };
     }
   },

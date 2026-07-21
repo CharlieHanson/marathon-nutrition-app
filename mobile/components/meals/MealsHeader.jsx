@@ -70,10 +70,14 @@ export const QuickActionsRow = ({
   onMealPrep,
   onLogMeal,
   loadingGroceryList,
+  groceryRemaining,
+  canGenerate = true,
   animatedStyle,
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+
+  const groceryLimitReached = groceryRemaining === 0;
 
   return (
     // IMPORTANT: no fixed paddingVertical here; parent animation controls paddingTop/paddingBottom
@@ -89,27 +93,44 @@ export const QuickActionsRow = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.quickActionBtn, styles.quickActionBtnRight]}
+            style={[
+              styles.quickActionBtn,
+              styles.quickActionBtnRight,
+              groceryLimitReached && styles.quickActionBtnDisabled,
+            ]}
             onPress={onGroceryList}
-            disabled={loadingGroceryList}
+            disabled={loadingGroceryList || groceryLimitReached}
           >
             {loadingGroceryList ? (
               <ActivityIndicator size="small" color={colors.textSecondary} />
             ) : (
-              <Ionicons name="cart-outline" size={18} color={colors.textSecondary} />
+              <Ionicons
+                name="cart-outline"
+                size={18}
+                color={groceryLimitReached ? colors.textTertiary : colors.textSecondary}
+              />
             )}
-            <Text style={styles.quickActionText}>Grocery List</Text>
+            <Text
+              style={[
+                styles.quickActionText,
+                groceryLimitReached && styles.quickActionTextDisabled,
+              ]}
+            >
+              Grocery List
+            </Text>
           </TouchableOpacity>
         </>
       ) : (
         <>
-          <TouchableOpacity
-            style={[styles.quickActionBtn, styles.quickActionBtnLeft]}
-            onPress={onMealPrep}
-          >
-            <Ionicons name="restaurant-outline" size={18} color={colors.textSecondary} />
-            <Text style={styles.quickActionText}>Meal Prep</Text>
-          </TouchableOpacity>
+          {canGenerate && (
+            <TouchableOpacity
+              style={[styles.quickActionBtn, styles.quickActionBtnLeft]}
+              onPress={onMealPrep}
+            >
+              <Ionicons name="restaurant-outline" size={18} color={colors.textSecondary} />
+              <Text style={styles.quickActionText}>Meal Prep</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.quickActionBtn, styles.quickActionBtnRight]}
@@ -124,7 +145,7 @@ export const QuickActionsRow = ({
   );
 };
 
-export const DaySelector = ({ days, dayLabels, selectedDay, onSelectDay, animatedStyle, todayDayOfWeek }) => {
+export const DaySelector = ({ days, dayLabels, selectedDay, onSelectDay, animatedStyle, todayDayOfWeek, isCurrentWeek }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -137,7 +158,7 @@ export const DaySelector = ({ days, dayLabels, selectedDay, onSelectDay, animate
         contentContainerStyle={styles.dayPills}
       >
         {days.map((day, index) => {
-          const isToday = day === todayDayOfWeek;
+          const isToday = isCurrentWeek && day === todayDayOfWeek;
           return (
             <TouchableOpacity
               key={day}
@@ -293,11 +314,19 @@ const getStyles = (colors) => StyleSheet.create({
   },
   quickActionBtnLeft: { marginRight: 10 },
   quickActionBtnRight: { marginLeft: 0 },
+  quickActionBtnDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.inputBackground,
+    opacity: 0.6,
+  },
   quickActionText: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.text,
     marginLeft: 8,
+  },
+  quickActionTextDisabled: {
+    color: colors.textTertiary,
   },
 
   // NOTE: remove fixed paddingVertical so animated padding works correctly
@@ -330,7 +359,7 @@ const getStyles = (colors) => StyleSheet.create({
   dayPillTextActive: { color: colors.textInverse },
   todayBadge: {
     position: 'absolute',
-    top: -6,
+    top: -3,
     right: -2,
     backgroundColor: '#22c55e',
     paddingHorizontal: 4,
@@ -350,15 +379,17 @@ const getStyles = (colors) => StyleSheet.create({
   // Taller row + taller pills
   macrosRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 14,
     borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderTopColor: colors.border,
+    borderBottomColor: colors.border,
     backgroundColor: colors.inputBackground,
     gap: 8,
     alignItems: 'center',
-    minHeight: CHIP_MIN_HEIGHT + 28, // ensures the row can actually hold the chips
+    minHeight: CHIP_MIN_HEIGHT + 36, // ensures the row can actually hold the chips
   },
   macroChip: {
     flex: 1,

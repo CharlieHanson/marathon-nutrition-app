@@ -1,0 +1,132 @@
+// api/generate-grocery-list.js
+import OpenAI from 'openai';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+);
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Top-level must be an object
+function grocerySchema() {
+  return {
+    name: "GroceryList",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        list: {
+          type: "array",
+          minItems: 1,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              category: { type: "string" },
+              items: {
+                type: "array",
+                minItems: 1,
+                items: { type: "string" }
+              }
+            },
+            required: ["category", "items"]
+          }
+        }
+      },
+      required: ["list"]
+    }
+  };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  try {
+    const { userId, meals } = req.body;
+    if (!meals || !Array.isArray(meals) || meals.length === 0) {
+      return res.status(400).json({ success: false, error: 'meals array required' });
+    }
+
+    const limitCheck = await checkAndIncrementUsage(supabase, userId, 'grocery_list');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: 'Daily limit reached.',
+        limitReached: true,
+        limit: limitCheck.limit,
+      });
+    }
+
+    const prompt = `Extract ingredients from these single-serving meals and produce a consolidated shopping list with no duplicates.
+
+Meals:
+${meals.join('\n')}
+
+Rules:
+- Don't use quantities from the meals; just list items needed.
+- Organize by grocery store sections (e.g., Produce, Meat, Dairy, Pantry, Bakery, Frozen).
+- No explanations, no extra fields.
+
+Return JSON that matches this structure:
+{
+  "list": [
+    { "category": "Produce", "items": ["Apples", "Spinach"] },
+    { "category": "Meat",    "items": ["Chicken breast"] }
+  ]
+}`;
+
+    // ── OpenAI (commented out) ──
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+      max_tokens: 900,
+      response_format: { type: "json_schema", json_schema: grocerySchema() }
+    });
+    let text = resp.choices?.[0]?.message?.content ?? '';
+
+    // ── Gemini ──
+    //const geminiModel = genAI.getGenerativeModel({
+    //  model: 'gemini-2.5-flash',
+    //  generationConfig: {
+    //  responseMimeType: 'application/json',
+    //  responseSchema: grocerySchema().schema,
+    //  temperature: 0.4,
+    //  maxOutputTokens: 50000,
+    //  },
+    //});
+    
+    //let aiResult;
+    //try {
+    //  aiResult = await geminiModel.generateContent(prompt);
+    //} catch (geminiError) {
+    //  console.error('Gemini API error:', geminiError);
+    //  throw new Error(`Gemini API failed: ${geminiError.message}`);
+    //}
+    
+    //let text = aiResult.response.text();
+    let parsed;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const m = text.match(/\{[\s\S]*\}$/);
+      if (m) parsed = JSON.parse(m[0]);
+      else throw new Error("Model did not return valid JSON.");
+    }
+
+    if (!parsed?.list || !Array.isArray(parsed.list)) {
+      throw new Error("Missing 'list' array in response.");
+    }
+
+    return res.status(200).json({ success: true, groceryList: parsed.list });
+  } catch (error) {
+    console.error('Grocery list error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}

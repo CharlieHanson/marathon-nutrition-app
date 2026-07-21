@@ -1,5 +1,5 @@
 // mobile/hooks/useMealPlan.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchCurrentWeekMealPlan, fetchMealPlanByWeek, saveMealPlan } from '../../shared/lib/dataClient';
 import { apiClient } from '../../shared/services/api';
 
@@ -69,12 +69,19 @@ const countMeals = (mealPlan) => {
 // Helper to capitalize day name
 const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
-export const useMealPlan = (user, isGuest, reloadKey = 0) => {
+export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
   const [mealPlan, setMealPlan] = useState(EMPTY_WEEK);
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [currentWeekStarting, setCurrentWeekStarting] = useState(getMondayOfCurrentWeek());
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const refetchCurrentWeek = useCallback(() => {
+    setFetchError(null);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   // -------- INITIAL / CURRENT WEEK LOAD --------
   useEffect(() => {
@@ -113,16 +120,19 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           });
           setMealPlan(merged);
           setCurrentWeekStarting(data.week_starting || week);
+          setFetchError(null);
         } else {
           console.log('useMealPlan: no existing mealPlan row → empty week');
           setMealPlan(EMPTY_WEEK);
           setCurrentWeekStarting(week);
+          setFetchError(null);
         }
       } catch (err) {
         console.error('useMealPlan: error loading meal plan', err);
         if (!cancelled) {
           setMealPlan(EMPTY_WEEK);
           setCurrentWeekStarting(getMondayOfCurrentWeek());
+          setFetchError('Failed to load meal plan');
         }
       } finally {
         if (!cancelled) {
@@ -134,7 +144,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isGuest, reloadKey]);
+  }, [user?.id, isGuest, reloadKeyProp, reloadKey]);
 
   // -------- LOCAL MUTATORS --------
   const updateMeal = (day, mealType, value) => {
@@ -174,7 +184,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  const generateDay = async (day, userProfile, foodPreferences, trainingPlan) => {
+  const generateDay = async (day, userProfile, foodPreferences, trainingPlan, onDebug) => {
+    console.log('🟢 generateDay called with onDebug:', !!onDebug);
     if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -209,12 +220,24 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           day,
           userProfile, 
           foodPreferences,
+          trainingPlan,
           weekStarting: currentWeekStarting,
+          debug: !!onDebug, // Enable debug mode if callback provided
         },
         // Progress callback for SSE events
         (event) => {
-          if (event.type === 'status' && event.message) {
-            setStatusMessage(`🔄 ${event.message}`);
+          if (event.type === 'debug' && onDebug) {
+            // Pass debug data to callback
+            console.log('🟡 Debug event received in generateDay, calling onDebug');
+            onDebug(event);
+          } else if (event.type === 'status') {
+            if (event.mealType && event.status === 'processing') {
+              // Show loading indicator for this specific meal slot
+              updateMeal(day, event.mealType, '__generating__');
+            }
+            if (event.message) {
+              setStatusMessage(`🔄 ${event.message}`);
+            }
           } else if (event.type === 'meal' && event.mealType && event.meal) {
             // Update meal plan as each meal arrives
             updateMeal(day, event.mealType, event.meal);
@@ -284,8 +307,10 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       const userProfile = context?.userProfile || null;
       const foodPreferences = context?.foodPreferences || null;
       const trainingPlan = context?.trainingPlan || null;
+      const userId = context?.userId || null;
 
       const result = await apiClient.regenerateMeal({
+        userId,
         day,
         mealType,
         reason,
@@ -399,8 +424,14 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           },
           // Progress callback for SSE events
           (event) => {
-            if (event.type === 'status' && event.message) {
-              setStatusMessage(`🔄 ${event.message}`);
+            if (event.type === 'status') {
+              if (event.mealType && event.status === 'processing') {
+                // Show loading indicator for this specific meal slot
+                updateMeal(day, event.mealType, '__generating__');
+              }
+              if (event.message) {
+                setStatusMessage(`🔄 ${event.message}`);
+              }
             } else if (event.type === 'meal' && event.mealType && event.meal) {
               updateMeal(day, event.mealType, event.meal);
               const mealLabel = capitalize(event.mealType);
@@ -578,5 +609,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     isLoading,
     statusMessage,
     currentWeekStarting,
+    fetchError,
+    clearFetchError: () => setFetchError(null),
+    refetchCurrentWeek,
   };
 };

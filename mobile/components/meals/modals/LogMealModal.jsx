@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,12 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { apiClient } from '../../../../shared/services/api';
+import { fetchSavedMealsByType, incrementMealUsage } from '../../../../shared/lib/dataClient';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -31,6 +33,13 @@ const MEAL_LABELS = {
   dinner: 'Dinner',
   snacks: 'Snacks',
   dessert: 'Dessert',
+};
+const MEAL_LABELS_PLURAL = {
+  breakfast: 'breakfasts',
+  lunch: 'lunches',
+  dinner: 'dinners',
+  snacks: 'snacks',
+  dessert: 'desserts',
 };
 
 const getStyles = (colors) => StyleSheet.create({
@@ -82,7 +91,7 @@ const getStyles = (colors) => StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 32,
     flexGrow: 1,
   },
   section: {
@@ -205,35 +214,35 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
   },
   macroChipCalories: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F59E0B',
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: '#D97706',
   },
   macroChipProtein: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#10B981',
     borderWidth: 1,
-    borderColor: '#6EE7B7',
+    borderColor: '#059669',
   },
   macroChipCarbs: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#3B82F6',
     borderWidth: 1,
-    borderColor: '#93C5FD',
+    borderColor: '#2563EB',
   },
   macroChipFat: {
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#8B5CF6',
     borderWidth: 1,
-    borderColor: '#C4B5FD',
+    borderColor: '#7C3AED',
   },
   macroChipLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   macroChipValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   logButton: {
     flexDirection: 'row',
@@ -258,6 +267,72 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  savedMealsSection: {
+    marginTop: 24,
+    marginBottom: 8,
+    flex: 1,
+    minHeight: 120,
+  },
+  savedMealsSectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 10,
+  },
+  savedMealsList: {
+    flex: 1,
+  },
+  savedMealCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  savedMealLeft: {
+    flex: 1,
+  },
+  savedMealName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  savedMealMacros: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  savedMealBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  savedMealBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  savedMealsEmpty: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  savedMealsEmptyText: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
 
 export const LogMealModal = ({
@@ -267,6 +342,7 @@ export const LogMealModal = ({
   defaultDay,
   defaultMealType,
   isGuest,
+  userId,
 }) => {
   const [mealDescription, setMealDescription] = useState('');
   const [selectedDay, setSelectedDay] = useState(defaultDay || 'monday');
@@ -274,6 +350,9 @@ export const LogMealModal = ({
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedMacros, setEstimatedMacros] = useState(null);
   const [logged, setLogged] = useState(false);
+  const [savedMeals, setSavedMeals] = useState([]);
+  const [loadingSavedMeals, setLoadingSavedMeals] = useState(false);
+  const [loggingSavedMeal, setLoggingSavedMeal] = useState(null);
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -282,6 +361,35 @@ export const LogMealModal = ({
     if (defaultDay) setSelectedDay(defaultDay);
     if (defaultMealType) setSelectedMealType(defaultMealType);
   }, [defaultDay, defaultMealType]);
+
+  // Fetch saved meals when modal opens and when meal type changes
+  const prevVisibleRef = useRef(false);
+  useEffect(() => {
+    if (!visible) {
+      prevVisibleRef.current = false;
+      return;
+    }
+    if (!userId || isGuest) return;
+
+    const justOpened = !prevVisibleRef.current;
+    prevVisibleRef.current = true;
+    const mealTypeToFetch = justOpened && defaultMealType != null ? defaultMealType : selectedMealType;
+
+    const load = async () => {
+      setLoadingSavedMeals(true);
+      try {
+        const meals = await fetchSavedMealsByType(userId, mealTypeToFetch);
+        setSavedMeals(meals);
+      } catch (err) {
+        console.error('Failed to fetch saved meals:', err);
+        setSavedMeals([]);
+      } finally {
+        setLoadingSavedMeals(false);
+      }
+    };
+
+    load();
+  }, [visible, userId, selectedMealType, defaultMealType, isGuest]);
 
   const handleEstimateMacros = async () => {
     if (!mealDescription.trim()) return;
@@ -337,10 +445,29 @@ export const LogMealModal = ({
     }
   };
 
+  const handleLogSavedMeal = async (savedMeal) => {
+    if (!savedMeal?.full_description) return;
+
+    setLoggingSavedMeal(savedMeal.id);
+    try {
+      onLog(selectedDay, selectedMealType, savedMeal.full_description);
+      await incrementMealUsage(savedMeal.id);
+      Alert.alert('Success', 'Meal logged!');
+      handleClose();
+    } catch (err) {
+      console.error('Failed to log saved meal:', err);
+      Alert.alert('Error', err.message || 'Failed to log meal.');
+    } finally {
+      setLoggingSavedMeal(null);
+    }
+  };
+
   const handleClose = () => {
     setMealDescription('');
     setLogged(false);
     setEstimatedMacros(null);
+    setSavedMeals([]);
+    setLoggingSavedMeal(null);
     onClose();
   };
 
@@ -527,6 +654,66 @@ export const LogMealModal = ({
                   </>
                 )}
               </TouchableOpacity>
+
+              {/* Saved Meals Section */}
+              {userId && !isGuest && (
+                <View style={styles.savedMealsSection}>
+                  <Text style={styles.savedMealsSectionLabel}>Saved Meals</Text>
+                  {loadingSavedMeals ? (
+                    <View style={styles.savedMealsEmpty}>
+                      <ActivityIndicator size="small" color={colors.textTertiary} />
+                    </View>
+                  ) : savedMeals.length === 0 ? (
+                    <View style={styles.savedMealsEmpty}>
+                      <Text style={styles.savedMealsEmptyText}>
+                        No saved {MEAL_LABELS_PLURAL[selectedMealType] || 'meals'} yet. Save meals from your plan to log them quickly!
+                      </Text>
+                    </View>
+                  ) : (
+                    <ScrollView
+                      style={styles.savedMealsList}
+                      contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+                      showsVerticalScrollIndicator={true}
+                      nestedScrollEnabled={true}
+                    >
+                      {savedMeals.map((saved) => {
+                        const hasMacros =
+                          saved.calories != null ||
+                          saved.protein != null ||
+                          saved.carbs != null ||
+                          saved.fat != null;
+                        const macroStr = hasMacros
+                          ? `${saved.calories ?? '-'} cal • ${saved.protein ?? '-'}P ${saved.carbs ?? '-'}C ${saved.fat ?? '-'}F`
+                          : 'No macros';
+                        return (
+                          <TouchableOpacity
+                            key={saved.id}
+                            style={styles.savedMealCard}
+                            onPress={() => handleLogSavedMeal(saved)}
+                            disabled={loggingSavedMeal === saved.id}
+                          >
+                            <View style={styles.savedMealLeft}>
+                              <Text style={styles.savedMealName} numberOfLines={1}>
+                                {saved.name || 'Meal'}
+                              </Text>
+                              <Text style={styles.savedMealMacros} numberOfLines={1}>
+                                {macroStr}
+                              </Text>
+                            </View>
+                            <View style={styles.savedMealBadge}>
+                              <Text style={styles.savedMealBadgeText}>
+                                {loggingSavedMeal === saved.id
+                                  ? '...'
+                                  : `Used ${saved.times_used ?? 0}x`}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>

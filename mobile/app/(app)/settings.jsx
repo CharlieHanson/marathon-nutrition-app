@@ -6,11 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  ActivityIndicator,
   Alert,
-  Modal,
-  Pressable,
   Switch,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -28,8 +26,6 @@ export default function SettingsScreen() {
   const [passwordMessage, setPasswordMessage] = useState('');
 
   // Delete account state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleChangePassword = async () => {
@@ -60,44 +56,84 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (confirmText !== 'DELETE') {
-      Alert.alert('Error', 'Please type DELETE to confirm');
-      return;
-    }
+  const handleDeleteAccount = () => {
+    if (isDeleting) return;
 
-    setIsDeleting(true);
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account and all associated data?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
 
+            try {
+              const result = await apiClient.deleteAccount({
+                userId: user.id,
+                confirmationText: 'DELETE',
+              });
+
+              if (result.success) {
+                Alert.alert(
+                  'Account Deleted',
+                  'Your account and all data have been permanently deleted.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: async () => {
+                        // Sign out and navigate to auth screen
+                        await signOut();
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert('Error', result.error || 'Failed to delete account');
+              }
+            } catch (error) {
+              console.error('Delete account error:', error);
+              Alert.alert('Error', 'An error occurred. Please try again or contact support.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    const baseUrl = 'https://alimentanutrition.com';
+    const url = `${baseUrl}/privacy`;
     try {
-      const result = await apiClient.deleteAccount({
-        userId: user.id,
-        confirmationText: confirmText,
-      });
-
-      if (result.success) {
-        Alert.alert(
-          'Account Deleted',
-          'Your account and all data have been permanently deleted.',
-          [
-            {
-              text: 'OK',
-              onPress: async () => {
-                // Sign out and navigate to auth screen
-                await signOut();
-              },
-            },
-          ]
-        );
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
       } else {
-        Alert.alert('Error', result.error || 'Failed to delete account');
+        Alert.alert('Error', 'Unable to open browser');
       }
     } catch (error) {
-      console.error('Delete account error:', error);
-      Alert.alert('Error', 'An error occurred. Please try again or contact support.');
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-      setConfirmText('');
+      console.error('Error opening privacy policy:', error);
+      Alert.alert('Error', 'Unable to open privacy policy');
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    const baseUrl = 'https://alimentanutrition.com';
+    const url = `${baseUrl}/terms`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Unable to open browser');
+      }
+    } catch (error) {
+      console.error('Error opening terms of service:', error);
+      Alert.alert('Error', 'Unable to open terms of service');
     }
   };
 
@@ -180,11 +216,36 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Legal Information Section */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Legal Information</Text>
+        <View style={styles.legalButtonsContainer}>
+          <TouchableOpacity
+            style={styles.legalButton}
+            onPress={handleOpenPrivacyPolicy}
+          >
+            <Ionicons name="shield-outline" size={20} color={colors.primary} />
+            <Text style={styles.legalButtonText}>Privacy Policy</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.legalButton}
+            onPress={handleOpenTermsOfService}
+          >
+            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            <Text style={styles.legalButtonText}>Terms of Service</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Delete Account Section */}
       <View style={styles.dangerSection}>
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => setShowDeleteModal(true)}
+          onPress={handleDeleteAccount}
+          disabled={isDeleting}
         >
           <Ionicons name="trash-outline" size={20} color="#DC2626" />
           <Text style={styles.deleteButtonText}>Delete Account</Text>
@@ -193,86 +254,6 @@ export default function SettingsScreen() {
           This will permanently delete your account and all associated data.
         </Text>
       </View>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={showDeleteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDeleteModal(false)}
-      >
-        <View style={styles.deleteModalOverlay}>
-          <View style={styles.deleteModalContent}>
-            {/* Header */}
-            <View style={styles.deleteModalHeader}>
-              <View style={styles.warningIcon}>
-                <Ionicons name="warning" size={32} color="#DC2626" />
-              </View>
-              <Text style={styles.deleteModalTitle}>Delete Account?</Text>
-            </View>
-
-            {/* Warning Text */}
-            <Text style={styles.modalWarning}>
-              This action is permanent and cannot be undone. The following data will be deleted:
-            </Text>
-
-            {/* Data List */}
-            <View style={styles.dataList}>
-              <Text style={styles.dataItem}>• Your profile and preferences</Text>
-              <Text style={styles.dataItem}>• All meal plans and history</Text>
-              <Text style={styles.dataItem}>• Meal ratings and saved meals</Text>
-              <Text style={styles.dataItem}>• Training plans</Text>
-              <Text style={styles.dataItem}>• Any nutritionist relationships</Text>
-            </View>
-
-            {/* Confirmation Input */}
-            <Text style={styles.inputLabel}>
-              Type <Text style={styles.deleteWord}>DELETE</Text> to confirm:
-            </Text>
-            <TextInput
-              style={styles.confirmInput}
-              value={confirmText}
-              onChangeText={setConfirmText}
-              placeholder="Type DELETE"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="characters"
-              autoCorrect={false}
-            />
-
-            {/* Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  setConfirmText('');
-                }}
-                disabled={isDeleting}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmDeleteButton,
-                  confirmText !== 'DELETE' && styles.confirmDeleteButtonDisabled,
-                ]}
-                onPress={handleDeleteAccount}
-                disabled={confirmText !== 'DELETE' || isDeleting}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="trash" size={18} color="#FFFFFF" />
-                    <Text style={styles.confirmDeleteButtonText}>Delete Forever</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -396,6 +377,28 @@ const getStyles = (colors) => StyleSheet.create({
   passwordForm: {
     marginTop: 8,
   },
+  // Legal Information Section
+  legalButtonsContainer: {
+    marginTop: 8,
+    gap: 12,
+  },
+  legalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: colors.inputBackground,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  legalButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
   // Delete Account Section
   dangerSection: {
     marginTop: 32,
@@ -431,114 +434,6 @@ const getStyles = (colors) => StyleSheet.create({
     fontSize: 12,
     color: colors.textTertiary,
     marginTop: 8,
-  },
-  // Delete Confirmation Modal Styles
-  deleteModalOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalOverlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  deleteModalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  deleteModalHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  warningIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.errorLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  deleteModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  modalWarning: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  dataList: {
-    backgroundColor: colors.errorLight,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
-  },
-  dataItem: {
-    fontSize: 13,
-    color: colors.errorDark,
-    marginBottom: 4,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  deleteWord: {
-    fontWeight: '700',
-    color: colors.error,
-  },
-  confirmInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.inputBackground,
-    marginBottom: 20,
-    textAlign: 'center',
-    fontWeight: '600',
-    letterSpacing: 2,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: colors.gray100,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  confirmDeleteButton: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: colors.error,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  confirmDeleteButtonDisabled: {
-    backgroundColor: colors.textTertiary,
-  },
-  confirmDeleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textInverse,
   },
 });
 

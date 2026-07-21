@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
+import { useNetwork } from '../../../context/NetworkContext';
 import { apiClient } from '../../../../shared/services/api';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -220,6 +222,12 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  limitText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+  },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,23 +294,29 @@ const getStyles = (colors) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   macroBadgeCalories: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F59E0B',
+    borderColor: '#D97706',
   },
   macroBadgeProtein: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
   },
   macroBadgeCarbs: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#3B82F6',
+    borderColor: '#2563EB',
   },
   macroBadgeFat: {
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#8B5CF6',
+    borderColor: '#7C3AED',
   },
   macroBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   prepInfoRow: {
     flexDirection: 'row',
@@ -352,16 +366,29 @@ export const MealPrepModal = ({
   userProfile,
   foodPreferences,
   isGuest,
+  defaultMealType,
+  userId,
+  canGenerate = true,
+  mealPrepRemaining = Infinity,
+  onGenerateSuccess,
 }) => {
   const [step, setStep] = useState(1); // 1: meal type, 2: days, 3: options
-  const [selectedMealType, setSelectedMealType] = useState('lunch');
+  const [selectedMealType, setSelectedMealType] = useState(defaultMealType || 'lunch');
   const [selectedDays, setSelectedDays] = useState([]);
   const [options, setOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [applied, setApplied] = useState(false);
   const { colors } = useTheme();
+  const { isConnected } = useNetwork();
   const styles = getStyles(colors);
+
+  // Update selectedMealType when modal opens with a defaultMealType
+  useEffect(() => {
+    if (visible && defaultMealType) {
+      setSelectedMealType(defaultMealType);
+    }
+  }, [visible, defaultMealType]);
 
   const toggleDay = (day) => {
     setSelectedDays((prev) =>
@@ -379,12 +406,24 @@ export const MealPrepModal = ({
 
   const handleGenerateOptions = async () => {
     if (selectedDays.length === 0) return;
+    if (isConnected === false) {
+      Alert.alert('No Connection', 'Please check your internet connection and try again.');
+      return;
+    }
+    if (!canGenerate) {
+      Alert.alert(
+        'Daily Limit Reached',
+        `You've used all your meal generations for today. Limits reset at midnight.`
+      );
+      return;
+    }
 
     setIsLoading(true);
     setError('');
 
     try {
       const result = await apiClient.generateMealPrep({
+        userId,
         mealType: selectedMealType,
         days: selectedDays,
         userProfile,
@@ -394,6 +433,7 @@ export const MealPrepModal = ({
       if (result.success && result.options?.length > 0) {
         setOptions(result.options);
         setStep(3);
+        onGenerateSuccess?.();
       } else {
         throw new Error(result.error || 'Failed to generate options');
       }
@@ -609,10 +649,10 @@ export const MealPrepModal = ({
                     <TouchableOpacity
                       style={[
                         styles.primaryButton,
-                        (selectedDays.length === 0 || isLoading) && styles.primaryButtonDisabled,
+                        (selectedDays.length === 0 || isLoading || !canGenerate) && styles.primaryButtonDisabled,
                       ]}
                       onPress={handleGenerateOptions}
-                      disabled={selectedDays.length === 0 || isLoading}
+                      disabled={selectedDays.length === 0 || isLoading || !canGenerate}
                     >
                       {isLoading ? (
                         <>
@@ -621,10 +661,17 @@ export const MealPrepModal = ({
                         </>
                       ) : (
                         <Text style={styles.primaryButtonText}>
-                          Generate Options ({selectedDays.length} days)
+                          {canGenerate
+                            ? `Generate Options (${selectedDays.length} days)`
+                            : 'Daily Limit Reached'}
                         </Text>
                       )}
                     </TouchableOpacity>
+                    {!canGenerate && (
+                      <Text style={styles.limitText}>
+                        You've used all meal generations for today. Resets at midnight.
+                      </Text>
+                    )}
                   </View>
                 </View>
               )}

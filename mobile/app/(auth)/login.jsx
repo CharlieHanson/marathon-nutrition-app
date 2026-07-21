@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet, Image } from 'react-native';
+import { Link, useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { ForgotPasswordModal } from '../../components/modals/ForgotPasswordModal';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useAppleAuth, AppleSignInButton } from '../../hooks/useAppleAuth';
+
+// Only allow internal paths (e.g. /meals, /(app)/dashboard). Reject protocol-relative or absolute URLs.
+function isSafeRedirect(value) {
+  if (typeof value !== 'string' || !value.startsWith('/')) return false;
+  if (value.includes('//') || value.includes(':')) return false;
+  return true;
+}
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -11,14 +20,22 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const router = useRouter();
-  const { signIn, enableGuestMode, user } = useAuth();
+  const { signIn, user } = useAuth();
+  const { promptAsync: signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
+  const { signInWithApple, loading: appleLoading, error: appleError } = useAppleAuth();
+  const params = useLocalSearchParams();
+  const redirect = params?.redirect != null
+    ? (Array.isArray(params.redirect) ? params.redirect[0] : params.redirect)
+    : null;
 
-  // Redirect if already logged in
+  const safeRedirect = isSafeRedirect(redirect) ? redirect : null;
+
+  // Redirect if already logged in — go to redirect param or index
   useEffect(() => {
     if (user) {
-      router.replace('/(app)/dashboard');
+      router.replace(safeRedirect ?? '/');
     }
-  }, [user, router]);
+  }, [user, router, safeRedirect]);
 
   const handleSignIn = async () => {
     setError('');
@@ -50,16 +67,18 @@ export default function LoginScreen() {
         return;
       }
 
-      // If sign in successful, redirect will happen via useEffect when user state updates
-      // But we can also explicitly redirect here as a fallback
+      // If sign in successful, go to redirect param or index so it can run onboarding check
       if (data?.user) {
-        router.replace('/(app)/dashboard');
+        router.replace(safeRedirect ?? '/');
       }
     } catch (err) {
       setError(err.message || 'An unexpected error occurred');
+    } finally {
       setLoading(false);
     }
   };
+
+  const authBusy = loading || googleLoading || appleLoading;
 
   return (
     <ScrollView 
@@ -81,9 +100,9 @@ export default function LoginScreen() {
           </View>
 
           {/* Error Message */}
-          {error ? (
+          {(error || googleError || appleError) ? (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{error || googleError || appleError}</Text>
             </View>
           ) : null}
 
@@ -99,7 +118,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
-              editable={!loading}
+              editable={!authBusy}
             />
           </View>
 
@@ -115,10 +134,10 @@ export default function LoginScreen() {
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!loading}
+              editable={!authBusy}
             />
             <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity onPress={() => setShowForgotPassword(true)}>
+              <TouchableOpacity onPress={() => setShowForgotPassword(true)} disabled={authBusy}>
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
               </TouchableOpacity>
             </View>
@@ -126,9 +145,9 @@ export default function LoginScreen() {
 
           {/* Sign In Button */}
           <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+            style={[styles.primaryButton, authBusy && styles.primaryButtonDisabled]}
             onPress={handleSignIn}
-            disabled={loading}
+            disabled={authBusy}
           >
             {loading ? (
               <View style={styles.buttonContent}>
@@ -144,25 +163,56 @@ export default function LoginScreen() {
           <View style={styles.signUpContainer}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
             <Link href="/(auth)/signup" asChild>
-              <TouchableOpacity>
+              <TouchableOpacity disabled={authBusy}>
                 <Text style={styles.signUpLink}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
           </View>
 
-          {/* Guest Mode Option */}
-          <View style={styles.guestSection}>
-            <TouchableOpacity
-              style={styles.guestButton}
-              onPress={enableGuestMode}
-            >
-              <Text style={styles.guestButtonText}>Continue as Guest</Text>
-            </TouchableOpacity>
+          {/* Divider: or */}
+          <View style={styles.orDivider}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          {/* Continue with Google */}
+          <TouchableOpacity
+            style={[styles.googleButton, authBusy && styles.googleButtonDisabled]}
+            onPress={signInWithGoogle}
+            disabled={authBusy}
+            activeOpacity={0.8}
+          >
+            {googleLoading ? (
+              <View style={styles.buttonContent}>
+                <ActivityIndicator size="small" color="#374151" />
+                <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
+              </View>
+            ) : (
+              <>
+                <Image source={require('../../assets/images/google_icon.jpg')} style={styles.googleIcon} resizeMode="contain" />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Continue with Apple (iOS only) */}
+          <View style={styles.appleButtonContainer}>
+            {appleLoading ? (
+              <View style={[styles.googleButton, styles.googleButtonDisabled]}>
+                <ActivityIndicator size="small" color="#374151" />
+                <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
+              </View>
+            ) : (
+              <AppleSignInButton
+                onPress={signInWithApple}
+                disabled={authBusy}
+              />
+            )}
           </View>
         </View>
       </View>
 
-      {/* Forgot Password Modal */}
       <ForgotPasswordModal
         visible={showForgotPassword}
         onClose={() => setShowForgotPassword(false)}
@@ -298,24 +348,50 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F6921D', // primary orange
   },
-  guestSection: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB', // gray-200
-    marginBottom: 16,
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
   },
-  guestButton: {
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  orText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  googleButton: {
     width: '100%',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 6,
-    backgroundColor: '#E5E7EB', // gray-200
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
-  guestButtonText: {
-    color: '#374151', // gray-700
-    textAlign: 'center',
-    fontWeight: '500',
-    fontSize: 14,
+  googleButtonDisabled: {
+    opacity: 0.7,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  appleButtonContainer: {
+    width: '100%',
+    marginTop: 12,
   },
 });
 
