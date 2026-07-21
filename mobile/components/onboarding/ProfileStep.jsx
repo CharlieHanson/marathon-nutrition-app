@@ -47,6 +47,11 @@ const HEIGHT_UNITS = [
   { value: 'ft', label: 'ft / in' },
 ];
 
+const AGE_OPTIONS = Array.from({ length: 150 - 13 + 1 }, (_, i) => {
+  const age = String(13 + i);
+  return { value: age, label: age };
+});
+
 function parseWeightForDisplay(raw) {
   if (!raw || typeof raw !== 'string') return { value: '', unit: 'lbs' };
   const s = raw.trim().toLowerCase();
@@ -99,6 +104,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
+  const [showAgePicker, setShowAgePicker] = useState(false);
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
   const [showHeightUnitPicker, setShowHeightUnitPicker] = useState(false);
 
@@ -131,15 +137,18 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
     onUpdate('weight', buildWeightString());
   };
 
+  const isValidAge =
+    profile.age &&
+    AGE_OPTIONS.some((o) => o.value === String(profile.age).trim());
+
   const isValid =
     profile.name &&
-    profile.age &&
+    isValidAge &&
     buildHeightString() &&
     buildWeightString() &&
     profile.goal &&
     profile.gender &&
-    profile.activityLevel &&
-    profile.objective?.trim();
+    profile.activityLevel;
 
   const handleContinue = () => {
     const heightStr = buildHeightString();
@@ -176,15 +185,15 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Age</Text>
-          <TextInput
-            style={styles.input}
-            value={profile.age}
-            onChangeText={(v) => onUpdate('age', v.replace(/\D/g, '').slice(0, 3))}
-            placeholder="e.g., 25"
-            placeholderTextColor={GRAY_TEXT}
-            keyboardType="number-pad"
-            returnKeyType="done"
-          />
+          <TouchableOpacity style={styles.pickerButton} onPress={() => setShowAgePicker(true)}>
+            <Text
+              style={[styles.pickerText, !isValidAge && styles.pickerPlaceholder]}
+              numberOfLines={1}
+            >
+              {isValidAge ? String(profile.age) : 'Select age'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.inputGroup}>
@@ -323,7 +332,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Training Objective</Text>
+          <Text style={styles.label}>Training Objective (optional)</Text>
           <TextInput
             style={styles.textArea}
             value={profile.objective}
@@ -369,6 +378,51 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
           )}
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={showAgePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAgePicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAgePicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Age</Text>
+              <TouchableOpacity onPress={() => setShowAgePicker(false)}>
+                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {AGE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.pickerOption,
+                    String(profile.age) === opt.value && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    onUpdate('age', opt.value);
+                    setShowAgePicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      String(profile.age) === opt.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {String(profile.age) === opt.value && (
+                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={showGoalPicker}
@@ -794,7 +848,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: '50%',
+    maxHeight: '70%',
   },
   pickerModalHeader: {
     flexDirection: 'row',
@@ -810,7 +864,7 @@ const styles = StyleSheet.create({
     color: TEXT,
   },
   pickerOptions: {
-    maxHeight: 280,
+    maxHeight: 400,
     padding: 8,
   },
   pickerOption: {

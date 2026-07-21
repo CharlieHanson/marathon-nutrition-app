@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Linking,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -98,6 +99,15 @@ export default function SignupScreen() {
   }, [user, router]);
 
   const authBusy = loading || googleLoading || appleLoading;
+
+  const openLegalUrl = async (path) => {
+    const url = `https://alimentanutrition.com${path}`;
+    try {
+      await Linking.openURL(url);
+    } catch (err) {
+      console.error('Error opening legal URL:', err);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -258,6 +268,24 @@ export default function SignupScreen() {
                     />
                   )}
                 </View>
+
+                <Text style={styles.legalText}>
+                  By continuing, you agree to our{' '}
+                  <Text
+                    style={styles.legalLink}
+                    onPress={() => openLegalUrl('/terms')}
+                  >
+                    Terms of Service
+                  </Text>
+                  {' '}and{' '}
+                  <Text
+                    style={styles.legalLink}
+                    onPress={() => openLegalUrl('/privacy')}
+                  >
+                    Privacy Policy
+                  </Text>
+                  .
+                </Text>
               </>
             )}
           </View>
@@ -426,6 +454,17 @@ const styles = StyleSheet.create({
   appleButtonContainer: {
     width: '100%',
     marginTop: 12,
+  },
+  legalText: {
+    marginTop: 16,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  legalLink: {
+    color: '#F6921D',
+    fontWeight: '600',
   },
   // Success state
   successIconWrap: {

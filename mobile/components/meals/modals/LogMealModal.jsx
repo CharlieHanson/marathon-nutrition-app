@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { apiClient } from '../../../../shared/services/api';
 import { fetchSavedMealsByType, incrementMealUsage } from '../../../../shared/lib/dataClient';
+import { getDayMealToggles, getActiveMealTypes } from '../../../utils/mealHelpers';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -343,10 +344,13 @@ export const LogMealModal = ({
   defaultMealType,
   isGuest,
   userId,
+  mealPlan,
 }) => {
   const [mealDescription, setMealDescription] = useState('');
   const [selectedDay, setSelectedDay] = useState(defaultDay || 'monday');
   const [selectedMealType, setSelectedMealType] = useState(defaultMealType || 'lunch');
+
+  const logMealActiveTypes = getActiveMealTypes(getDayMealToggles(mealPlan?.[selectedDay]));
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedMacros, setEstimatedMacros] = useState(null);
   const [logged, setLogged] = useState(false);
@@ -535,7 +539,7 @@ export const LogMealModal = ({
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Which meal?</Text>
                 <View style={styles.mealTypeGrid}>
-                  {MEAL_TYPES.map((type) => (
+                  {logMealActiveTypes.map((type) => (
                     <TouchableOpacity
                       key={type}
                       onPress={() => {

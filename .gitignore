@@ -43,6 +43,10 @@ dist/
 build/
 .pytest_cache/
 
+# standalone api service
+api/node_modules/
+api/.env
+
 # IDEs
 .vscode/
 .idea/

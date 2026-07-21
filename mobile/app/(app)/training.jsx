@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Pressable,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -183,10 +185,40 @@ const getIntensityColor = (intensity) => {
   }
 };
 
-const isWorkoutPlanned = (w) =>
-  (w.type && String(w.type).trim()) ||
-  (w.distance && String(w.distance).trim()) ||
-  (w.notes && String(w.notes).trim());
+const getCurrentDay = () => {
+  const today = new Date().getDay();
+  return DAYS[today === 0 ? 6 : today - 1];
+};
+
+const getPlanDateLabel = (plan) => {
+  const createdAt = plan.created_at ? new Date(plan.created_at) : null;
+  const updatedAt = plan.updated_at ? new Date(plan.updated_at) : null;
+
+  if (updatedAt && createdAt && updatedAt > createdAt) {
+    return `Updated ${updatedAt.toLocaleDateString()}`;
+  }
+
+  if (createdAt) {
+    return `Created ${createdAt.toLocaleDateString()}`;
+  }
+
+  return '';
+};
+
+const getWeekDateNumbers = () => {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  const monday = new Date(today);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+
+  return DAYS.map((_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return date.getDate();
+  });
+};
 
 export default function TrainingScreen() {
   const { user, isGuest } = useAuth();
@@ -202,19 +234,9 @@ export default function TrainingScreen() {
   const [showIntensityPicker, setShowIntensityPicker] = useState(false);
   const [showTimingPicker, setShowTimingPicker] = useState(false);
   const [pickerContext, setPickerContext] = useState({ day: null, index: null, field: null });
-  
-  // Initialize with current day expanded
-  const getCurrentDay = () => {
-    const today = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-    // Convert to our day format: Monday=1, Sunday=0 -> monday, sunday
-    const dayIndex = today === 0 ? 6 : today - 1; // Sunday becomes index 6, Monday becomes 0
-    return DAYS[dayIndex];
-  };
-
-  const [expandedDays, setExpandedDays] = useState(() => {
-    const currentDay = getCurrentDay();
-    return new Set([currentDay]); // Start with current day expanded
-  });
+  const [selectedDay, setSelectedDay] = useState(getCurrentDay);
+  const weekDates = useMemo(getWeekDateNumbers, []);
+  const todayDay = getCurrentDay();
 
   useEffect(() => {
     setPlanName(trainingPlanHook.currentPlanName || '');
@@ -237,9 +259,24 @@ export default function TrainingScreen() {
     }
   };
 
+  const MAX_SAVED_PLANS = 10;
+
   const handleLoadClick = async () => {
     await trainingPlanHook.loadSavedPlans();
     setShowLoadModal(true);
+  };
+
+  const handleCreateNewPlan = async () => {
+    const currentPlans = await trainingPlanHook.loadSavedPlans();
+    if (currentPlans.length >= MAX_SAVED_PLANS) {
+      Alert.alert(
+        'Plan Limit Reached',
+        `You can save up to ${MAX_SAVED_PLANS} training plans. Delete one or more plans before creating a new one.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    trainingPlanHook.createNewPlan();
   };
 
   const handleLoadPlan = async (planId) => {
@@ -272,15 +309,6 @@ export default function TrainingScreen() {
   };
 
   const addWorkout = (day) => {
-    // Expand the day if it's not already expanded
-    setExpandedDays((prev) => {
-      const newSet = new Set(prev);
-      if (!newSet.has(day)) {
-        newSet.add(day);
-      }
-      return newSet;
-    });
-    
     const existing = trainingPlanHook.plan[day]?.workouts || [];
     trainingPlanHook.updatePlan(day, 'workouts', [...existing, { ...DEFAULT_WORKOUT }]);
   };
@@ -322,6 +350,12 @@ export default function TrainingScreen() {
 
   const styles = getStyles(colors);
 
+  const selectedDayData = trainingPlanHook.plan[selectedDay] || { workouts: [{ ...DEFAULT_WORKOUT }] };
+  const selectedWorkouts = selectedDayData.workouts?.length
+    ? selectedDayData.workouts
+    : [{ ...DEFAULT_WORKOUT }];
+  const addWorkoutLabel = selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout';
+
   if (trainingPlanHook.fetchError && !trainingPlanHook.isLoading) {
     return (
       <ErrorState
@@ -342,220 +376,216 @@ export default function TrainingScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Card */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerTop}>
-          <View style={styles.titleSection}>
-            <Text style={styles.title} numberOfLines={1}>
-              {trainingPlanHook.currentPlanName || 'New Training Plan'}
-            </Text>
-            {trainingPlanHook.currentPlanName && (
-              <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>Active</Text>
-              </View>
-            )}
+      <View style={styles.trainingHeader}>
+        <View style={styles.planControlRow}>
+          <View style={styles.planInfo}>
+            <View style={styles.planTitleRow}>
+              <Text style={styles.planTitle} numberOfLines={1}>
+                {trainingPlanHook.currentPlanName || 'New Training Plan'}
+              </Text>
+              {trainingPlanHook.isLoadedSavedPlan ? (
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeBadgeText}>Active</Text>
+                </View>
+              ) : null}
+              {showConfirmation ? (
+                <View style={styles.savedConfirmationPill}>
+                  <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+                  <Text style={styles.savedConfirmationText}>Saved</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[styles.headerActionButton, styles.headerActionButtonSecondary]}
+              onPress={handleCreateNewPlan}
+              accessibilityLabel="New plan"
+              accessibilityRole="button"
+              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
+            >
+              <Ionicons name="add" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.headerActionButton, styles.headerActionButtonSecondary]}
+              onPress={handleLoadClick}
+              accessibilityLabel="Load plan"
+              accessibilityRole="button"
+              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
+            >
+              <Ionicons name="folder-open-outline" size={20} color={colors.info} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.headerActionButton, styles.headerActionButtonPrimary]}
+              onPress={() => setShowSaveModal(true)}
+              disabled={trainingPlanHook.isSaving}
+              accessibilityLabel={trainingPlanHook.isSaving ? 'Saving plan' : 'Save plan'}
+              accessibilityRole="button"
+              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
+            >
+              {trainingPlanHook.isSaving ? (
+                <ActivityIndicator size="small" color={colors.textInverse} />
+              ) : (
+                <Ionicons name="save-outline" size={20} color={colors.textInverse} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnSecondary]}
-            onPress={trainingPlanHook.createNewPlan}
-          >
-            <Ionicons name="add" size={18} color="#6B7280" />
-            <Text style={styles.actionBtnText}>New</Text>
-          </TouchableOpacity>
+        <View style={styles.calendarRow}>
+          {DAYS.map((day, index) => {
+            const isSelected = selectedDay === day;
+            const isToday = day === todayDay;
 
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnSecondary]}
-            onPress={handleLoadClick}
-          >
-            <Ionicons name="folder-open-outline" size={18} color="#3B82F6" />
-            <Text style={[styles.actionBtnText, { color: '#3B82F6' }]}>Load</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnPrimary]}
-            onPress={() => setShowSaveModal(true)}
-            disabled={trainingPlanHook.isSaving}
-          >
-            {trainingPlanHook.isSaving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-            )}
-            <Text style={[styles.actionBtnText, styles.actionBtnTextPrimary]}>
-              {trainingPlanHook.isSaving ? 'Saving...' : 'Save'}
-            </Text>
-          </TouchableOpacity>
-
-          {showConfirmation && (
-            <View style={styles.confirmationBadge}>
-              <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-              <Text style={styles.confirmationText}>Saved!</Text>
-            </View>
-          )}
+            return (
+              <TouchableOpacity
+                key={day}
+                style={styles.calendarDay}
+                onPress={() => setSelectedDay(day)}
+                activeOpacity={0.7}
+                accessibilityLabel={`${DAY_LABELS[index]}, ${weekDates[index]}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Text
+                  style={[
+                    styles.calendarWeekday,
+                    isSelected && styles.calendarWeekdaySelected,
+                  ]}
+                >
+                  {DAY_LABELS[index].toUpperCase()}
+                </Text>
+                <View
+                  style={[
+                    styles.calendarDateCircle,
+                    isSelected && styles.calendarDateCircleSelected,
+                    isToday && !isSelected && styles.calendarDateCircleToday,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.calendarDateText,
+                      isSelected && styles.calendarDateTextSelected,
+                      isToday && !isSelected && styles.calendarDateTextToday,
+                    ]}
+                  >
+                    {weekDates[index]}
+                  </Text>
+                </View>
+                {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* Training Schedule */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {DAYS.map((day) => {
-          const dayData = trainingPlanHook.plan[day] || { workouts: [{ ...DEFAULT_WORKOUT }] };
-          const workouts = dayData.workouts?.length ? dayData.workouts : [{ ...DEFAULT_WORKOUT }];
-          const plannedCount = workouts.filter((w) => isWorkoutPlanned(w)).length;
-
-          const isExpanded = expandedDays.has(day);
-
-          const toggleDay = () => {
-            setExpandedDays((prev) => {
-              const newSet = new Set(prev);
-              if (newSet.has(day)) {
-                newSet.delete(day);
-              } else {
-                newSet.add(day);
-              }
-              return newSet;
-            });
-          };
-
-          return (
-            <View key={day} style={styles.dayCard}>
+        <View style={styles.workoutsContainer}>
+          {selectedWorkouts.map((workout, index) => (
+            <View
+              key={index}
+              style={[
+                styles.workoutCard,
+                { borderLeftColor: getIntensityColor(workout.intensity || 'Medium') },
+              ]}
+            >
               <TouchableOpacity
-                style={styles.dayHeader}
-                onPress={toggleDay}
-                activeOpacity={0.7}
+                style={styles.workoutField}
+                onPress={() => openPicker(selectedDay, index, 'type', WORKOUT_TYPES)}
               >
-                <View style={styles.dayHeaderLeft}>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                    size={18}
-                    color="#6B7280"
-                    style={styles.dayChevron}
-                  />
-                  <Ionicons name="calendar-outline" size={18} color="#6B7280" />
-                  <Text style={styles.dayTitle}>{day.charAt(0).toUpperCase() + day.slice(1)}</Text>
-                  {plannedCount > 0 && (
-                    <View style={styles.workoutCountBadge}>
-                      <Text style={styles.workoutCountText}>
-                        {plannedCount} workout{plannedCount === 1 ? '' : 's'}
-                      </Text>
+                <Text style={styles.workoutFieldLabel}>Workout Type</Text>
+                <View style={styles.workoutFieldValue}>
+                  {workout.type ? (
+                    <View style={styles.workoutTypeRow}>
+                      <Ionicons
+                        name={getWorkoutIcon(workout.type)}
+                        size={18}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={styles.workoutFieldText}>{workout.type}</Text>
                     </View>
+                  ) : (
+                    <Text style={styles.workoutFieldPlaceholder}>Select workout</Text>
                   )}
+                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
                 </View>
-                <TouchableOpacity
-                  style={styles.addWorkoutBtn}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    addWorkout(day);
-                  }}
-                >
-                  <Ionicons name="add" size={18} color="#F6921D" />
-                  <Text style={styles.addWorkoutText}>Add</Text>
-                </TouchableOpacity>
               </TouchableOpacity>
 
-              {isExpanded && (
-                <View style={styles.workoutsContainer}>
-                  {workouts.map((workout, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.workoutCard,
-                      { borderLeftColor: getIntensityColor(workout.intensity || 'Medium') },
-                    ]}
-                  >
-                    {/* Workout Type */}
-                    <TouchableOpacity
-                      style={styles.workoutField}
-                      onPress={() => openPicker(day, index, 'type', WORKOUT_TYPES)}
-                    >
-                      <Text style={styles.workoutFieldLabel}>Workout Type</Text>
-                      <View style={styles.workoutFieldValue}>
-                        {workout.type ? (
-                          <View style={styles.workoutTypeRow}>
-                            <Ionicons
-                              name={getWorkoutIcon(workout.type)}
-                              size={18}
-                              color="#6B7280"
-                            />
-                            <Text style={styles.workoutFieldText}>{workout.type}</Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.workoutFieldPlaceholder}>Select workout</Text>
-                        )}
-                        <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Distance/Duration */}
-                    <View style={styles.workoutField}>
-                      <Text style={styles.workoutFieldLabel}>Distance/Duration</Text>
-                      <TextInput
-                        style={styles.workoutInput}
-                        placeholder="e.g., 5km, 30 min"
-                        value={workout.distance || ''}
-                        onChangeText={(text) => updateWorkout(day, index, 'distance', text)}
-                        placeholderTextColor="#9CA3AF"
-                        returnKeyType="done"
-                      />
-                    </View>
-
-                    {/* Intensity */}
-                    <TouchableOpacity
-                      style={styles.workoutField}
-                      onPress={() => openPicker(day, index, 'intensity', INTENSITY_LEVELS)}
-                    >
-                      <Text style={styles.workoutFieldLabel}>Intensity</Text>
-                      <View style={styles.workoutFieldValue}>
-                        <View style={styles.intensityRow}>
-                          <View
-                            style={[
-                              styles.intensityDot,
-                              { backgroundColor: getIntensityColor(workout.intensity || 'Medium') },
-                            ]}
-                          />
-                          <Text style={styles.workoutFieldText}>
-                            {workout.intensity || 'Medium'}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Workout Time */}
-                    <TouchableOpacity
-                      style={styles.workoutField}
-                      onPress={() => openPicker(day, index, 'timing', WORKOUT_TIMING_OPTIONS)}
-                    >
-                      <Text style={styles.workoutFieldLabel}>Workout Time</Text>
-                      <View style={styles.workoutFieldValue}>
-                        <Text style={styles.workoutFieldText}>
-                          {workout.timing || '—'}
-                        </Text>
-                        <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Remove Button */}
-                    {index > 0 && (
-                      <TouchableOpacity
-                        style={styles.removeWorkoutBtn}
-                        onPress={() => removeWorkout(day, index)}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                        <Text style={styles.removeWorkoutText}>Remove</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ))}
+              <View style={styles.workoutField}>
+                <Text style={styles.workoutFieldLabel}>Distance/Duration</Text>
+                <TextInput
+                  style={styles.workoutInput}
+                  placeholder="e.g., 5km, 30 min"
+                  value={workout.distance || ''}
+                  onChangeText={(text) => updateWorkout(selectedDay, index, 'distance', text)}
+                  placeholderTextColor={colors.placeholderColor}
+                  returnKeyType="done"
+                  maxLength={20}
+                />
               </View>
-            )}
-          </View>
-        );
-      })}
-    </ScrollView>
+
+              <TouchableOpacity
+                style={styles.workoutField}
+                onPress={() => openPicker(selectedDay, index, 'intensity', INTENSITY_LEVELS)}
+              >
+                <Text style={styles.workoutFieldLabel}>Intensity</Text>
+                <View style={styles.workoutFieldValue}>
+                  <View style={styles.intensityRow}>
+                    <View
+                      style={[
+                        styles.intensityDot,
+                        { backgroundColor: getIntensityColor(workout.intensity || 'Medium') },
+                      ]}
+                    />
+                    <Text style={styles.workoutFieldText}>
+                      {workout.intensity || 'Medium'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.workoutField}
+                onPress={() => openPicker(selectedDay, index, 'timing', WORKOUT_TIMING_OPTIONS)}
+              >
+                <Text style={styles.workoutFieldLabel}>Workout Time</Text>
+                <View style={styles.workoutFieldValue}>
+                  <Text style={styles.workoutFieldText}>
+                    {workout.timing || '—'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                </View>
+              </TouchableOpacity>
+
+              {index > 0 && (
+                <TouchableOpacity
+                  style={styles.removeWorkoutBtn}
+                  onPress={() => removeWorkout(selectedDay, index)}
+                >
+                  <Ionicons name="trash-outline" size={18} color={colors.error} />
+                  <Text style={styles.removeWorkoutText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+
+          {selectedWorkouts.length < 5 && (
+            <TouchableOpacity
+              style={styles.addAnotherWorkoutButton}
+              onPress={() => addWorkout(selectedDay)}
+              accessibilityLabel={addWorkoutLabel}
+              accessibilityRole="button"
+            >
+              <Ionicons name="add" size={20} color={colors.primary} />
+              <Text style={styles.addAnotherWorkoutText}>{addWorkoutLabel}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
 
       {/* Save Modal */}
       <Modal
@@ -564,8 +594,12 @@ export default function TrainingScreen() {
         animationType="fade"
         onRequestClose={() => setShowSaveModal(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowSaveModal(false)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={[styles.modalOverlay, styles.saveModalOverlay]} onPress={() => setShowSaveModal(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Save Training Plan</Text>
               <TouchableOpacity onPress={() => setShowSaveModal(false)}>
@@ -581,6 +615,7 @@ export default function TrainingScreen() {
               placeholderTextColor="#9CA3AF"
               autoFocus
               returnKeyType="done"
+              maxLength={40}
             />
 
             <View style={styles.modalButtons}>
@@ -602,6 +637,7 @@ export default function TrainingScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Load Modal */}
@@ -611,8 +647,14 @@ export default function TrainingScreen() {
         animationType="slide"
         onRequestClose={() => setShowLoadModal(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowLoadModal(false)}>
-          <Pressable style={styles.loadModalContent} onPress={() => {}}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowLoadModal(false)}
+            accessibilityLabel="Close load training plan modal"
+            accessibilityRole="button"
+          />
+          <View style={styles.loadModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Load Training Plan</Text>
               <TouchableOpacity onPress={() => setShowLoadModal(false)}>
@@ -628,25 +670,36 @@ export default function TrainingScreen() {
                 </Text>
               </View>
             ) : (
-              <ScrollView style={styles.plansList}>
-                {trainingPlanHook.savedPlans.map((plan) => (
+              <ScrollView
+                style={styles.plansList}
+                contentContainerStyle={styles.plansListContent}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {trainingPlanHook.savedPlans.map((plan) => {
+                  const isLoadedPlan = plan.id === trainingPlanHook.currentPlanId;
+
+                  return (
                   <View key={plan.id} style={styles.planItem}>
                     <View style={styles.planItemLeft}>
-                      <Text style={styles.planItemName} numberOfLines={1}>
-                        {plan.name}
-                      </Text>
-                      {plan.is_active && (
-                        <View style={styles.activeBadgeSmall}>
-                          <Text style={styles.activeBadgeTextSmall}>Active</Text>
-                        </View>
-                      )}
+                      <View style={styles.planItemTitleRow}>
+                        <Text style={styles.planItemName} numberOfLines={1}>
+                          {plan.name}
+                        </Text>
+                        {isLoadedPlan && (
+                          <View style={styles.activeBadgeSmall}>
+                            <Text style={styles.activeBadgeTextSmall}>Active</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.planItemDate}>
-                        Created {new Date(plan.created_at).toLocaleDateString()}
+                        {getPlanDateLabel(plan)}
                       </Text>
                     </View>
 
                     <View style={styles.planItemActions}>
-                      {!plan.is_active && (
+                      {!isLoadedPlan && (
                         <TouchableOpacity
                           style={styles.planActionBtn}
                           onPress={() => handleLoadPlan(plan.id)}
@@ -662,11 +715,12 @@ export default function TrainingScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                ))}
+                  );
+                })}
               </ScrollView>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Type Picker */}
@@ -733,30 +787,132 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  headerCard: {
+  trainingHeader: {
     backgroundColor: colors.cardBackground,
-    marginHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 8,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
-  headerTop: {
-    marginBottom: 12,
-  },
-  titleSection: {
+  planControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    minHeight: 40,
+    marginBottom: 4,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
+  planInfo: {
     flex: 1,
+    marginRight: 8,
+    minWidth: 0,
+  },
+  planTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'nowrap',
+  },
+  planTitle: {
+    flexShrink: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  savedConfirmationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: colors.successLight,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+    gap: 3,
+    flexShrink: 0,
+  },
+  savedConfirmationText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.successText,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flexShrink: 0,
+  },
+  headerActionButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActionButtonSecondary: {
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerActionButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  calendarRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  calendarDay: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 0,
+  },
+  calendarWeekday: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  calendarWeekdaySelected: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  calendarDateCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDateCircleSelected: {
+    backgroundColor: colors.primary,
+  },
+  calendarDateCircleToday: {
+    borderWidth: 1.5,
+    borderColor: colors.primaryBorder,
+  },
+  calendarDateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  calendarDateTextSelected: {
+    fontWeight: '800',
+    color: colors.textInverse,
+  },
+  calendarDateTextToday: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 2,
   },
   activeBadge: {
     paddingHorizontal: 8,
@@ -765,6 +921,7 @@ const getStyles = (colors) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.successBorder,
+    flexShrink: 0,
   },
   activeBadgeText: {
     fontSize: 11,
@@ -778,58 +935,10 @@ const getStyles = (colors) => StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.successBorder,
-    marginLeft: 8,
+    flexShrink: 0,
   },
   activeBadgeTextSmall: {
     fontSize: 10,
-    fontWeight: '700',
-    color: colors.successText,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6,
-    minHeight: 36,
-  },
-  actionBtnSecondary: {
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionBtnPrimary: {
-    backgroundColor: colors.primary,
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  actionBtnTextPrimary: {
-    color: colors.textInverse,
-  },
-  confirmationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.successLight,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.success,
-    gap: 6,
-  },
-  confirmationText: {
-    fontSize: 13,
     fontWeight: '700',
     color: colors.successText,
   },
@@ -837,74 +946,27 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingTop: 11,
     paddingBottom: 20,
   },
-  dayCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 12,
-    overflow: 'hidden',
+  workoutsContainer: {
+    gap: 12,
   },
-  dayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: colors.inputBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  dayHeaderLeft: {
+  addAnotherWorkoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  dayChevron: {
-    marginRight: 4,
-  },
-  dayTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    textTransform: 'capitalize',
-  },
-  workoutCountBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  workoutCountText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  addWorkoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    height: 46,
+    borderRadius: 12,
     backgroundColor: colors.primaryLight,
-    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
-    gap: 4,
+    gap: 8,
   },
-  addWorkoutText: {
-    fontSize: 12,
+  addAnotherWorkoutText: {
+    fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
-  },
-  workoutsContainer: {
-    padding: 14,
-    gap: 12,
   },
   workoutCard: {
     backgroundColor: colors.cardBackground,
@@ -998,6 +1060,15 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
   },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  keyboardAvoidingOverlay: {
+    flex: 1,
+  },
+  saveModalOverlay: {
+    justifyContent: 'flex-end',
+  },
   modalContent: {
     backgroundColor: colors.cardBackground,
     borderRadius: 16,
@@ -1005,10 +1076,10 @@ const getStyles = (colors) => StyleSheet.create({
   },
   loadModalContent: {
     backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     padding: 20,
     maxHeight: '80%',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1074,7 +1145,10 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '600',
   },
   plansList: {
-    maxHeight: 500,
+    flexShrink: 1,
+  },
+  plansListContent: {
+    paddingBottom: 4,
   },
   planItem: {
     flexDirection: 'row',
@@ -1091,11 +1165,17 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  planItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   planItemName: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '800',
     color: colors.text,
-    marginBottom: 4,
   },
   planItemDate: {
     fontSize: 12,

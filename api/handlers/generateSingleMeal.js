@@ -10,6 +10,13 @@ import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import {
+  buildMealSlots,
+  toInternalMealType,
+  toUiMealType,
+  resolveMealToggles,
+  getInactiveMealTypeError,
+} from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -23,8 +30,6 @@ const AI_CONFIG = {
   openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 800 },
 };
 
-const toInternalKey = (k) => (k === 'snacks' ? 'snack' : k);
-const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
 
 function toMealString(name, macros) {
   if (!macros) return name;
@@ -58,6 +63,8 @@ export function createGenerateSingleMealHandler(provider) {
         weekStarting,
         userPrompt,
         ragContext,
+        includeSnacks,
+        includeDessert,
       } = req.body;
 
       if (!userProfile || !day || !rawMealType) {
@@ -74,8 +81,14 @@ export function createGenerateSingleMealHandler(provider) {
         });
       }
 
-      const mealType = toInternalKey(rawMealType);
-      const outKey = toOutputKey(mealType);
+      const inactiveError = getInactiveMealTypeError(rawMealType, { includeSnacks, includeDessert });
+      if (inactiveError) return res.status(400).json({ success: false, error: inactiveError });
+
+      const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
+      const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+
+      const mealType = toInternalMealType(rawMealType);
+      const outKey = toUiMealType(mealType);
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
@@ -87,6 +100,7 @@ export function createGenerateSingleMealHandler(provider) {
         userProfile,
         todayWorkouts: dayWorkouts,
         workoutTiming: timingMap[dayTiming] || null,
+        mealSlots,
       });
 
       const budget = nutrition.mealBudgets[mealType];

@@ -7,8 +7,8 @@ import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { buildMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AI_CONFIG = {
@@ -22,17 +22,23 @@ export function createGenerateDayWebHandler(provider) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { userProfile, foodPreferences, trainingPlan, day } = req.body;
+    const { userProfile, foodPreferences, trainingPlan, day, includeSnacks, includeDessert } = req.body;
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
     }
 
+    const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
+    const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     });
+    // Express does not flush headers implicitly the way Next.js Pages API does.
+    res.flushHeaders?.();
 
     const send = (event, data) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -46,6 +52,7 @@ export function createGenerateDayWebHandler(provider) {
         userProfile,
         todayWorkouts: dayWorkouts,
         workoutTiming: dayTiming,
+        mealSlots,
       });
 
       send('nutrition', {
@@ -64,7 +71,7 @@ export function createGenerateDayWebHandler(provider) {
       const todayTraining = formatTrainingDay(dayWorkouts);
       const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
 
-      for (const mealType of MEAL_TYPES) {
+      for (const mealType of mealSlots) {
         send('status', { mealType, status: 'generating' });
 
         const budget = nutrition.mealBudgets[mealType];

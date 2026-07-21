@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useMealCompletions, MEAL_TYPES } from '../../hooks/useMealCompletions';
+import { getDayMealToggles, getActiveMealTypes } from '../../utils/mealHelpers';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +25,7 @@ const MEAL_CONFIG = {
   breakfast: { label: 'Breakfast', color: '#f59e0b' },
   lunch:     { label: 'Lunch',     color: '#22c55e' },
   dinner:    { label: 'Dinner',    color: '#3b82f6' },
-  snack:     { label: 'Snack',     color: '#a855f7' },
+  snacks:    { label: 'Snack',     color: '#a855f7' },
   dessert:   { label: 'Dessert',   color: '#ec4899' },
 };
 
@@ -144,10 +145,11 @@ export default function NutritionDetailScreen() {
 
   const todayDay = getTodayDayName();
   const todayMeals = mealPlanHook.mealPlan?.[todayDay] ?? {};
+  const activeTypes = getActiveMealTypes(getDayMealToggles(todayMeals));
 
-  // Total planned macros for today
+  // Total planned macros for today (active types only)
   const totalMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  MEAL_TYPES.forEach((mt) => {
+  activeTypes.forEach((mt) => {
     if (todayMeals[mt]) {
       const p = parseMeal(todayMeals[mt]);
       totalMacros.calories += p.calories;
@@ -157,9 +159,9 @@ export default function NutritionDetailScreen() {
     }
   });
 
-  // Eaten macros (only completed meals)
+  // Eaten macros (only completed meals, active types only)
   const eatenMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  MEAL_TYPES.forEach((mt) => {
+  activeTypes.forEach((mt) => {
     const done = mealCompletionsHook.completions.some(
       (c) => c.day_of_week === todayDay && c.meal_type === mt
     );
@@ -172,8 +174,8 @@ export default function NutritionDetailScreen() {
     }
   });
 
-  // Per-meal-type calories for Calories pie chart
-  const mealTypeCalories = MEAL_TYPES.map((mt) => {
+  // Per-meal-type calories for Calories pie chart (active types only)
+  const mealTypeCalories = activeTypes.map((mt) => {
     const cfg = getMealConfig(mt);
     const cal = todayMeals[mt] ? parseMeal(todayMeals[mt]).calories : 0;
     return { label: cfg.label, color: cfg.color, value: cal };

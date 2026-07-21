@@ -1,7 +1,9 @@
 // mobile/hooks/useMealPlan.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCurrentWeekMealPlan, fetchMealPlanByWeek, saveMealPlan } from '../../shared/lib/dataClient';
 import { apiClient } from '../../shared/services/api';
+import { resolveMealToggles } from '../../shared/lib/mealSlots';
+import { getDayMealToggles, getActiveMealTypes, isPastDay } from '../utils/mealHelpers';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
@@ -17,6 +19,8 @@ const EMPTY_DAY = {
   dinner_rating: 0,
   dessert_rating: 0,
   snacks_rating: 0,
+  include_snacks: true,
+  include_dessert: true,
 };
 
 const EMPTY_WEEK = {
@@ -71,6 +75,9 @@ const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
 export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
   const [mealPlan, setMealPlan] = useState(EMPTY_WEEK);
+  const mealPlanRef = useRef(null);
+  // Keep ref in sync so getDayTogglePayload always reads the latest plan
+  mealPlanRef.current = mealPlan;
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [currentWeekStarting, setCurrentWeekStarting] = useState(getMondayOfCurrentWeek());
@@ -201,8 +208,10 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
       // Get existing meals for this day
       const existingDayMeals = mealPlan[day] || { ...EMPTY_DAY };
       
-      // Find empty meal slots
-      const emptyMealTypes = MEAL_TYPES.filter(mt => {
+      // Find empty meal slots among active types only
+      const togglePayload = getDayTogglePayload(day);
+      const activeUiTypes = getActiveMealTypes(togglePayload);
+      const emptyMealTypes = activeUiTypes.filter(mt => {
         const meal = existingDayMeals[mt];
         return !meal || typeof meal !== 'string' || !meal.trim();
       });
@@ -222,6 +231,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
           foodPreferences,
           trainingPlan,
           weekStarting: currentWeekStarting,
+          ...togglePayload,
           debug: !!onDebug, // Enable debug mode if callback provided
         },
         // Progress callback for SSE events
@@ -318,6 +328,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
         userProfile,
         foodPreferences,
         trainingPlan,
+        ...getDayTogglePayload(day),
       });
 
       if (result.success) {
@@ -354,6 +365,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
         weekStarting: currentWeekStarting,
         existingMeals: mealPlan,
         userPrompt, // Optional user suggestion/preference
+        ...getDayTogglePayload(day),
       });
 
       if (result && result.success && result.meal) {
@@ -421,6 +433,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
             userProfile, 
             foodPreferences,
             weekStarting: currentWeekStarting,
+            ...getDayTogglePayload(day),
           },
           // Progress callback for SSE events
           (event) => {
@@ -591,6 +604,50 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
     }
   };
 
+  /**
+   * Read the current toggle state for a day and resolve to normalized booleans.
+   * Reads from mealPlanRef so it always reflects the latest plan without stale closures.
+   */
+  const getDayTogglePayload = useCallback((day) => {
+    const dayData = mealPlanRef.current?.[day];
+    return resolveMealToggles({
+      includeSnacks: dayData?.include_snacks,
+      includeDessert: dayData?.include_dessert,
+    });
+  }, []);
+
+  /**
+   * Persist toggle changes for a day. Rejects past days.
+   */
+  const setDayMealToggles = useCallback(async (day, { includeSnacks, includeDessert }) => {
+    if (isPastDay(day, currentWeekStarting)) {
+      console.warn('useMealPlan: cannot change toggles for a past day', day);
+      return { success: false };
+    }
+
+    const updated = (prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        include_snacks: includeSnacks,
+        include_dessert: includeDessert,
+      },
+    });
+
+    setMealPlan(updated);
+
+    if (user && !isGuest) {
+      try {
+        const newPlan = updated(mealPlanRef.current);
+        await saveMealPlan(user.id, newPlan, currentWeekStarting);
+      } catch (err) {
+        console.error('useMealPlan: error saving toggle state', err);
+      }
+    }
+
+    return { success: true };
+  }, [currentWeekStarting, isGuest, user]);
+
   return {
     mealPlan,
     updateMeal,
@@ -605,6 +662,8 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
     getMealStatus,
     loadMealPlanByWeek,
     saveCurrentMealPlan,
+    setDayMealToggles,
+    getDayTogglePayload,
     isGenerating,
     isLoading,
     statusMessage,

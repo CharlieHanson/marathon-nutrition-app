@@ -99,7 +99,25 @@ export default async function handler(req, res) {
       console.error('Error deleting food_preferences:', prefsError);
     }
 
-    // 6. Delete user profile
+    // 6. Delete usage limits (FK references user_profiles.id, not auth UUID)
+    const { data: profileRow } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileRow?.id) {
+      const { error: usageLimitsError } = await supabase
+        .from('usage_limits')
+        .delete()
+        .eq('user_id', profileRow.id);
+
+      if (usageLimitsError) {
+        console.error('Error deleting usage_limits:', usageLimitsError);
+      }
+    }
+
+    // 7. Delete user profile
     const { error: profileError } = await supabase
       .from('user_profiles')
       .delete()
@@ -109,7 +127,7 @@ export default async function handler(req, res) {
       console.error('Error deleting user_profiles:', profileError);
     }
 
-    // 7. Handle B2B relationships
+    // 8. Handle B2B relationships
     // Delete client-nutritionist relationships where user is the client
     const { error: clientRelError } = await supabase
       .from('client_nutritionist')
@@ -120,7 +138,7 @@ export default async function handler(req, res) {
       console.error('Error deleting client_nutritionist (as client):', clientRelError);
     }
 
-    // 8. Check if user is a nutritionist
+    // 9. Check if user is a nutritionist
     const { data: nutritionistData } = await supabase
       .from('nutritionists')
       .select('id')
@@ -147,7 +165,7 @@ export default async function handler(req, res) {
         .eq('user_id', userId);
     }
 
-    // 9. Delete from profiles table
+    // 10. Delete from profiles table
     const { error: profilesError } = await supabase
       .from('profiles')
       .delete()
@@ -157,7 +175,7 @@ export default async function handler(req, res) {
       console.error('Error deleting profiles:', profilesError);
     }
 
-    // 10. Finally, delete the auth user (this is permanent!)
+    // 11. Finally, delete the auth user (this is permanent!)
     const { error: authError } = await supabase.auth.admin.deleteUser(userId);
 
     if (authError) {

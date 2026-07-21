@@ -47,6 +47,11 @@ const HEIGHT_UNITS = [
   { value: 'ft', label: 'ft / in' },
 ];
 
+const AGE_OPTIONS = Array.from({ length: 150 - 13 + 1 }, (_, i) => {
+  const age = String(13 + i);
+  return { value: age, label: age };
+});
+
 function parseWeightForDisplay(raw) {
   if (!raw || typeof raw !== 'string') return { value: '', unit: 'lbs' };
   const s = raw.trim().toLowerCase();
@@ -111,6 +116,7 @@ export default function ProfileScreen() {
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
+  const [showAgePicker, setShowAgePicker] = useState(false);
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
   const [showHeightUnitPicker, setShowHeightUnitPicker] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
@@ -266,15 +272,24 @@ export default function ProfileScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Age</Text>
-                <TextInput
-                  style={[styles.input, isGuest && styles.inputDisabled]}
-                  placeholder="e.g., 25"
-                  value={profileHook.profile.age || ''}
-                  onChangeText={(text) => profileHook.updateProfile('age', text)}
-                  keyboardType="numeric"
-                  editable={!isGuest}
-                  placeholderTextColor={colors.placeholderColor}
-                />
+                <TouchableOpacity
+                  style={[styles.pickerButton, isGuest && styles.inputDisabled]}
+                  onPress={() => !isGuest && setShowAgePicker(true)}
+                  disabled={isGuest}
+                >
+                  <Text
+                    style={[
+                      styles.pickerButtonText,
+                      !AGE_OPTIONS.some((o) => o.value === String(profileHook.profile.age || '').trim()) &&
+                        styles.pickerButtonPlaceholder,
+                    ]}
+                  >
+                    {AGE_OPTIONS.some((o) => o.value === String(profileHook.profile.age || '').trim())
+                      ? String(profileHook.profile.age)
+                      : 'Select age'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.inputGroup}>
@@ -541,6 +556,47 @@ export default function ProfileScreen() {
           </ScrollView>
         )}
       </View>
+
+      {/* Age Picker Modal */}
+      <Modal visible={showAgePicker} transparent animationType="slide" onRequestClose={() => setShowAgePicker(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAgePicker(false)}>
+          <Pressable style={styles.pickerModal} onPress={() => {}}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Age</Text>
+              <TouchableOpacity onPress={() => setShowAgePicker(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerOptions}>
+              {AGE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.pickerOption,
+                    String(profileHook.profile.age) === option.value && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    profileHook.updateProfile('age', option.value);
+                    setShowAgePicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      String(profileHook.profile.age) === option.value && styles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {String(profileHook.profile.age) === option.value && (
+                    <Ionicons name="checkmark" size={20} color="#F6921D" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Goal Picker Modal */}
       <Modal visible={showGoalPicker} transparent animationType="slide" onRequestClose={() => setShowGoalPicker(false)}>
@@ -864,17 +920,15 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     backgroundColor: colors.cardBackground,
-    marginHorizontal: 12,
-    marginTop: 8,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   tab: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 2,
@@ -894,15 +948,15 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    marginHorizontal: 12,
-    marginTop: 8,          // ← gap between tab bar and content
-    borderRadius: 12,
+    marginTop: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
     backgroundColor: colors.cardBackground,
   },
   tabContent: {
     flex: 1,
-    borderRadius: 12,
     overflow: 'hidden',
   },
   loadingContainer: {
@@ -921,8 +975,9 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 20,
   },
   // ── Section labels (replacing heavy icon headers) ──
   section: {

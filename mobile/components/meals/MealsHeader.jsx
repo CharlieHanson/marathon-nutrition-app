@@ -3,60 +3,76 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   Animated,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { DAY_LABELS } from '../../utils/mealHelpers';
+
+const ARROW_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
 
 export const WeekNavigation = ({
-  currentWeekStarting,
-  isCurrentWeek,
-  formatWeekDate,
+  weekRange,
+  weekStatus,
   onPreviousWeek,
   onNextWeek,
-  onCurrentWeek,
+  onReturnToCurrentWeek,
   isGuest,
   user,
   animatedStyle,
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const navDisabled = !user || isGuest;
 
   return (
     <Animated.View style={[styles.weekNavRow, animatedStyle]}>
       <TouchableOpacity
         onPress={onPreviousWeek}
-        style={[styles.weekNavIconBtn, (!user || isGuest) && styles.disabledBtn]}
-        disabled={!user || isGuest}
+        style={[styles.weekNavIconBtn, navDisabled && styles.disabledBtn]}
+        disabled={navDisabled}
+        accessibilityLabel="Previous week"
+        accessibilityRole="button"
+        hitSlop={ARROW_HIT_SLOP}
       >
         <Ionicons
           name="chevron-back"
-          size={18}
-          color={!user || isGuest ? colors.textTertiary : colors.textSecondary}
+          size={19}
+          color={navDisabled ? colors.textTertiary : colors.textSecondary}
         />
       </TouchableOpacity>
 
       <View style={styles.weekNavCenter}>
-        <Text style={styles.weekNavText}>Week of {formatWeekDate(currentWeekStarting)}</Text>
-        {!isCurrentWeek ? (
-          <TouchableOpacity onPress={onCurrentWeek} style={styles.currentWeekChip}>
-            <Text style={styles.currentWeekChipText}>Current</Text>
+        <Text style={styles.weekRangeText} numberOfLines={1}>
+          {weekRange}
+        </Text>
+        {weekStatus.canReturn ? (
+          <TouchableOpacity
+            onPress={onReturnToCurrentWeek}
+            style={styles.backToTodayBtn}
+            accessibilityLabel="Return to current week"
+            accessibilityRole="button"
+            hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }}
+          >
+            <Text style={styles.backToTodayText}>Back to today</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       <TouchableOpacity
         onPress={onNextWeek}
-        style={[styles.weekNavIconBtn, (!user || isGuest) && styles.disabledBtn]}
-        disabled={!user || isGuest}
+        style={[styles.weekNavIconBtn, navDisabled && styles.disabledBtn]}
+        disabled={navDisabled}
+        accessibilityLabel="Next week"
+        accessibilityRole="button"
+        hitSlop={ARROW_HIT_SLOP}
       >
         <Ionicons
           name="chevron-forward"
-          size={18}
-          color={!user || isGuest ? colors.textTertiary : colors.textSecondary}
+          size={19}
+          color={navDisabled ? colors.textTertiary : colors.textSecondary}
         />
       </TouchableOpacity>
     </Animated.View>
@@ -76,38 +92,39 @@ export const QuickActionsRow = ({
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-
   const groceryLimitReached = groceryRemaining === 0;
 
   return (
-    // IMPORTANT: no fixed paddingVertical here; parent animation controls paddingTop/paddingBottom
     <Animated.View style={[styles.quickActionsRow, animatedStyle]}>
       {hasMeals ? (
         <>
           <TouchableOpacity
-            style={[styles.quickActionBtn, styles.quickActionBtnLeft]}
+            style={styles.quickActionBtn}
             onPress={onAnalytics}
+            accessibilityLabel="Analytics"
+            accessibilityRole="button"
           >
-            <Ionicons name="bar-chart-outline" size={18} color={colors.textSecondary} />
+            <Ionicons name="bar-chart-outline" size={18} color={colors.primary} />
             <Text style={styles.quickActionText}>Analytics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.quickActionBtn,
-              styles.quickActionBtnRight,
               groceryLimitReached && styles.quickActionBtnDisabled,
             ]}
             onPress={onGroceryList}
             disabled={loadingGroceryList || groceryLimitReached}
+            accessibilityLabel="Grocery list"
+            accessibilityRole="button"
           >
             {loadingGroceryList ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Ionicons
                 name="cart-outline"
                 size={18}
-                color={groceryLimitReached ? colors.textTertiary : colors.textSecondary}
+                color={groceryLimitReached ? colors.textTertiary : colors.primary}
               />
             )}
             <Text
@@ -124,19 +141,23 @@ export const QuickActionsRow = ({
         <>
           {canGenerate && (
             <TouchableOpacity
-              style={[styles.quickActionBtn, styles.quickActionBtnLeft]}
+              style={styles.quickActionBtn}
               onPress={onMealPrep}
+              accessibilityLabel="Meal prep"
+              accessibilityRole="button"
             >
-              <Ionicons name="restaurant-outline" size={18} color={colors.textSecondary} />
+              <Ionicons name="restaurant-outline" size={18} color={colors.primary} />
               <Text style={styles.quickActionText}>Meal Prep</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={[styles.quickActionBtn, styles.quickActionBtnRight]}
+            style={styles.quickActionBtn}
             onPress={onLogMeal}
+            accessibilityLabel="Log meal"
+            accessibilityRole="button"
           >
-            <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
             <Text style={styles.quickActionText}>Log Meal</Text>
           </TouchableOpacity>
         </>
@@ -145,39 +166,90 @@ export const QuickActionsRow = ({
   );
 };
 
-export const DaySelector = ({ days, dayLabels, selectedDay, onSelectDay, animatedStyle, todayDayOfWeek, isCurrentWeek }) => {
+export const DaySelector = ({
+  days,
+  weekDateNumbers,
+  selectedDay,
+  onSelectDay,
+  animatedStyle,
+  todayDayOfWeek,
+  isCurrentWeek,
+}) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
   return (
-    // IMPORTANT: no fixed paddingVertical here; parent animation controls paddingTop/paddingBottom
-    <Animated.View style={[styles.dayPillsContainer, animatedStyle]}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dayPills}
-      >
-        {days.map((day, index) => {
-          const isToday = isCurrentWeek && day === todayDayOfWeek;
-          return (
-            <TouchableOpacity
-              key={day}
-              style={[styles.dayPill, selectedDay === day && styles.dayPillActive]}
-              onPress={() => onSelectDay(day)}
+    <Animated.View style={[styles.calendarRow, animatedStyle]}>
+      {days.map((day, index) => {
+        const isSelected = selectedDay === day;
+        const isToday = isCurrentWeek && day === todayDayOfWeek;
+
+        return (
+          <TouchableOpacity
+            key={day}
+            style={styles.calendarDay}
+            onPress={() => onSelectDay(day)}
+            activeOpacity={0.7}
+            accessibilityLabel={`${DAY_LABELS[index]}, ${weekDateNumbers[index]}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+          >
+            <Text
+              style={[
+                styles.calendarWeekday,
+                isSelected && styles.calendarWeekdaySelected,
+              ]}
             >
-              <Text style={[styles.dayPillText, selectedDay === day && styles.dayPillTextActive]}>
-                {dayLabels[index]}
+              {DAY_LABELS[index].toUpperCase()}
+            </Text>
+            <View
+              style={[
+                styles.calendarDateCircle,
+                isSelected && styles.calendarDateCircleSelected,
+                isToday && !isSelected && styles.calendarDateCircleToday,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.calendarDateText,
+                  isSelected && styles.calendarDateTextSelected,
+                  isToday && !isSelected && styles.calendarDateTextToday,
+                ]}
+              >
+                {weekDateNumbers[index]}
               </Text>
-              {isToday && (
-                <View style={styles.todayBadge}>
-                  <Text style={styles.todayBadgeText}>Today</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+            </View>
+            {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
+          </TouchableOpacity>
+        );
+      })}
     </Animated.View>
+  );
+};
+
+const MACRO_COLORS = {
+  calories: '#F59E0B',
+  protein: '#10B981',
+  carbs: '#3B82F6',
+  fat: '#8B5CF6',
+};
+
+const MacroColumn = ({ value, label, color }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
+  return (
+    <View style={styles.macroColumn}>
+      <Text
+        style={[styles.macroValue, { color }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
+      <Text style={styles.macroLabel}>{label}</Text>
+    </View>
   );
 };
 
@@ -189,53 +261,10 @@ export const MacrosSummary = ({ dayMacros, hasMealsForDay, animatedStyle }) => {
     <Animated.View style={[styles.macrosRow, animatedStyle]}>
       {hasMealsForDay && dayMacros && dayMacros.calories > 0 ? (
         <>
-          <View style={[styles.macroChip, styles.macroChipCalories]}>
-            <Text 
-              style={styles.macroChipValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.7}
-            >
-              {dayMacros.calories}
-            </Text>
-            <Text style={styles.macroChipLabel}>Cal</Text>
-          </View>
-
-          <View style={[styles.macroChip, styles.macroChipProtein]}>
-            <Text 
-              style={styles.macroChipValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.7}
-            >
-              {dayMacros.protein}g
-            </Text>
-            <Text style={styles.macroChipLabel}>Protein</Text>
-          </View>
-
-          <View style={[styles.macroChip, styles.macroChipCarbs]}>
-            <Text 
-              style={styles.macroChipValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.7}
-            >
-              {dayMacros.carbs}g
-            </Text>
-            <Text style={styles.macroChipLabel}>Carbs</Text>
-          </View>
-
-          <View style={[styles.macroChip, styles.macroChipFat]}>
-            <Text 
-              style={styles.macroChipValue}
-              numberOfLines={1}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.7}
-            >
-              {dayMacros.fat}g
-            </Text>
-            <Text style={styles.macroChipLabel}>Fat</Text>
-          </View>
+          <MacroColumn value={dayMacros.calories} label="Cal" color={MACRO_COLORS.calories} />
+          <MacroColumn value={`${dayMacros.protein}g`} label="Protein" color={MACRO_COLORS.protein} />
+          <MacroColumn value={`${dayMacros.carbs}g`} label="Carbs" color={MACRO_COLORS.carbs} />
+          <MacroColumn value={`${dayMacros.fat}g`} label="Fat" color={MACRO_COLORS.fat} />
         </>
       ) : (
         <View style={styles.noMealsContainer}>
@@ -246,25 +275,19 @@ export const MacrosSummary = ({ dayMacros, hasMealsForDay, animatedStyle }) => {
   );
 };
 
-const CHIP_MIN_HEIGHT = 52;
-
 const getStyles = (colors) => StyleSheet.create({
   weekNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primaryBorder,
-    backgroundColor: colors.primaryLight,
+    marginBottom: 7,
   },
   weekNavIconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -273,165 +296,151 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 6,
+    minWidth: 0,
   },
-  weekNavText: {
+  weekRangeText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: colors.text,
+    textAlign: 'center',
   },
-  currentWeekChip: {
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
+  backToTodayBtn: {
+    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  currentWeekChipText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textInverse,
+  backToTodayText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
   },
 
-  // NOTE: remove fixed paddingVertical so animated padding works correctly
   quickActionsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    gap: 8,
+    overflow: 'hidden',
   },
   quickActionBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-    backgroundColor: colors.primaryLight,
+    height: 42,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.inputBackground,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 7,
   },
-  quickActionBtnLeft: { marginRight: 10 },
-  quickActionBtnRight: { marginLeft: 0 },
   quickActionBtnDisabled: {
-    borderColor: colors.border,
-    backgroundColor: colors.inputBackground,
     opacity: 0.6,
   },
   quickActionText: {
     fontSize: 13,
     fontWeight: '700',
     color: colors.text,
-    marginLeft: 8,
   },
   quickActionTextDisabled: {
     color: colors.textTertiary,
   },
 
-  // NOTE: remove fixed paddingVertical so animated padding works correctly
-  dayPillsContainer: {
-    overflow: 'hidden',
+  calendarRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  dayPills: {
-    paddingHorizontal: 12,
+  calendarDay: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 0,
   },
-  dayPill: {
-    width: 56,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
+  calendarWeekday: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  calendarWeekdaySelected: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  calendarDateCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDateCircleSelected: {
+    backgroundColor: colors.primary,
+  },
+  calendarDateCircleToday: {
     borderWidth: 1.5,
     borderColor: colors.primaryBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
   },
-  dayPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  calendarDateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  dayPillText: {
-    fontSize: 13,
+  calendarDateTextSelected: {
     fontWeight: '800',
+    color: colors.textInverse,
+  },
+  calendarDateTextToday: {
     color: colors.text,
+    fontWeight: '700',
   },
-  dayPillTextActive: { color: colors.textInverse },
-  todayBadge: {
-    position: 'absolute',
-    top: -3,
-    right: -2,
-    backgroundColor: '#22c55e',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: colors.background,
-  },
-  todayBadgeText: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginTop: 2,
   },
 
-  // Taller row + taller pills
   macrosRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.inputBackground,
-    gap: 8,
-    alignItems: 'center',
-    minHeight: CHIP_MIN_HEIGHT + 36, // ensures the row can actually hold the chips
+    overflow: 'hidden',
+    minHeight: 56,
   },
-  macroChip: {
+  macroColumn: {
     flex: 1,
-    minHeight: CHIP_MIN_HEIGHT,
-    paddingHorizontal: 6,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 0, // Allow flex to shrink below content size
-    flexBasis: 0, // Ensure equal distribution
-    flexGrow: 1, // Ensure all chips grow equally
-    flexShrink: 1, // Allow chips to shrink equally
+    minWidth: 0,
   },
-  macroChipCalories: { backgroundColor: '#F59E0B', borderColor: '#D97706' },
-  macroChipProtein: { backgroundColor: '#10B981', borderColor: '#059669' },
-  macroChipCarbs: { backgroundColor: '#3B82F6', borderColor: '#2563EB' },
-  macroChipFat: { backgroundColor: '#8B5CF6', borderColor: '#7C3AED' },
-  macroChipValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    lineHeight: 16,
+  macroValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 20,
     textAlign: 'center',
   },
-  macroChipLabel: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    marginTop: 4,
-    fontWeight: '800',
-    lineHeight: 13,
+  macroLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    marginTop: 2,
+    textAlign: 'center',
   },
   noMealsContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 6,
   },
   noMealsText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textTertiary,
   },
 });

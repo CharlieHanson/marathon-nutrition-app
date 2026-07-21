@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -44,22 +44,29 @@ import { ServingsPickerModal } from '../../components/meals/modals/ServingsPicke
 // Import utilities
 import {
   DAYS,
-  DAY_LABELS,
   MEAL_TYPES,
   getMondayOfCurrentWeek,
-  formatWeekDate,
   getPreviousWeek,
   getNextWeek,
+  getWeekDateNumbers,
+  formatWeekRange,
+  getWeekStatusLabel,
   parseMeal,
   calculateDayMacros,
   countMeals,
+  getDayMealToggles,
+  getActiveMealTypes,
+  isPastDay,
 } from '../../utils/mealHelpers';
+import { MealTypeToggles } from '../../components/meals/MealTypeToggles';
 import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 
 // Animation constants
-const EXPANDED_HEADER_HEIGHT = 270;
-const COLLAPSED_HEADER_HEIGHT = 150;
-const SCROLL_THRESHOLD = 80;
+const EXPANDED_HEADER_HEIGHT = 234;
+const COLLAPSED_HEADER_HEIGHT = 126;
+const SCROLL_THRESHOLD = 70;
+const QUICK_ACTIONS_SECTION_HEIGHT = 42;
+const MACROS_SECTION_HEIGHT = 58;
 // Footer height: paddingVertical (8*2) + minHeight (60) = 76px
 const FOOTER_HEIGHT = 24;
 
@@ -114,7 +121,7 @@ export default function MealsScreen() {
   const [trainingPlan, setTrainingPlan] = useState(null);
 
   const mealPlanHook = useMealPlan(user, isGuest);
-  const { regenerateAllMeals, clearAllMeals, clearMeal, getMealStatus } = mealPlanHook;
+  const { regenerateAllMeals, clearAllMeals, clearMeal, getMealStatus, setDayMealToggles } = mealPlanHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
   const { canDo, remaining, refetch: refetchLimits } = useUsageLimits(user, isGuest);
 
@@ -125,7 +132,7 @@ export default function MealsScreen() {
   // Track if we've already celebrated today (to avoid repeated alerts)
   const [hasShownCelebration, setHasShownCelebration] = useState(false);
 
-  // Celebration when all 5 meals are completed for today
+  // Celebration when all active meals are completed for today
   useEffect(() => {
     if (!isCurrentWeek || selectedDay !== todayDayOfWeek) {
       // Reset celebration flag when switching days
@@ -133,22 +140,28 @@ export default function MealsScreen() {
       return;
     }
 
+    const todayDayMeals = mealPlanHook.mealPlan?.[todayDayOfWeek] || {};
+    const todayActiveTypes = getActiveMealTypes(getDayMealToggles(todayDayMeals));
     const todayCompletions = mealCompletionsHook.completions.filter(
       (c) => c.day_of_week === todayDayOfWeek
     );
 
-    if (todayCompletions.length === 5 && !hasShownCelebration && !mealCompletionsHook.loading) {
-      // All 5 meals completed! 🎉
+    if (
+      todayActiveTypes.length > 0 &&
+      todayCompletions.length >= todayActiveTypes.length &&
+      !hasShownCelebration &&
+      !mealCompletionsHook.loading
+    ) {
       setHasShownCelebration(true);
       setTimeout(() => {
         Alert.alert(
           '🎉 Congratulations!',
-          "You've completed all 5 meals for today! Keep up the great work!",
+          `You've completed all ${todayActiveTypes.length} meals for today! Keep up the great work!`,
           [{ text: 'Awesome!', style: 'default' }]
         );
       }, 500); // Small delay for better UX
     }
-  }, [mealCompletionsHook.completions, selectedDay, todayDayOfWeek, isCurrentWeek, hasShownCelebration, mealCompletionsHook.loading]);
+  }, [mealCompletionsHook.completions, selectedDay, todayDayOfWeek, isCurrentWeek, hasShownCelebration, mealCompletionsHook.loading, mealPlanHook.mealPlan]);
 
   // Load user data
   useEffect(() => {
@@ -419,16 +432,17 @@ export default function MealsScreen() {
   // Helper to get meal status for a specific day
   const getDayMealStatus = (day) => {
     const dayMeals = mealPlanHook.mealPlan?.[day] || {};
+    const activeTypes = getActiveMealTypes(getDayMealToggles(dayMeals));
     let filled = 0;
-    let total = MEAL_TYPES.length;
-    
-    MEAL_TYPES.forEach((mealType) => {
+    let total = activeTypes.length;
+
+    activeTypes.forEach((mealType) => {
       const meal = dayMeals[mealType];
       if (meal && typeof meal === 'string' && meal.trim().length > 0) {
         filled++;
       }
     });
-    
+
     return {
       filled,
       total,
@@ -663,13 +677,33 @@ export default function MealsScreen() {
 
   // Get day-specific meal status for FAB
   const dayMealStatus = getDayMealStatus(selectedDay);
-  
+
+  const selectedDayMeals = mealPlanHook.mealPlan?.[selectedDay] || {};
+  const dayToggles = getDayMealToggles(selectedDayMeals);
+  const activeTypes = getActiveMealTypes(dayToggles);
+
   const dayMacros = mealPlanHook.mealPlan
     ? calculateDayMacros(mealPlanHook.mealPlan[selectedDay])
     : { calories: 0, protein: 0, carbs: 0, fat: 0 };
   
   // Check if there are any meals for the selected day
   const hasMealsForDay = dayMealStatus.hasAny;
+
+  const showFab = !dayMealStatus.allFilled && canDo('meal_generation');
+  const scrollBottomPadding = showFab ? 96 : 20;
+
+  const weekDateNumbers = useMemo(
+    () => getWeekDateNumbers(mealPlanHook.currentWeekStarting),
+    [mealPlanHook.currentWeekStarting]
+  );
+  const weekRange = useMemo(
+    () => formatWeekRange(mealPlanHook.currentWeekStarting),
+    [mealPlanHook.currentWeekStarting]
+  );
+  const weekStatus = useMemo(
+    () => getWeekStatusLabel(mealPlanHook.currentWeekStarting),
+    [mealPlanHook.currentWeekStarting]
+  );
 
   // Animation interpolations
   const headerHeight = scrollY.interpolate({
@@ -678,21 +712,33 @@ export default function MealsScreen() {
     extrapolate: 'clamp',
   });
 
-  const weekNavOpacity = scrollY.interpolate({
+  const weekNavPaddingVertical = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [6, 4],
+    extrapolate: 'clamp',
+  });
+
+  const quickActionsOpacity = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
 
-  const weekNavHeight = scrollY.interpolate({
+  const quickActionsMaxHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [56, 0],
+    outputRange: [QUICK_ACTIONS_SECTION_HEIGHT, 0],
     extrapolate: 'clamp',
   });
 
-  const weekNavTranslateY = scrollY.interpolate({
+  const quickActionsTranslateY = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [0, -40],
+    outputRange: [0, -12],
+    extrapolate: 'clamp',
+  });
+
+  const quickActionsMarginBottom = scrollY.interpolate({
+    inputRange: [0, SCROLL_THRESHOLD],
+    outputRange: [9, 0],
     extrapolate: 'clamp',
   });
 
@@ -702,51 +748,15 @@ export default function MealsScreen() {
     extrapolate: 'clamp',
   });
 
-  const macrosHeight = scrollY.interpolate({
+  const macrosMaxHeight = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [110, 0],
+    outputRange: [MACROS_SECTION_HEIGHT, 0],
     extrapolate: 'clamp',
   });
 
   const macrosTranslateY = scrollY.interpolate({
     inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [0, -40],
-    extrapolate: 'clamp',
-  });
-
-  const quickActionsPaddingTop = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [10, 4],
-    extrapolate: 'clamp',
-  });
-
-  const quickActionsPaddingBottom = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [10, 8],
-    extrapolate: 'clamp',
-  });
-
-  const dayPillsPaddingTop = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [10, 8],
-    extrapolate: 'clamp',
-  });
-
-  const dayPillsPaddingBottom = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [10, 8],
-    extrapolate: 'clamp',
-  });
-
-  const weekNavBorderWidth = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const macrosBorderWidth = scrollY.interpolate({
-    inputRange: [0, SCROLL_THRESHOLD],
-    outputRange: [1, 0],
+    outputRange: [0, -12],
     extrapolate: 'clamp',
   });
 
@@ -821,26 +831,19 @@ export default function MealsScreen() {
             left: 0,
             right: 0,
             zIndex: 10,
-            marginHorizontal: 12,
-            marginTop: 10,
           },
         ]}
       >
         <WeekNavigation
-          currentWeekStarting={mealPlanHook.currentWeekStarting}
-          isCurrentWeek={isCurrentWeek}
-          formatWeekDate={formatWeekDate}
+          weekRange={weekRange}
+          weekStatus={weekStatus}
           onPreviousWeek={handlePreviousWeek}
           onNextWeek={handleNextWeek}
-          onCurrentWeek={handleCurrentWeek}
+          onReturnToCurrentWeek={handleCurrentWeek}
           isGuest={isGuest}
           user={user}
           animatedStyle={{
-            opacity: weekNavOpacity,
-            maxHeight: weekNavHeight,
-            overflow: 'hidden',
-            borderBottomWidth: weekNavBorderWidth,
-            transform: [{ translateY: weekNavTranslateY }],
+            paddingVertical: weekNavPaddingVertical,
           }}
         />
 
@@ -854,32 +857,41 @@ export default function MealsScreen() {
           groceryRemaining={remaining('grocery_list')}
           canGenerate={canDo('meal_generation')}
           animatedStyle={{
-            paddingTop: quickActionsPaddingTop,
-            paddingBottom: quickActionsPaddingBottom,
+            opacity: quickActionsOpacity,
+            maxHeight: quickActionsMaxHeight,
+            marginBottom: quickActionsMarginBottom,
+            overflow: 'hidden',
+            transform: [{ translateY: quickActionsTranslateY }],
           }}
         />
 
         <DaySelector
           days={DAYS}
-          dayLabels={DAY_LABELS}
+          weekDateNumbers={weekDateNumbers}
           selectedDay={selectedDay}
           onSelectDay={setSelectedDay}
           todayDayOfWeek={todayDayOfWeek}
           isCurrentWeek={isCurrentWeek}
-          animatedStyle={{
-            paddingTop: dayPillsPaddingTop,
-            paddingBottom: dayPillsPaddingBottom,
-          }}
         />
+
+        {!isPastDay(selectedDay, mealPlanHook.currentWeekStarting) && (
+          <MealTypeToggles
+            includeSnacks={dayToggles.includeSnacks}
+            includeDessert={dayToggles.includeDessert}
+            onToggleSnacks={(val) => setDayMealToggles(selectedDay, { includeSnacks: val, includeDessert: dayToggles.includeDessert })}
+            onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeSnacks: dayToggles.includeSnacks, includeDessert: val })}
+            disabled={mealPlanHook.isGenerating || isGuest}
+            dayMeals={selectedDayMeals}
+          />
+        )}
 
         <MacrosSummary
           dayMacros={dayMacros}
           hasMealsForDay={hasMealsForDay}
           animatedStyle={{
             opacity: macrosOpacity,
-            maxHeight: macrosHeight,
+            maxHeight: macrosMaxHeight,
             overflow: 'hidden',
-            borderTopWidth: macrosBorderWidth,
             transform: [{ translateY: macrosTranslateY }],
           }}
         />
@@ -905,17 +917,17 @@ export default function MealsScreen() {
       {/* Body — always show meal cards (including empty slots) */}
       <Animated.ScrollView
         style={styles.mealsScroll}
-        contentContainerStyle={[
-          styles.mealsContent,
-          { paddingTop: EXPANDED_HEADER_HEIGHT + statusBannerHeight + 20 },
-        ]}
+        contentContainerStyle={{
+          paddingTop: EXPANDED_HEADER_HEIGHT + statusBannerHeight + 11,
+          paddingBottom: scrollBottomPadding,
+        }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
       >
-        {MEAL_TYPES.map((mealType) => {
+        {activeTypes.map((mealType) => {
           const isToday = isCurrentWeek && selectedDay === todayDayOfWeek;
           const isCompleted = mealCompletionsHook.completions.some(
             (c) => c.day_of_week === selectedDay && c.meal_type === mealType
@@ -938,10 +950,14 @@ export default function MealsScreen() {
             />
           );
         })}
+        <Text style={styles.medicalDisclaimer}>
+          AI-generated meals and recipes are suggestions and for informational purposes only - not
+          professional or medical advice.
+        </Text>
       </Animated.ScrollView>
 
       {/* FAB — only show when the day has at least one empty meal AND limit not reached */}
-      {!dayMealStatus.allFilled && canDo('meal_generation') && (
+      {!showFab ? null : (
         <>
           <TouchableOpacity 
             style={[styles.fab, { bottom: fabBottom }]} 
@@ -1044,6 +1060,7 @@ export default function MealsScreen() {
         defaultMealType={logMealDefaultType}
         isGuest={isGuest}
         userId={user?.id}
+        mealPlan={mealPlanHook.mealPlan}
       />
 
       <ServingsPickerModal
@@ -1098,15 +1115,13 @@ const getStyles = (colors) => StyleSheet.create({
   },
   headerCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   emptyState: {
     flex: 1,
@@ -1131,9 +1146,15 @@ const getStyles = (colors) => StyleSheet.create({
   mealsScroll: {
     flex: 1,
   },
-  mealsContent: {
-    padding: 16,
-    paddingBottom: 140,
+  medicalDisclaimer: {
+    marginTop: 8,
+    marginBottom: 16,
+    marginHorizontal: 16,
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.textTertiary || colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   fab: {
     position: 'absolute',

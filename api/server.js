@@ -3,45 +3,15 @@
 // the Next.js `pages/api` tree. Route handlers keep their original
 // `(req, res)` Next.js signature; Express populates `req.query`/`req.body` and
 // `res.status().json()` the same way, so the handlers run unmodified.
+//
+// Routes are loaded lazily on first request so `node server.js` can boot (and
+// /health works) without a fully populated .env. Next.js only evaluated each
+// pages/api module when that route was hit; static imports here would recreate
+// every createClient() at startup and fail when SUPABASE_URL is unset.
 
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-
-// ── Route handlers (default export = Next-style (req, res) handler) ──────────
-import deleteAccount from './routes/delete-account.js';
-import estimateMacros from './routes/estimate-macros.js';
-import mealPlan from './routes/meal-plan.js';
-import preferences from './routes/preferences.js';
-import profile from './routes/profile.js';
-import getRecipe from './routes/get-recipe.js';
-
-import generateDay from './routes/generate-day.js';
-import generateDayGemini from './routes/generate-day-gemini.js';
-import generateDayOpenai from './routes/generate-day-openai.js';
-import generateDayWeb from './routes/generate-day-web.js';
-import generateDayWebGemini from './routes/generate-day-web-gemini.js';
-import generateDayWebOpenai from './routes/generate-day-web-openai.js';
-
-import generateMealPrep from './routes/generate-meal-prep.js';
-import generateMealPrepGemini from './routes/generate-meal-prep-gemini.js';
-import generateMealPrepOpenai from './routes/generate-meal-prep-openai.js';
-
-import generateSingleMeal from './routes/generate-single-meal.js';
-import generateSingleMealGemini from './routes/generate-single-meal-gemini.js';
-import generateSingleMealOpenai from './routes/generate-single-meal-openai.js';
-
-import regenerateMeal from './routes/regenerate-meal.js';
-import regenerateMealGemini from './routes/regenerate-meal-gemini.js';
-import regenerateMealOpenai from './routes/regenerate-meal-openai.js';
-
-import generateMeals from './routes/generate-meals.js';
-import generateGroceryList from './routes/generate-grocery-list.js';
-import rateMeal from './routes/rate-meal.js';
-
-import proClients from './routes/pro/clients.js';
-import proDashboard from './routes/pro/dashboard.js';
-import proProfile from './routes/pro/profile.js';
 
 const app = express();
 
@@ -50,7 +20,7 @@ const app = express();
 // so allow a generous limit well above the default 100kb.
 app.use(express.json({ limit: '5mb' }));
 
-// ── CORS ─────────────────────────────────────────────────────────────────
+// ── CORS ─────────────────────────────────────────────────────────────────────
 // Allowed origins come from CORS_ORIGINS (comma-separated). If unset, allow
 // all origins — intended for local development only.
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
@@ -73,49 +43,66 @@ app.use(
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 
-// ── Routes ──────────────────────────────────────────────────────────────────
+// ── Lazy route mounting ─────────────────────────────────────────────────────
 // Paths are preserved exactly as they were under pages/api so existing clients
 // keep working. Handlers do their own method checking (and return 405), so each
 // path is registered with app.all().
-const routes = {
-  '/api/delete-account': deleteAccount,
-  '/api/estimate-macros': estimateMacros,
-  '/api/meal-plan': mealPlan,
-  '/api/preferences': preferences,
-  '/api/profile': profile,
-  '/api/get-recipe': getRecipe,
-
-  '/api/generate-day': generateDay,
-  '/api/generate-day-gemini': generateDayGemini,
-  '/api/generate-day-openai': generateDayOpenai,
-  '/api/generate-day-web': generateDayWeb,
-  '/api/generate-day-web-gemini': generateDayWebGemini,
-  '/api/generate-day-web-openai': generateDayWebOpenai,
-
-  '/api/generate-meal-prep': generateMealPrep,
-  '/api/generate-meal-prep-gemini': generateMealPrepGemini,
-  '/api/generate-meal-prep-openai': generateMealPrepOpenai,
-
-  '/api/generate-single-meal': generateSingleMeal,
-  '/api/generate-single-meal-gemini': generateSingleMealGemini,
-  '/api/generate-single-meal-openai': generateSingleMealOpenai,
-
-  '/api/regenerate-meal': regenerateMeal,
-  '/api/regenerate-meal-gemini': regenerateMealGemini,
-  '/api/regenerate-meal-openai': regenerateMealOpenai,
-
-  '/api/generate-meals': generateMeals,
-  '/api/generate-grocery-list': generateGroceryList,
-  '/api/rate-meal': rateMeal,
-
-  '/api/pro/clients': proClients,
-  '/api/pro/dashboard': proDashboard,
-  '/api/pro/profile': proProfile,
-};
-
-for (const [path, handler] of Object.entries(routes)) {
-  app.all(path, handler);
+function mount(path, importFn) {
+  let handlerPromise = null;
+  app.all(path, async (req, res, next) => {
+    try {
+      if (!handlerPromise) {
+        handlerPromise = importFn().then((mod) => mod.default);
+      }
+      const handler = await handlerPromise;
+      return handler(req, res);
+    } catch (err) {
+      return next(err);
+    }
+  });
 }
+
+mount('/api/delete-account', () => import('./routes/delete-account.js'));
+mount('/api/estimate-macros', () => import('./routes/estimate-macros.js'));
+mount('/api/meal-plan', () => import('./routes/meal-plan.js'));
+mount('/api/preferences', () => import('./routes/preferences.js'));
+mount('/api/profile', () => import('./routes/profile.js'));
+mount('/api/get-recipe', () => import('./routes/get-recipe.js'));
+
+mount('/api/generate-day', () => import('./routes/generate-day.js'));
+mount('/api/generate-day-gemini', () => import('./routes/generate-day-gemini.js'));
+mount('/api/generate-day-openai', () => import('./routes/generate-day-openai.js'));
+mount('/api/generate-day-web', () => import('./routes/generate-day-web.js'));
+mount('/api/generate-day-web-gemini', () => import('./routes/generate-day-web-gemini.js'));
+mount('/api/generate-day-web-openai', () => import('./routes/generate-day-web-openai.js'));
+
+mount('/api/generate-meal-prep', () => import('./routes/generate-meal-prep.js'));
+mount('/api/generate-meal-prep-gemini', () => import('./routes/generate-meal-prep-gemini.js'));
+mount('/api/generate-meal-prep-openai', () => import('./routes/generate-meal-prep-openai.js'));
+
+mount('/api/generate-single-meal', () => import('./routes/generate-single-meal.js'));
+mount('/api/generate-single-meal-gemini', () => import('./routes/generate-single-meal-gemini.js'));
+mount('/api/generate-single-meal-openai', () => import('./routes/generate-single-meal-openai.js'));
+
+mount('/api/regenerate-meal', () => import('./routes/regenerate-meal.js'));
+mount('/api/regenerate-meal-gemini', () => import('./routes/regenerate-meal-gemini.js'));
+mount('/api/regenerate-meal-openai', () => import('./routes/regenerate-meal-openai.js'));
+
+mount('/api/generate-meals', () => import('./routes/generate-meals.js'));
+mount('/api/generate-grocery-list', () => import('./routes/generate-grocery-list.js'));
+mount('/api/rate-meal', () => import('./routes/rate-meal.js'));
+
+mount('/api/pro/clients', () => import('./routes/pro/clients.js'));
+mount('/api/pro/dashboard', () => import('./routes/pro/dashboard.js'));
+mount('/api/pro/profile', () => import('./routes/pro/profile.js'));
+
+// ── Error handler ───────────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('[api] unhandled error:', err);
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ success: false, error: err.message || 'Internal server error' });
+});
 
 // ── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;

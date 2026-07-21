@@ -11,13 +11,13 @@ import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { buildMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AI_CONFIG = {
@@ -25,7 +25,6 @@ const AI_CONFIG = {
   openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 16000 },
 };
 
-const toOutputKey = (k) => (k === 'snack' ? 'snacks' : k);
 
 function toMealString(name, macros) {
   if (!macros) return name;
@@ -49,11 +48,16 @@ export function createGenerateDayHandler(provider) {
       ragContext,
       debug = false,
       forceRegenerate = false,
+      includeSnacks,
+      includeDessert,
     } = req.body;
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
     }
+
+    const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
+    const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
 
     // Rate limit check must happen BEFORE writeHead sets SSE headers
     const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
@@ -71,9 +75,12 @@ export function createGenerateDayHandler(provider) {
 
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     });
+    // Express does not flush headers implicitly the way Next.js Pages API does.
+    res.flushHeaders?.();
 
     const send = (event, data) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -112,10 +119,10 @@ export function createGenerateDayHandler(provider) {
       const emptySlots = [];
 
       if (forceRegenerate) {
-        emptySlots.push(...MEAL_TYPES);
+        emptySlots.push(...mealSlots);
       } else {
-        for (const mt of MEAL_TYPES) {
-          const outKey = toOutputKey(mt);
+        for (const mt of mealSlots) {
+          const outKey = toUiMealType(mt);
           const val = dayMeals[outKey] || dayMeals[mt];
           if (val && typeof val === 'string' && val.trim()) {
             /* filled */
@@ -138,6 +145,7 @@ export function createGenerateDayHandler(provider) {
         userProfile,
         todayWorkouts: dayWorkouts,
         workoutTiming: timingMap[dayTiming] || null,
+        mealSlots,
       });
 
       send('nutrition', {
@@ -174,9 +182,9 @@ export function createGenerateDayHandler(provider) {
         budgetsToGenerate[mt] = nutrition.mealBudgets[mt];
       }
 
-      for (const mt of MEAL_TYPES) {
+      for (const mt of mealSlots) {
         if (!emptySlots.includes(mt)) {
-          send('status', { mealType: toOutputKey(mt), status: 'skipped' });
+          send('status', { mealType: toUiMealType(mt), status: 'skipped' });
         }
       }
 
@@ -218,7 +226,7 @@ export function createGenerateDayHandler(provider) {
       const dailyTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
       for (const mealType of emptySlots) {
-        const outKey = toOutputKey(mealType);
+        const outKey = toUiMealType(mealType);
         send('status', { mealType: outKey, status: 'processing' });
 
         const mealData = dayMealData[mealType] || dayMealData[outKey];

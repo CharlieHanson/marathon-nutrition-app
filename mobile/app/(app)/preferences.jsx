@@ -645,8 +645,8 @@ const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.cardBackground,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
     overflow: 'hidden',
   },
   stickyHeader: {

@@ -20,6 +20,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
 import { useMealCompletions, getCurrentDayOfWeek, MEAL_TYPES } from '../../hooks/useMealCompletions';
+import {
+  calculateDayMacros,
+  countMeals,
+  getDayMealToggles,
+  getActiveMealTypes,
+  parseMeal,
+} from '../../utils/mealHelpers';
 import { fetchPersonalInfo, fetchActiveTrainingPlan } from '../../../shared/lib/dataClient';
 import { apiClient } from '../../../shared/services/api';
 import { ErrorState } from '../../components/ErrorState';
@@ -28,60 +35,6 @@ import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 const { width } = Dimensions.get('window');
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Reuse helpers from MealsScreen
-const parseMeal = (mealString) => {
-  if (!mealString || typeof mealString !== 'string') {
-    return { name: '', calories: 0, protein: 0, carbs: 0, fat: 0 };
-  }
-
-  const calMatch = mealString.match(/Cal:\s*(\d+)/);
-  const proteinMatch = mealString.match(/P:\s*(\d+)g/);
-  const carbsMatch = mealString.match(/C:\s*(\d+)g/);
-  const fatMatch = mealString.match(/F:\s*(\d+)g/);
-
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
-  const name = nameMatch ? nameMatch[1].trim() : mealString;
-
-  return {
-    name,
-    calories: calMatch ? parseInt(calMatch[1], 10) : 0,
-    protein: proteinMatch ? parseInt(proteinMatch[1], 10) : 0,
-    carbs: carbsMatch ? parseInt(carbsMatch[1], 10) : 0,
-    fat: fatMatch ? parseInt(fatMatch[1], 10) : 0,
-  };
-};
-
-const calculateDayMacros = (dayMeals) => {
-  const total = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-
-  MEAL_TYPES.forEach((mealType) => {
-    const meal = dayMeals?.[mealType];
-    if (meal) {
-      const parsed = parseMeal(meal);
-      total.calories += parsed.calories;
-      total.protein += parsed.protein;
-      total.carbs += parsed.carbs;
-      total.fat += parsed.fat;
-    }
-  });
-
-  return total;
-};
-
-const countMeals = (mealPlan) => {
-  let filled = 0;
-  let total = 0;
-
-  DAYS.forEach((day) => {
-    MEAL_TYPES.forEach((mt) => {
-      total++;
-      const meal = mealPlan?.[day]?.[mt];
-      if (meal && typeof meal === 'string' && meal.trim()) filled++;
-    });
-  });
-
-  return { filled, total, hasPartial: filled > 0 && filled < total };
-};
 
 const getTodayDayName = () => {
   const today = new Date();
@@ -165,16 +118,18 @@ export default function DashboardScreen() {
   const todayDay = getTodayDayName();
   const todayDate = formatTodayDate();
   const todayMeals = mealPlanHook.mealPlan?.[todayDay];
+  const todayToggles = getDayMealToggles(todayMeals);
+  const todayActiveTypes = getActiveMealTypes(todayToggles);
   const todayMacros = todayMeals ? calculateDayMacros(todayMeals) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
   const todayWorkouts = getTodayWorkouts(trainingPlanHook.plan);
   const weekProgress = countMeals(mealPlanHook.mealPlan);
 
-  // Calculate eaten macros from completed meals
+  // Calculate eaten macros from completed meals (active types only)
   const calculateEatenMacros = () => {
     if (!todayMeals) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     const eaten = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
-    MEAL_TYPES.forEach((mealType) => {
+    todayActiveTypes.forEach((mealType) => {
       const isCompleted = mealCompletionsHook.completions.some(
         (c) => c.day_of_week === todayDay && c.meal_type === mealType
       );
@@ -428,7 +383,7 @@ export default function DashboardScreen() {
                 </View>
               </View>
               <View style={styles.mealCheckboxes}>
-                {MEAL_TYPES.map((mealType) => {
+                {todayActiveTypes.map((mealType) => {
                   const isCompleted = mealCompletionsHook.completions.some(
                     (c) => c.day_of_week === todayDay && c.meal_type === mealType
                   );
@@ -593,15 +548,13 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
     paddingBottom: 20,
   },
   statusStrip: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 11,
     height: 30,
   },
   statusLeft: {
@@ -634,14 +587,11 @@ const getStyles = (colors) => StyleSheet.create({
   },
   primaryTile: {
     backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
     overflow: 'hidden',
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   tileHeader: {
     flexDirection: 'row',
@@ -868,19 +818,16 @@ const getStyles = (colors) => StyleSheet.create({
   // ---- Bottom Row ----
   bottomRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
   insightTile: {
     flex: 1,
     backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
     borderLeftWidth: 4,
     minHeight: 98,
   },

@@ -10,6 +10,12 @@ import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import {
+  buildMealSlots,
+  toInternalMealType,
+  resolveMealToggles,
+  getInactiveMealTypeError,
+} from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -44,6 +50,8 @@ export function createRegenerateMealHandler(provider) {
         mealType,
         reason,
         currentMeal,
+        includeSnacks,
+        includeDessert,
       } = req.body;
 
       if (!userProfile || !mealType || !day) {
@@ -60,6 +68,12 @@ export function createRegenerateMealHandler(provider) {
         });
       }
 
+      const inactiveError = getInactiveMealTypeError(mealType, { includeSnacks, includeDessert });
+      if (inactiveError) return res.status(400).json({ success: false, error: inactiveError });
+
+      const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
+      const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
@@ -71,9 +85,10 @@ export function createRegenerateMealHandler(provider) {
         userProfile,
         todayWorkouts: dayWorkouts,
         workoutTiming: timingMap[dayTiming] || null,
+        mealSlots,
       });
 
-      const budgetKey = mealType === 'snacks' ? 'snack' : mealType;
+      const budgetKey = toInternalMealType(mealType);
       const budget = nutrition.mealBudgets[budgetKey];
 
       if (!budget) {

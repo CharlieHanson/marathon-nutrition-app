@@ -145,9 +145,20 @@ export const useMealCompletions = (user, isGuest) => {
     toggleMealCompletion,
     removeMealCompletion,
     completedCount,
-    totalMeals,
     refetch: fetchCompletions,
   };
 };
+
+/**
+ * Count how many completions exist for a specific day among a given set of active meal types.
+ * @param {Array} completions  - array from useMealCompletions
+ * @param {string} day         - e.g. 'monday'
+ * @param {string[]} activeTypes - UI-key meal types to count
+ * @returns {number}
+ */
+export const getCompletedCountForDay = (completions, day, activeTypes) =>
+  completions.filter(
+    (c) => c.day_of_week === day && activeTypes.includes(c.meal_type)
+  ).length;
 
 export { getCurrentDayOfWeek, getTodayDate, MEAL_TYPES };
