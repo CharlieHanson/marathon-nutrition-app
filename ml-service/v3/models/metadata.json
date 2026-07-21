@@ -1,0 +1,66 @@
+{
+  "version": "v3",
+  "targets_order": [
+    "g_protein",
+    "g_carb",
+    "g_vegetable",
+    "g_fat"
+  ],
+  "samples": 25000,
+  "vectorizer": {
+    "type": "FeatureUnion",
+    "word_tfidf": {
+      "analyzer": "word",
+      "ngram_range": [
+        1,
+        2
+      ],
+      "max_features": 20000,
+      "min_df": 2
+    },
+    "char_tfidf": {
+      "analyzer": "char_wb",
+      "ngram_range": [
+        3,
+        5
+      ],
+      "max_features": 30000,
+      "min_df": 2
+    }
+  },
+  "model": {
+    "type": "MultiOutputRegressor(Ridge)",
+    "ridge_alpha": 4.0,
+    "alpha_sweep": [
+      0.5,
+      1.0,
+      2.0,
+      4.0,
+      8.0
+    ],
+    "target_transform": "log1p",
+    "predict": "expm1(model.predict(X)), clamp >= 0"
+  },
+  "test_metrics": {
+    "g_protein": {
+      "mae": 24.548985721410705,
+      "rmse": 33.86698327793621,
+      "r2": 0.7530548197333529
+    },
+    "g_carb": {
+      "mae": 35.1910059786622,
+      "rmse": 41.86277544246665,
+      "r2": 0.3688622575277426
+    },
+    "g_vegetable": {
+      "mae": 29.46826736413699,
+      "rmse": 39.68859745505516,
+      "r2": 0.7107102248297665
+    },
+    "g_fat": {
+      "mae": 4.0930895005377534,
+      "rmse": 5.104170310517897,
+      "r2": 0.3235736023108532
+    }
+  }
+}

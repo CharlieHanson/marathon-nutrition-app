@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../services/getSupabase';
 
 // ================================================
 // Helpers
@@ -211,7 +211,7 @@ export async function fetchActiveTrainingPlan(userId) {
 export async function fetchAllTrainingPlans(userId) {
   const { data, error } = await supabase
     .from('training_plans')
-    .select('id, name, created_at, is_active')
+    .select('id, name, created_at, updated_at, is_active')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 

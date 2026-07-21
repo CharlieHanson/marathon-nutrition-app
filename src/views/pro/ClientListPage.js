@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Users, Search, UserPlus, Calendar, Mail, ArrowRight } from 'lucide-react';
+import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 
 // currentUser is passed from ClientsPage (AuthContext.user)
 export const ClientListPage = ({ currentUser }) => {
@@ -37,7 +38,7 @@ export const ClientListPage = ({ currentUser }) => {
       const userId = currentUser.id;
 
       console.log('ClientListPage: fetching via /api/pro/clients for', userId);
-      const res = await fetch(`/api/pro/clients?userId=${encodeURIComponent(userId)}`);
+      const res = await authenticatedFetch(getApiUrl(`/api/pro/clients?userId=${encodeURIComponent(userId)}`));
 
       if (!res.ok) {
         console.error('ClientListPage: API /pro/clients not ok', res.status);

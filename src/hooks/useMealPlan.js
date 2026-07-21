@@ -1,6 +1,6 @@
 // src/hooks/useMealPlan.js
 import { useState, useEffect } from 'react';
-import { apiClient } from '../../shared/services/api';
+import { apiClient, authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 
 const EMPTY_DAY = {
   breakfast: '',
@@ -67,9 +67,11 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         });
 
         const res = await fetch(
-          `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
-            week
-          )}`
+          getApiUrl(
+            `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
+              week
+            )}`
+          )
         );
 
         if (!res.ok) {
@@ -146,7 +148,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       try {
         const mealDescription = mealPlan[day][mealType];
         if (mealDescription && mealDescription.trim()) {
-          await fetch('/api/rate-meal', {
+          await authenticatedFetch(getApiUrl('/api/rate-meal'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -295,7 +297,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         });
         if (user && !isGuest) {
           const updatedPlan = { ...mealPlan, [day]: { ...mealPlan[day], ...result.meals } };
-          await fetch('/api/meal-plan', {
+          await authenticatedFetch(getApiUrl('/api/meal-plan'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user.id, weekStarting: currentWeekStarting, meals: updatedPlan }),
@@ -339,7 +341,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         updateMeal(day, mealType, result.meal);
         if (user && !isGuest) {
           const updatedPlan = { ...mealPlan, [day]: { ...mealPlan[day], [mealType]: result.meal } };
-          await fetch('/api/meal-plan', {
+          await authenticatedFetch(getApiUrl('/api/meal-plan'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user.id, weekStarting: currentWeekStarting, meals: updatedPlan }),
@@ -361,7 +363,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
   const regenerateMeal = async (day, mealType, reason, context) => {
     setStatusMessage(`🔄 Regenerating ${mealType} for ${day}...`);
     try {
-      const response = await fetch('/api/regenerate-meal', {
+      const response = await authenticatedFetch(getMealGenApiUrl('/api/regenerate-meal'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -402,9 +404,11 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       });
 
       const res = await fetch(
-        `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
-          weekStarting
-        )}`
+        getApiUrl(
+          `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
+            weekStarting
+          )}`
+        )
       );
 
       if (!res.ok) {
@@ -456,7 +460,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         weekStarting: currentWeekStarting,
       });
 
-      const res = await fetch('/api/meal-plan', {
+      const res = await authenticatedFetch(getApiUrl('/api/meal-plan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

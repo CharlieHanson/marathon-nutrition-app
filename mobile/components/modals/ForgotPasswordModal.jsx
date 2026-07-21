@@ -12,9 +12,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../shared/lib/supabase.native';
 
-const getBaseUrl = () => {
-  // Use environment variable or default to production URL
-  return process.env.EXPO_PUBLIC_API_URL || 'https://alimenta-nutrition.vercel.app';
+const getSiteUrl = () => {
+  const siteUrl = process.env.EXPO_PUBLIC_SITE_URL;
+  if (!siteUrl || !String(siteUrl).trim()) {
+    throw new Error(
+      'Missing EXPO_PUBLIC_SITE_URL. Set it in mobile/.env (local) and as an EAS secret for cloud builds.'
+    );
+  }
+  return String(siteUrl).trim().replace(/\/$/, '');
 };
 
 export const ForgotPasswordModal = ({ visible, onClose }) => {
@@ -38,7 +43,7 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
     setLoading(true);
 
     try {
-      const baseUrl = getBaseUrl();
+      const baseUrl = getSiteUrl();
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${baseUrl}/update-password`,
       });

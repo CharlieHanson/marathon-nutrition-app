@@ -3,6 +3,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProfilePage } from '../src/views/ProfilePage';
 import { Layout } from '../src/components/layout/Layout';
+import { authenticatedFetch, getApiUrl } from '../shared/services/api';
 
 const defaultProfile = {
   name: '',
@@ -59,7 +60,7 @@ export default function Profile() {
           userId: user.id,
         });
 
-        const res = await fetch(`/api/profile?userId=${encodeURIComponent(user.id)}`);
+        const res = await authenticatedFetch(getApiUrl(`/api/profile?userId=${encodeURIComponent(user.id)}`));
         if (!res.ok) {
           console.error('Profile page: /api/profile GET not ok', res.status);
           setProfile(defaultProfile);
@@ -109,7 +110,7 @@ export default function Profile() {
     setIsSaving(true);
     try {
       console.log('Profile page: saving profile via /api/profile');
-      const res = await fetch('/api/profile', {
+      const res = await authenticatedFetch(getApiUrl('/api/profile'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

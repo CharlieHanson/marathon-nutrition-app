@@ -8,14 +8,20 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
-    padding: 16,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 120,
+  },
+  modalContentWrapper: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   reasonModal: {
     backgroundColor: colors.cardBackground,
     borderRadius: 16,
     padding: 20,
-    width: '90%',
-    maxWidth: 400,
+    width: '100%',
   },
   reasonModalHeader: {
     flexDirection: 'row',
@@ -100,53 +106,58 @@ export const RegenerateReasonModal = ({
     onRequestClose={onClose}
   >
     <Pressable style={styles.modalOverlayCenter} onPress={onClose}>
-      <View style={styles.reasonModal}>
-        <View style={styles.reasonModalHeader}>
-          <Text style={styles.reasonModalTitle}>Why regenerate this meal?</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="close" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+      <View
+        style={styles.modalContentWrapper}
+        onStartShouldSetResponder={() => true}
+      >
+        <View style={styles.reasonModal}>
+          <View style={styles.reasonModalHeader}>
+            <Text style={styles.reasonModalTitle}>Why regenerate this meal?</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-        <Text style={styles.reasonModalHint}>
-          e.g., "don't like salmon", "too many carbs", "prefer vegetarian option"
-        </Text>
+          <Text style={styles.reasonModalHint}>
+            e.g., "don't like salmon", "too many carbs", "prefer vegetarian option"
+          </Text>
 
-        <TextInput
-          style={styles.reasonInput}
-          placeholder="Enter reason..."
-          placeholderTextColor={colors.textTertiary}
-          value={reason}
-          onChangeText={onChangeReason}
-          multiline
-          numberOfLines={3}
-          autoFocus
-          returnKeyType="done"
-          blurOnSubmit={true}
-        />
+          <TextInput
+            style={styles.reasonInput}
+            placeholder="Enter reason..."
+            placeholderTextColor={colors.textTertiary}
+            value={reason}
+            onChangeText={onChangeReason}
+            multiline
+            numberOfLines={3}
+            autoFocus
+            returnKeyType="done"
+            blurOnSubmit={true}
+          />
 
-        <View style={styles.reasonModalActions}>
-          <TouchableOpacity
-            style={[styles.reasonModalButton, styles.reasonModalButtonCancel]}
-            onPress={onClose}
-          >
-            <Text style={styles.reasonModalButtonCancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.reasonModalButton, styles.reasonModalButtonConfirm]}
-            onPress={onConfirm}
-            disabled={!reason.trim()}
-          >
-            <Text style={[
-              styles.reasonModalButtonConfirmText,
-              !reason.trim() && styles.reasonModalButtonDisabled
-            ]}>
-              Regenerate
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.reasonModalActions}>
+            <TouchableOpacity
+              style={[styles.reasonModalButton, styles.reasonModalButtonCancel]}
+              onPress={onClose}
+            >
+              <Text style={styles.reasonModalButtonCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.reasonModalButton, styles.reasonModalButtonConfirm]}
+              onPress={onConfirm}
+              disabled={!reason.trim()}
+            >
+              <Text style={[
+                styles.reasonModalButtonConfirmText,
+                !reason.trim() && styles.reasonModalButtonDisabled
+              ]}>
+                Regenerate
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Pressable>

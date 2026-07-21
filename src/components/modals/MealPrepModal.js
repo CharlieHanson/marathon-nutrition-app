@@ -1,6 +1,7 @@
 // src/components/modals/MealPrepModal.js
 import React, { useState, useEffect } from 'react';
 import { X, ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
+import { authenticatedFetch, getMealGenApiUrl } from '../../../shared/services/api';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -10,6 +11,7 @@ export const MealPrepModal = ({
   onClose, 
   onApply,
   onSaveMeal,
+  userId,
   userProfile,
   foodPreferences,
   isGuest,
@@ -66,16 +68,17 @@ export const MealPrepModal = ({
     setError('');
 
     try {
-      const response = await fetch('/api/generate-meal-prep', {
+      const response = await authenticatedFetch(getMealGenApiUrl('/api/generate-meal-prep'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId,
           mealType: selectedMealType,
           days: selectedDays,
           userProfile,
           foodPreferences,
         }),
-      });
+      }, 120000);
 
       const result = await response.json();
 

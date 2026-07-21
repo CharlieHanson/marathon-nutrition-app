@@ -2,7 +2,7 @@
   "expo": {
     "name": "Alimenta",
     "slug": "alimenta",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "alimenta",
@@ -15,8 +15,9 @@
     },
     "ios": {
       "supportsTablet": false,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.charliehanson.alimenta",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "infoPlist": {
         "CFBundleDisplayName": "Alimenta",
         "ITSAppUsesNonExemptEncryption": false

@@ -1,5 +1,6 @@
 // src/hooks/useFoodPreferences.js
 import { useState, useEffect } from 'react';
+import { authenticatedFetch, getApiUrl } from '../../shared/services/api';
 
 const EMPTY_PREFERENCES = {
   likes: '',
@@ -28,8 +29,8 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
           userId: user.id,
         });
 
-        const res = await fetch(
-          `/api/preferences?userId=${encodeURIComponent(user.id)}`
+        const res = await authenticatedFetch(
+          getApiUrl(`/api/preferences?userId=${encodeURIComponent(user.id)}`)
         );
 
         if (!res.ok) {
@@ -97,7 +98,7 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
         preferences,
       });
 
-      const res = await fetch('/api/preferences', {
+      const res = await authenticatedFetch(getApiUrl('/api/preferences'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

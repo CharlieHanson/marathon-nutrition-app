@@ -210,12 +210,26 @@ Create `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
-OPENAI_API_KEY=your_openai_key
+NEXT_PUBLIC_API_URL=https://your-api-service.onrender.com
 ```
+
+`NEXT_PUBLIC_API_URL` must be the absolute origin of the standalone Express API (`api/`, deployed on Render). Relative `/api` routes are no longer served by Next.js/Vercel.
 
 ```bash
 npm run dev
 ```
+
+### Mobile (Expo)
+
+Create `mobile/.env` (see `mobile/.env.example`):
+```env
+EXPO_PUBLIC_API_URL=https://your-api-service.onrender.com
+EXPO_PUBLIC_SITE_URL=https://alimentanutrition.com
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+**EAS cloud builds:** set `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SITE_URL`, and the Supabase `EXPO_PUBLIC_*` vars as EAS secrets / project environment variables. Values from local `mobile/.env` are **not** included in EAS builds.
 
 ### ML Service (Optional)
 ```bash

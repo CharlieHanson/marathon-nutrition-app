@@ -111,6 +111,31 @@ export const useMealCompletions = (user, isGuest) => {
     }
   };
 
+  // Remove completion for a slot (e.g. when meal is deleted) so the card is no longer checked/green
+  const removeMealCompletion = async (dayOfWeek, mealType) => {
+    if (isGuest || !user?.id) return;
+
+    const existing = completions.find(
+      (c) => c.day_of_week === dayOfWeek && c.meal_type === mealType
+    );
+    if (!existing) return;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('meal_completions')
+        .delete()
+        .eq('id', existing.id);
+
+      if (deleteError) throw deleteError;
+
+      setCompletions((prev) => prev.filter((c) => c.id !== existing.id));
+    } catch (err) {
+      console.error('Error removing meal completion:', err);
+      setError(err.message);
+      fetchCompletions();
+    }
+  };
+
   const completedCount = completions.length;
 
   return {
@@ -118,10 +143,22 @@ export const useMealCompletions = (user, isGuest) => {
     loading,
     error,
     toggleMealCompletion,
+    removeMealCompletion,
     completedCount,
-    totalMeals,
     refetch: fetchCompletions,
   };
 };
+
+/**
+ * Count how many completions exist for a specific day among a given set of active meal types.
+ * @param {Array} completions  - array from useMealCompletions
+ * @param {string} day         - e.g. 'monday'
+ * @param {string[]} activeTypes - UI-key meal types to count
+ * @returns {number}
+ */
+export const getCompletedCountForDay = (completions, day, activeTypes) =>
+  completions.filter(
+    (c) => c.day_of_week === day && activeTypes.includes(c.meal_type)
+  ).length;
 
 export { getCurrentDayOfWeek, getTodayDate, MEAL_TYPES };

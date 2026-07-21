@@ -330,11 +330,17 @@ export function parseHeightCm(raw) {
         carbShifts.lunch = 0.05;
         carbShifts.breakfast = -0.05;
       }
-      // Long/hard session: extra carbs in snack for recovery
+      // Long/hard session: extra carbs for recovery.
+      // Prefer snack slot; if snack is excluded, redirect to lunch.
       const maxIntensity = Math.max(...workouts.map((w) => w.intensity || 0));
-      if (maxIntensity >= 7 && splits.snack !== undefined) {
-        carbShifts.snack = (carbShifts.snack || 0) + 0.03;
-        carbShifts.dinner = (carbShifts.dinner || 0) - 0.03;
+      if (maxIntensity >= 7) {
+        if (splits.snack !== undefined) {
+          carbShifts.snack = (carbShifts.snack || 0) + 0.03;
+          carbShifts.dinner = (carbShifts.dinner || 0) - 0.03;
+        } else if (splits.lunch !== undefined) {
+          carbShifts.lunch = (carbShifts.lunch || 0) + 0.03;
+          carbShifts.dinner = (carbShifts.dinner || 0) - 0.03;
+        }
       }
     }
   

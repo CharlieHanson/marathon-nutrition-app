@@ -74,7 +74,6 @@ export const AppLayout = ({ children }) => {
     'training': 'training',
     'meals': 'meals',
     'profile': 'profile',
-    'preferences': 'preferences',
     'settings': 'settings',
   };
   
@@ -86,7 +85,6 @@ export const AppLayout = ({ children }) => {
       'dashboard': '/(app)/dashboard',
       'training': '/(app)/training',
       'meals': '/(app)/meals',
-      'preferences': '/(app)/preferences',
       'profile': '/(app)/profile',
       'settings': '/(app)/settings',
     };

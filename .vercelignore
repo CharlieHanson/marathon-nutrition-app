@@ -1,0 +1,3 @@
+# Express API is deployed on Render, not Vercel.
+# A root /api directory is treated as Serverless Functions and hits the Hobby limit.
+api

@@ -1,5 +1,5 @@
 // mobile/hooks/useTrainingPlan.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchActiveTrainingPlan,
   fetchAllTrainingPlans,
@@ -25,6 +25,25 @@ export const useTrainingPlan = (user, isGuest) => {
   const [savedPlans, setSavedPlans] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const currentPlanIdRef = useRef(null);
+
+  useEffect(() => {
+    currentPlanIdRef.current = currentPlanId;
+  }, [currentPlanId]);
+
+  const mapPlansForEditor = useCallback((plans, loadedPlanId) => {
+    return plans.map((p) => ({
+      ...p,
+      is_active: loadedPlanId != null && p.id === loadedPlanId,
+    }));
+  }, []);
+
+  const refetchTrainingPlan = useCallback(() => {
+    setFetchError(null);
+    setRefetchTrigger((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,14 +74,17 @@ export const useTrainingPlan = (user, isGuest) => {
           setPlan(activePlan.plan_data || EMPTY_WEEK);
           setCurrentPlanId(activePlan.id);
           setCurrentPlanName(activePlan.name || '');
+          setFetchError(null);
         } else {
           console.log('useTrainingPlan: no active plan, using empty');
           setPlan(EMPTY_WEEK);
           setCurrentPlanId(null);
           setCurrentPlanName('');
+          setFetchError(null);
         }
       } catch (e) {
         console.error('useTrainingPlan: load failed', e);
+        if (!cancelled) setFetchError('Failed to load training plan');
       } finally {
         if (!cancelled) {
           console.log('useTrainingPlan: done loading');
@@ -75,15 +97,17 @@ export const useTrainingPlan = (user, isGuest) => {
       cancelled = true;
       console.log('useTrainingPlan: cleanup');
     };
-  }, [user?.id, isGuest]);
+  }, [user?.id, isGuest, refetchTrigger]);
 
-  const loadSavedPlans = async () => {
-    if (!user || isGuest) return;
+  const loadSavedPlans = async (loadedPlanId = currentPlanIdRef.current) => {
+    if (!user || isGuest) return [];
     try {
       const plans = await fetchAllTrainingPlans(user.id);
-      setSavedPlans(plans);
+      setSavedPlans(mapPlansForEditor(plans, loadedPlanId));
+      return plans;
     } catch (e) {
       console.error('Load saved plans failed:', e);
+      return [];
     }
   };
 
@@ -112,7 +136,8 @@ export const useTrainingPlan = (user, isGuest) => {
       if (!error && data) {
         setCurrentPlanId(data.id);
         setCurrentPlanName(data.name);
-        await loadSavedPlans();
+        currentPlanIdRef.current = data.id;
+        await loadSavedPlans(data.id);
       }
 
       return { error };
@@ -132,7 +157,8 @@ export const useTrainingPlan = (user, isGuest) => {
         setPlan(data.plan_data);
         setCurrentPlanId(data.id);
         setCurrentPlanName(data.name);
-        await loadSavedPlans();
+        currentPlanIdRef.current = data.id;
+        await loadSavedPlans(data.id);
       }
 
       return { error };
@@ -148,12 +174,14 @@ export const useTrainingPlan = (user, isGuest) => {
       const { error } = await deleteTrainingPlan(user.id, planId);
 
       if (!error) {
-        if (planId === currentPlanId) {
+        const wasLoadedPlan = planId === currentPlanIdRef.current;
+        if (wasLoadedPlan) {
           setPlan(EMPTY_WEEK);
           setCurrentPlanId(null);
           setCurrentPlanName('');
+          currentPlanIdRef.current = null;
         }
-        await loadSavedPlans();
+        await loadSavedPlans(wasLoadedPlan ? null : currentPlanIdRef.current);
       }
 
       return { error };
@@ -166,12 +194,15 @@ export const useTrainingPlan = (user, isGuest) => {
     setPlan(EMPTY_WEEK);
     setCurrentPlanId(null);
     setCurrentPlanName('');
+    currentPlanIdRef.current = null;
+    setSavedPlans((prev) => mapPlansForEditor(prev, null));
   };
 
   return {
     plan,
     currentPlanId,
     currentPlanName,
+    isLoadedSavedPlan: currentPlanId != null,
     savedPlans,
     updatePlan,
     savePlan,
@@ -181,6 +212,9 @@ export const useTrainingPlan = (user, isGuest) => {
     loadSavedPlans,
     isSaving,
     isLoading,
+    fetchError,
+    clearFetchError: () => setFetchError(null),
+    refetchTrainingPlan,
   };
 };
 

@@ -8,9 +8,11 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useFoodPreferences } from '../../hooks/useFoodPreferences';
 
@@ -109,10 +111,14 @@ const FILTER_OPTIONS = ['All', 'Unset', 'Liked', 'Disliked'];
 
 const { width } = Dimensions.get('window');
 const NUM_COLUMNS = width < 360 ? 2 : 3;
-const ITEM_WIDTH = (width - 48 - (NUM_COLUMNS - 1) * 8) / NUM_COLUMNS; // 48 = padding * 2, 8 = gap
+// Reserve enough horizontal space so tiles stay on screen (content padding + margins + gap)
+const HORIZONTAL_RESERVE = 32;
+const GAP = 4;
+const ITEM_WIDTH = Math.floor((width - HORIZONTAL_RESERVE - (NUM_COLUMNS - 1) * GAP) / NUM_COLUMNS) - 15;
 
 export default function PreferencesScreen() {
   const { user, isGuest } = useAuth();
+  const { isConnected } = useNetwork();
   const { colors } = useTheme();
   const preferencesHook = useFoodPreferences(user, isGuest);
 
@@ -333,6 +339,10 @@ export default function PreferencesScreen() {
   }, [searchQuery, activeFilter, foodStates]);
 
   const handleSave = async () => {
+    if (isConnected === false) {
+      Alert.alert('No Connection', 'Please check your internet connection and try again.');
+      return;
+    }
     const { error } = await preferencesHook.savePreferences();
     if (!error) {
       setShowSaveConfirmation(true);
@@ -482,6 +492,9 @@ export default function PreferencesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        <Text style={styles.tapToCycleHint}>
+          Tap to cycle: Neutral → Like → Dislike → Neutral
+        </Text>
       </View>
 
       {/* Main Content */}
@@ -490,11 +503,6 @@ export default function PreferencesScreen() {
         renderItem={renderCategory}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
-        ListHeaderComponent={
-          <>
-            <Text style={styles.title}>Food Preferences</Text>
-          </>
-        }
         ListFooterComponent={
           <>
             {/* Other Foods Section */}
@@ -636,12 +644,15 @@ export default function PreferencesScreen() {
 const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.cardBackground,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    overflow: 'hidden',
   },
   stickyHeader: {
     backgroundColor: colors.cardBackground,
     paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingTop: 14,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -725,8 +736,15 @@ const getStyles = (colors) => StyleSheet.create({
   filterChipTextActive: {
     color: colors.textInverse,
   },
+  tapToCycleHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 8,
+    fontWeight: '500',
+  },
   content: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 24,
   },
   title: {
@@ -742,14 +760,14 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '600',
   },
   categoryContainer: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
   },
   categoryTitle: {
     fontSize: 16,
@@ -757,23 +775,27 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.text,
   },
   foodsGrid: {
-    paddingTop: 4,
+    paddingTop: 2,
   },
   foodsRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: GAP,
+    marginBottom: 5,
   },
   foodTile: {
     width: ITEM_WIDTH,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    maxWidth: ITEM_WIDTH,
+    flex: 0,
+    paddingVertical: 5,
+    paddingHorizontal: 3,
+    borderRadius: 6,
     backgroundColor: colors.inputBackground,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    marginBottom: 6,
+    minHeight: 32,
   },
   foodTileLiked: {
     backgroundColor: colors.successLight,
@@ -787,7 +809,7 @@ const getStyles = (colors) => StyleSheet.create({
     opacity: 0.6,
   },
   foodTileText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textSecondary,
     textAlign: 'center',

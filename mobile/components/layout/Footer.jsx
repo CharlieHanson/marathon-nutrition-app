@@ -8,7 +8,6 @@ const FOOTER_ITEMS = [
   { id: 'training', label: 'Training', icon: 'calendar-outline' },
   { id: 'dashboard', label: 'Dashboard', icon: 'home-outline' },
   { id: 'meals', label: 'Meals', icon: 'restaurant-outline' },
-  { id: 'preferences', label: 'Preferences', icon: 'checkmark-circle-outline' },
 ];
 
 export const Footer = ({ currentView, onViewChange }) => {
@@ -20,7 +19,7 @@ export const Footer = ({ currentView, onViewChange }) => {
       <View style={styles.footer}>
         {FOOTER_ITEMS.map(({ id, label, icon }) => {
           const isActive = currentView === id;
-          const isLarge = id === 'meals' || id === 'dashboard';
+          const isLarge = id === 'dashboard';
           
           return (
             <TouchableOpacity
@@ -60,8 +59,9 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.cardBackground,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    paddingHorizontal: 12,
     shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: -1 },
     shadowOpacity: 0.05,
@@ -72,11 +72,11 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    minHeight: 60,
+    paddingVertical: 4,
+    minHeight: 48,
   },
   footerItemLarge: {
-    // Dashboard and Meals are bigger
+    // Dashboard is emphasized
   },
   footerLabel: {
     fontSize: 12,

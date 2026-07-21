@@ -5,18 +5,13 @@ import { fetchPersonalInfo, saveUserProfile } from '../../shared/lib/dataClient'
 const EMPTY_PROFILE = {
   name: '',
   age: '',
+  gender: '',
   height: '',
   weight: '',
   goal: '',
   activityLevel: '',
   objective: '',
   dietaryRestrictions: '',
-};
-
-// Helper to get API URL for mobile
-const getApiUrl = (endpoint) => {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://alimenta-nutrition.vercel.app';
-  return `${baseUrl}${endpoint}`;
 };
 
 export const useUserProfile = (user, isGuest, reloadKey = 0) => {
@@ -50,6 +45,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
           setProfile({
             name: up.name || '',
             age: up.age ? String(up.age) : '',
+            gender: up.gender || '',
             height: up.height || '',
             weight: up.weight || '',
             goal: up.goal || '',
@@ -96,6 +92,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
       const { error } = await saveUserProfile(user.id, {
         name: profile.name,
         age: profile.age,
+        gender: profile.gender,
         height: profile.height,
         weight: profile.weight,
         goal: profile.goal,

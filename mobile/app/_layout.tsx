@@ -4,11 +4,15 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { ApiErrorProvider } from '../context/ApiErrorContext';
+import { NetworkProvider } from '../context/NetworkContext';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { ThemeProvider as CustomThemeProvider } from '../context/ThemeContext';
 
 export {
@@ -54,10 +58,39 @@ export default function RootLayout() {
   return (
     <CustomThemeProvider>
       <AuthProvider>
-        <RootLayoutNav />
+        <SessionExpiredHandler />
+        <NetworkProvider>
+          <ApiErrorProvider>
+            <View style={{ flex: 1 }}>
+              <RootLayoutNav />
+              <OfflineBanner />
+            </View>
+          </ApiErrorProvider>
+        </NetworkProvider>
       </AuthProvider>
     </CustomThemeProvider>
   );
+}
+
+function SessionExpiredHandler() {
+  const { sessionExpired, clearSessionExpired } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (sessionExpired) {
+      Alert.alert('Session Expired', 'Please log in again.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            clearSessionExpired();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]);
+    }
+  }, [sessionExpired, clearSessionExpired, router]);
+
+  return null;
 }
 
 function RootLayoutNav() {
@@ -65,13 +98,17 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <View style={{ flex: 1 }}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="nutrition-detail" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
+      </View>
     </ThemeProvider>
   );
 }

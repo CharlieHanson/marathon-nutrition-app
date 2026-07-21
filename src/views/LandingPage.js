@@ -87,7 +87,7 @@ export const LandingPage = () => {
           {/* Tech Badges */}
           <div className="mt-12 flex flex-wrap justify-center gap-3">
             <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
-              🤖 Powered by GPT-4o and Gemini 2.5
+              🤖 Powered by GPT-5.4
             </span>
             <span className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 text-sm font-medium rounded-full shadow-sm">
               🧠 RAG-Based Learning

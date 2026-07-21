@@ -8,12 +8,6 @@ const EMPTY_PREFERENCES = {
   cuisineFavorites: '',
 };
 
-// Helper to get API URL for mobile
-const getApiUrl = (endpoint) => {
-  const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://alimenta-nutrition.vercel.app';
-  return `${baseUrl}${endpoint}`;
-};
-
 export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [isSaving, setIsSaving] = useState(false);

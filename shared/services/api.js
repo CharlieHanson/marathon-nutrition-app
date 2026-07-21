@@ -1,6 +1,8 @@
-// Centralized API calls with platform-aware base URL
-// - Web: uses relative paths (e.g., '/api/generate-meals')
-// - React Native: uses full production URL (e.g., 'https://alimenta-nutrition.vercel.app/api/generate-meals')
+// Centralized API calls against the standalone Express service (`api/`).
+// Both web and mobile must set an absolute origin via env — no relative `/api`
+// paths and no hardcoded host fallbacks.
+import { supabase } from './getSupabase';
+import { isNative } from './isNative';
 
 /**
  * Thrown when API returns 401 Unauthorized (session expired).
@@ -22,6 +24,31 @@ export class AuthError extends Error {
  * @throws {AuthError} - On 401 response
  * @throws {Error} - On 500+, timeout, or network failure
  */
+/**
+ * Thrown when an API route returns 429 (daily rate limit exceeded).
+ */
+export class RateLimitError extends Error {
+  constructor(message, limit) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.limit = limit;
+  }
+}
+
+export async function getAuthHeaders() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw new AuthError(error.message || 'Unable to read session. Please sign in again.');
+  }
+
+  const token = data?.session?.access_token;
+  if (!token) {
+    throw new AuthError('Not signed in. Please sign in again.');
+  }
+
+  return { Authorization: `Bearer ${token}` };
+}
+
 export async function apiRequest(url, options = {}, timeoutMs = 30000) {
   try {
     const response = await fetchWithTimeout(url, options, timeoutMs);
@@ -29,13 +56,21 @@ export async function apiRequest(url, options = {}, timeoutMs = 30000) {
     if (response.status === 401) {
       throw new AuthError('Session expired. Please sign in again.');
     }
+    if (response.status === 429) {
+      let body = {};
+      try { body = await response.json(); } catch {}
+      throw new RateLimitError(
+        body.error || "You've hit today's limit. Limits reset at midnight.",
+        body.limit
+      );
+    }
     if (response.status >= 500) {
       throw new Error('Something went wrong on our end. Please try again later.');
     }
 
     return response;
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof AuthError || error instanceof RateLimitError) {
       throw error;
     }
     if (error.name === 'AbortError' || (error.message && error.message.includes('timed out'))) {
@@ -48,44 +83,26 @@ export async function apiRequest(url, options = {}, timeoutMs = 30000) {
   }
 }
 
-// Platform detection: Check if we're in a React Native environment
-function isReactNative() {
-  // Method 1: Check navigator.product (most reliable for React Native)
-  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
-    return true;
-  }
-  
-  // Method 2: Check for React Native Platform module
-  try {
-    if (typeof require !== 'undefined') {
-      const rn = require('react-native');
-      if (rn?.Platform && (rn.Platform.OS === 'ios' || rn.Platform.OS === 'android')) {
-        return true;
-      }
-    }
-  } catch (e) {
-    // react-native not available, we're on web
-  }
-  
-  return false;
-}
+/**
+ * Absolute origin of the Express API (no trailing slash).
+ * Web: NEXT_PUBLIC_API_URL — Mobile: EXPO_PUBLIC_API_URL
+ * Platform via isNative.web.js / isNative.native.js (no runtime require).
+ */
+export function getBaseUrl() {
+  const raw = isNative
+    ? process.env.EXPO_PUBLIC_API_URL
+    : process.env.NEXT_PUBLIC_API_URL;
 
-// Get the base URL based on platform
-function getBaseUrl() {
-  if (isReactNative()) {
-    // React Native: use environment variable or default to production URL
-    const apiUrl = 
-      process.env.EXPO_PUBLIC_API_URL || 
-      process.env.REACT_NATIVE_API_URL || 
-      'https://alimenta-nutrition.vercel.app';
-    return apiUrl;
-  } else {
-    // Web: use empty string for relative paths
-    return '';
+  if (!raw || !String(raw).trim()) {
+    throw new Error(
+      isNative
+        ? 'Missing EXPO_PUBLIC_API_URL. Set it in mobile/.env for local dev, and as an EAS secret for cloud builds (local .env is NOT included in EAS builds).'
+        : 'Missing NEXT_PUBLIC_API_URL. Set it in .env.local for local dev, and in the Vercel project environment for production.'
+    );
   }
-}
 
-const BASE_URL = getBaseUrl();
+  return String(raw).trim().replace(/\/$/, '');
+}
 
 /**
  * Wraps fetch with a configurable timeout.
@@ -99,8 +116,13 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 30000) => {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(url, {
       ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...authHeaders,
+      },
       signal: controller.signal,
     });
     return response;
@@ -114,27 +136,39 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = 30000) => {
   }
 };
 
-// Helper function to build the full API endpoint URL
-function getApiUrl(endpoint) {
-  // Remove leading slash from endpoint if present (we'll add it)
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${BASE_URL}${cleanEndpoint}`;
+export async function authenticatedFetch(url, options = {}, timeoutMs = 30000) {
+  return fetchWithTimeout(url, options, timeoutMs);
 }
 
-/** React Native uses OpenAI-backed meal generation routes on Vercel. */
+/** Build a full API endpoint URL (e.g. getApiUrl('/api/meal-plan')). */
+export function getApiUrl(endpoint) {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${getBaseUrl()}${cleanEndpoint}`;
+}
+
+/**
+ * Meal-generation routes use the OpenAI-backed Express handlers for both
+ * web and mobile (Gemini variants remain available as *-gemini if needed).
+ */
 function mealGenApiPath(endpoint) {
-  if (!isReactNative()) return endpoint;
   const openaiByBase = {
     '/api/regenerate-meal': '/api/regenerate-meal-openai',
     '/api/generate-day': '/api/generate-day-openai',
+    '/api/generate-day-web': '/api/generate-day-web-openai',
     '/api/generate-single-meal': '/api/generate-single-meal-openai',
     '/api/generate-meal-prep': '/api/generate-meal-prep-openai',
   };
   return openaiByBase[endpoint] || endpoint;
 }
 
+/** Absolute URL for a meal-gen endpoint (OpenAI variant). */
+export function getMealGenApiUrl(endpoint) {
+  return getApiUrl(mealGenApiPath(endpoint));
+}
+
 // Stream SSE using XMLHttpRequest (works in React Native)
-function streamSSE(url, data, onProgress) {
+async function streamSSE(url, data, onProgress) {
+  const authHeaders = await getAuthHeaders();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     let buffer = '';
@@ -144,6 +178,9 @@ function streamSSE(url, data, onProgress) {
 
     xhr.open('POST', url, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
+    Object.entries(authHeaders).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
     
     // Process chunks as they arrive
     xhr.onprogress = () => {
@@ -187,7 +224,16 @@ function streamSSE(url, data, onProgress) {
     };
 
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status === 401) {
+        reject(new AuthError('Session expired. Please sign in again.'));
+      } else if (xhr.status === 429) {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        reject(new RateLimitError(
+          body.error || "You've hit today's limit. Limits reset at midnight.",
+          body.limit
+        ));
+      } else if (xhr.status >= 200 && xhr.status < 300) {
         resolve(finalResult);
       } else {
         reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
@@ -211,7 +257,8 @@ function streamSSE(url, data, onProgress) {
 
 // Stream SSE for day-based generation (handles 'meal' events instead of 'day' events)
 
-function streamSSEDay(url, data, onProgress) {
+async function streamSSEDay(url, data, onProgress) {
+  const authHeaders = await getAuthHeaders();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     let buffer = '';
@@ -221,6 +268,9 @@ function streamSSEDay(url, data, onProgress) {
 
     xhr.open('POST', url, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
+    Object.entries(authHeaders).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
     
     // Process chunks as they arrive
     xhr.onprogress = () => {
@@ -275,7 +325,16 @@ function streamSSEDay(url, data, onProgress) {
     };
 
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status === 401) {
+        reject(new AuthError('Session expired. Please sign in again.'));
+      } else if (xhr.status === 429) {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText); } catch {}
+        reject(new RateLimitError(
+          body.error || "You've hit today's limit. Limits reset at midnight.",
+          body.limit
+        ));
+      } else if (xhr.status >= 200 && xhr.status < 300) {
         resolve(finalResult);
       } else {
         reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
@@ -301,16 +360,25 @@ export const apiClient = {
   async generateMeals(data, onProgress) {
     try {
       // Use XMLHttpRequest for streaming in React Native
-      if (isReactNative()) {
+      if (isNative) {
         return await streamSSE(getApiUrl('/api/generate-meals'), data, onProgress);
       }
 
       // Web: use fetch with getReader (original behavior)
-      const response = await fetch(getApiUrl('/api/generate-meals'), {
+      const response = await fetchWithTimeout(getApiUrl('/api/generate-meals'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
+      }, 120000);
+
+      if (response.status === 401) {
+        throw new AuthError('Session expired. Please sign in again.');
+      }
+      if (response.status === 429) {
+        let body = {};
+        try { body = await response.json(); } catch {}
+        throw new RateLimitError(body.error || "You've hit today's limit. Limits reset at midnight.", body.limit);
+      }
 
       // Check if response is SSE (text/event-stream)
       const contentType = response.headers.get('content-type') || '';
@@ -375,6 +443,9 @@ export const apiClient = {
       }
     } catch (error) {
       console.error('generateMeals error:', error);
+      if (error instanceof RateLimitError) {
+        return { success: false, error: error.message, limitReached: true, limit: error.limit };
+      }
       return { success: false, error: error.message || 'Failed to generate meals' };
     }
   },
@@ -395,16 +466,25 @@ export const apiClient = {
   async generateDay(data, onProgress) {
     try {
       // Use XMLHttpRequest for streaming in React Native
-      if (isReactNative()) {
+      if (isNative) {
         return await streamSSEDay(getApiUrl(mealGenApiPath('/api/generate-day')), data, onProgress);
       }
 
       // Web: use fetch with getReader
-      const response = await fetch(getApiUrl(mealGenApiPath('/api/generate-day')), {
+      const response = await fetchWithTimeout(getApiUrl(mealGenApiPath('/api/generate-day')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
+      }, 120000);
+
+      if (response.status === 401) {
+        throw new AuthError('Session expired. Please sign in again.');
+      }
+      if (response.status === 429) {
+        let body = {};
+        try { body = await response.json(); } catch {}
+        throw new RateLimitError(body.error || "You've hit today's limit. Limits reset at midnight.", body.limit);
+      }
 
       // Check if response is SSE (text/event-stream)
       const contentType = response.headers.get('content-type') || '';
@@ -480,17 +560,20 @@ export const apiClient = {
       }
     } catch (error) {
       console.error('generateDay error:', error);
+      if (error instanceof RateLimitError) {
+        return { success: false, error: error.message, limitReached: true, limit: error.limit };
+      }
       return { success: false, error: error.message || 'Failed to generate day' };
     }
   },
 
   async generateSingleMeal(data) {
     try {
-      const response = await fetch(getApiUrl(mealGenApiPath('/api/generate-single-meal')), {
+      const response = await fetchWithTimeout(getApiUrl(mealGenApiPath('/api/generate-single-meal')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      });
+      }, 30000);
 
       if (!response.ok) {
         const errorText = await response.text();

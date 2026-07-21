@@ -4,6 +4,7 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import { Save, Copy, Check, User, Briefcase, Globe, MapPin } from 'lucide-react';
+import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 
 export const NutritionistProfile = ({ currentUser }) => {
   const [profile, setProfile] = useState({
@@ -50,8 +51,8 @@ export const NutritionistProfile = ({ currentUser }) => {
         userId
       );
 
-      const res = await fetch(
-        `/api/pro/profile?userId=${encodeURIComponent(userId)}`
+      const res = await authenticatedFetch(
+        getApiUrl(`/api/pro/profile?userId=${encodeURIComponent(userId)}`)
       );
 
       if (!res.ok) {
@@ -101,7 +102,7 @@ export const NutritionistProfile = ({ currentUser }) => {
       const userId = currentUser.id;
       console.log('NutritionistProfile: handleSave for user', userId, 'profile:', profile);
 
-      const res = await fetch('/api/pro/profile', {
+      const res = await authenticatedFetch(getApiUrl('/api/pro/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

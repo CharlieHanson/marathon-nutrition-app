@@ -1,12 +1,10 @@
 import Head from "next/head";
 
 const APP_NAME = "Alimenta";
-const EFFECTIVE_DATE = "January 13, 2026";
+const EFFECTIVE_DATE = "July 21, 2026";
 
-// TODO: Replace placeholders with your real info
 const COMPANY_NAME = "Alimenta Nutrition";
 const CONTACT_EMAIL = "alimentanutrition@gmail.com";
-const CONTACT_ADDRESS = "[Company Address]";
 
 export default function TermsPage() {
   return (
@@ -25,8 +23,9 @@ export default function TermsPage() {
             </p>
             <p style={styles.p}>
               These Terms of Service (“Terms”) govern your access to and use of {APP_NAME} (the
-              “Service”), operated by {COMPANY_NAME} (“we,” “us,” or “our”). By accessing or using the
-              Service, you agree to these Terms.
+              “Service”), operated by {COMPANY_NAME} (“we,” “us,” or “our”). The Service includes our
+              iOS and Android mobile applications and our website. By accessing or using the Service,
+              you agree to these Terms.
             </p>
           </header>
 
@@ -43,12 +42,14 @@ export default function TermsPage() {
             <h2 style={styles.h2}>2. Accounts and Security</h2>
             <ul style={styles.ul}>
               <li style={styles.li}>
-                You may need an account to access certain features. You agree to provide accurate,
-                complete information and keep it updated.
+                You may need an account to access certain features. You can create an account with
+                email and password, or sign in using Google or Sign in with Apple. You agree to
+                provide accurate, complete information and keep it updated.
               </li>
               <li style={styles.li}>
                 You are responsible for maintaining the confidentiality of your credentials and for
-                all activity that occurs under your account.
+                all activity that occurs under your account. If you sign in with Google or Apple,
+                their terms and privacy policies also apply to your use of those sign-in methods.
               </li>
               <li style={styles.li}>
                 Notify us promptly at {CONTACT_EMAIL} if you suspect unauthorized access.
@@ -200,13 +201,6 @@ export default function TermsPage() {
               Questions about these Terms? Contact us at <strong>{CONTACT_EMAIL}</strong>.
             </p>
           </section>
-
-          <footer style={styles.footer}>
-            <p style={styles.small}>
-              This template is provided for convenience and is not legal advice. You should tailor
-              it to your product, data flows, and jurisdiction(s).
-            </p>
-          </footer>
         </div>
       </main>
     </>

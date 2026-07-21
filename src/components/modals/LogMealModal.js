@@ -1,6 +1,7 @@
 // src/components/modals/LogMealModal.js
 import React, { useState, useEffect } from 'react';
 import { X, UtensilsCrossed, Check, Loader2, Heart, Trash2 } from 'lucide-react';
+import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
@@ -41,7 +42,7 @@ export const LogMealModal = ({
     setEstimatedMacros(null);
 
     try {
-      const response = await fetch('/api/estimate-macros', {
+      const response = await authenticatedFetch(getApiUrl('/api/estimate-macros'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -68,7 +69,7 @@ export const LogMealModal = ({
     setIsEstimating(true);
 
     try {
-      const response = await fetch('/api/estimate-macros', {
+      const response = await authenticatedFetch(getApiUrl('/api/estimate-macros'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

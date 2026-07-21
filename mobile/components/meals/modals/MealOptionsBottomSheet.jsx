@@ -63,16 +63,6 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.text,
     marginLeft: 12,
   },
-  bottomSheetDelete: {
-    backgroundColor: colors.errorLight,
-    borderColor: colors.errorBorder,
-  },
-  bottomSheetDeleteText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.error,
-    marginLeft: 12,
-  },
   bottomSheetCancel: {
     backgroundColor: colors.cardBackground,
   },
@@ -90,11 +80,13 @@ export const MealOptionsBottomSheet = ({
   mealName, 
   rating,
   onRate,
+  onSaveMeal,
   onGetRecipe, 
   onRegenerate,
-  onDelete,
   onClose,
-  loadingRecipe
+  loadingRecipe,
+  savingMeal,
+  canRegenerate = true,
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -118,6 +110,20 @@ export const MealOptionsBottomSheet = ({
           <StarRating rating={rating || 0} onRate={onRate} />
         </View>
 
+        {onSaveMeal && (
+          <TouchableOpacity 
+            style={styles.bottomSheetOption} 
+            onPress={onSaveMeal} 
+            disabled={savingMeal}
+          >
+            <Ionicons name="bookmark-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.bottomSheetOptionText}>Save meal</Text>
+            {savingMeal ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginLeft: 10 }} />
+            ) : null}
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity 
           style={styles.bottomSheetOption} 
           onPress={onGetRecipe} 
@@ -130,18 +136,12 @@ export const MealOptionsBottomSheet = ({
           ) : null}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.bottomSheetOption} onPress={onRegenerate}>
-          <Ionicons name="refresh-outline" size={22} color={colors.textSecondary} />
-          <Text style={styles.bottomSheetOptionText}>Regenerate</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.bottomSheetOption, styles.bottomSheetDelete]} 
-          onPress={onDelete}
-        >
-          <Ionicons name="trash-outline" size={22} color={colors.error} />
-          <Text style={styles.bottomSheetDeleteText}>Delete Meal</Text>
-        </TouchableOpacity>
+        {canRegenerate && (
+          <TouchableOpacity style={styles.bottomSheetOption} onPress={onRegenerate}>
+            <Ionicons name="refresh-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.bottomSheetOptionText}>Regenerate</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity 
           style={[styles.bottomSheetOption, styles.bottomSheetCancel]} 

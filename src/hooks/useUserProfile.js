@@ -1,5 +1,6 @@
 // src/hooks/useUserProfile.js
 import { useState, useEffect } from 'react';
+import { authenticatedFetch, getApiUrl } from '../../shared/services/api';
 
 const EMPTY_PROFILE = {
   name: '',
@@ -33,8 +34,8 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
     const load = async () => {
       setLoadingProfile(true);
       try {
-        const res = await fetch(
-          `/api/profile?userId=${encodeURIComponent(user.id)}`
+        const res = await authenticatedFetch(
+          getApiUrl(`/api/profile?userId=${encodeURIComponent(user.id)}`)
         );
         if (!res.ok) {
           console.error('useUserProfile: /api/profile GET not ok', res.status);
@@ -98,7 +99,7 @@ export const useUserProfile = (user, isGuest, reloadKey = 0) => {
 
     setIsSaving(true);
     try {
-      const res = await fetch('/api/profile', {
+      const res = await authenticatedFetch(getApiUrl('/api/profile'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

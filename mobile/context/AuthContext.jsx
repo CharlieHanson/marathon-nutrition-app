@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../shared/lib/supabase.native';
@@ -13,7 +14,8 @@ const AuthContext = createContext(undefined);
 /**
  * Seed / ensure base profile data for any authenticated user.
  * - profiles.id = auth.user.id
- * - profiles.name, profiles.type
+ * - New users: name + type seeded from auth metadata
+ * - Existing users: only type updated if needed; name is never overwritten
  * - user_profiles row for clients
  *
  * This function is *best effort* and must never block the app from loading.
@@ -23,23 +25,44 @@ const ensureProfile = async (authedUser) => {
     if (!authedUser) return;
 
     const meta = authedUser.user_metadata || {};
-    const seedName = meta.name ?? null;
+    const seedName = meta.full_name ?? meta.name ?? null;
     const seedType = meta.role === 'nutritionist' ? 'nutritionist' : 'client';
 
-    // 1) Upsert into profiles (canonical source of name/type)
-    const { error: profErr } = await supabase
+    // 1) Check if profile already exists (do not overwrite saved name)
+    const { data: existing, error: fetchErr } = await supabase
       .from('profiles')
-      .upsert(
-        {
+      .select('id, name')
+      .eq('id', authedUser.id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      console.warn('ensureProfile: profiles fetch error:', fetchErr.message);
+      return;
+    }
+
+    if (!existing) {
+      // No profile: insert with name from signup/OAuth metadata
+      const { error: insertErr } = await supabase
+        .from('profiles')
+        .insert({
           id: authedUser.id,
           name: seedName,
           type: seedType,
-        },
-        { onConflict: 'id' }
-      );
+        });
 
-    if (profErr) {
-      console.warn('ensureProfile: profiles upsert error:', profErr.message);
+      if (insertErr) {
+        console.warn('ensureProfile: profiles insert error:', insertErr.message);
+      }
+    } else {
+      // Profile exists: only update type if needed, never touch name
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ type: seedType })
+        .eq('id', authedUser.id);
+
+      if (updateErr) {
+        console.warn('ensureProfile: profiles type update error:', updateErr.message);
+      }
     }
 
     // 2) If client, ensure there is a user_profiles row
@@ -64,6 +87,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const signOutIntentionalRef = useRef(false);
+  const userRef = useRef(user);
+
+  userRef.current = user;
+
+  const clearSessionExpired = () => setSessionExpired(false);
 
   // ---------- Initial session restore + listener ----------
   useEffect(() => {
@@ -112,20 +142,27 @@ export const AuthProvider = ({ children }) => {
     // Subscribe to auth changes (sign in/out, token refresh, etc.)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
       try {
         if (session?.user) {
           setUser(session.user);
           setIsGuest(false);
+          setSessionExpired(false);
           AsyncStorage.removeItem('guestMode').catch(() => {});
           // Again, fire-and-forget
           ensureProfile(session.user).catch((e) =>
             console.warn('ensureProfile on auth change failed:', e)
           );
         } else {
+          const hadUser = userRef.current !== null;
           setUser(null);
+
+          // Unexpected sign out (e.g. token refresh failed) - show session expired message
+          if (event === 'SIGNED_OUT' && hadUser && !signOutIntentionalRef.current) {
+            setSessionExpired(true);
+          }
         }
       } catch (e) {
         console.error('AuthContext: onAuthStateChange error', e);
@@ -159,11 +196,14 @@ export const AuthProvider = ({ children }) => {
   // Sign up: seed metadata; profiles row is created by ensureProfile()
   const signUp = async (email, password, name, role = 'client', metadata = {}) => {
     try {
-      // For mobile, use a deep link scheme or production URL for email redirect
-      // You can configure this in your app.json scheme or use environment variable
-      const redirectUrl = process.env.EXPO_PUBLIC_API_URL 
-        ? `${process.env.EXPO_PUBLIC_API_URL}/auth/callback`
-        : 'https://alimenta-nutrition.vercel.app/auth/callback';
+      // Web app origin for email redirects (auth callback lives on Next.js, not the Express API)
+      const siteUrl = process.env.EXPO_PUBLIC_SITE_URL;
+      if (!siteUrl || !String(siteUrl).trim()) {
+        throw new Error(
+          'Missing EXPO_PUBLIC_SITE_URL. Set it in mobile/.env (local) and as an EAS secret for cloud builds.'
+        );
+      }
+      const redirectUrl = `${String(siteUrl).trim().replace(/\/$/, '')}/auth/callback`;
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -228,6 +268,7 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     console.log('AuthContext: signOut called');
+    signOutIntentionalRef.current = true;
     try {
       const signOutPromise = supabase.auth.signOut();
       const timeoutPromise = new Promise((_, reject) =>
@@ -237,6 +278,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.warn('AuthContext: signOut error (ignored)', error);
     } finally {
+      signOutIntentionalRef.current = false;
       setUser(null);
       setIsGuest(false);
       await AsyncStorage.removeItem('guestMode');
@@ -268,6 +310,8 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isGuest,
+    sessionExpired,
+    clearSessionExpired,
     signUp,
     signIn,
     signOut,
