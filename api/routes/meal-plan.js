@@ -1,5 +1,6 @@
 // pages/api/meal-plan.js
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 function getMondayOfCurrentWeek() {
   const today = new Date();
@@ -13,7 +14,8 @@ function getMondayOfCurrentWeek() {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { userId, week } = req.query;
+    const userId = getRequestUserId(req);
+    const { week } = req.query;
 
     if (!userId) {
       return res
@@ -72,7 +74,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { userId, weekStarting, meals } = req.body || {};
+    const userId = getRequestUserId(req);
+    const { weekStarting, meals } = req.body || {};
 
     if (!userId || !weekStarting) {
       return res.status(400).json({

@@ -12,6 +12,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { requireAuth } from './lib/requireAuth.js';
 
 const app = express();
 
@@ -42,6 +43,13 @@ app.use(
 
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
+
+// ── Auth gate ───────────────────────────────────────────────────────────────
+// Keep /health public. Flip REQUIRE_AUTH to "true" after web/mobile clients
+// have shipped Bearer token support.
+if (process.env.REQUIRE_AUTH === 'true') {
+  app.use('/api', requireAuth);
+}
 
 // ── Lazy route mounting ─────────────────────────────────────────────────────
 // Paths are preserved exactly as they were under pages/api so existing clients

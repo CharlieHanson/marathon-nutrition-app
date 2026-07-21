@@ -1,6 +1,7 @@
 // api/rate-meal.js
 import OpenAI from 'openai';
 import { supabaseAdmin } from '../lib/supabaseAdmin.js'; // shared server-side client
+import { getRequestUserId } from '../lib/requestUser.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -12,7 +13,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    let { userId, mealDescription, mealType, rating, day } = req.body || {};
+    const userId = getRequestUserId(req);
+    let { mealDescription, mealType, rating, day } = req.body || {};
 
     // Normalize/validate inputs
     rating = Number(rating);

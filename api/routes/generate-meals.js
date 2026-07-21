@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getTopMealsByVector } from '../lib/rag.js'; // adjust path if needed
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey =
@@ -468,11 +469,11 @@ export default async function handler(req, res) {
   }
 
   // Parse body first so we can check rate limit BEFORE setting SSE headers
+  const userId = getRequestUserId(req);
   const {
     userProfile,
     foodPreferences,
     trainingPlan: clientTrainingPlan,
-    userId,
     weekStarting,
     existingMeals,
   } = req.body || {};
@@ -482,9 +483,10 @@ export default async function handler(req, res) {
   if (!limitCheck.allowed) {
     return res.status(429).json({
       success: false,
-      error: 'Daily limit reached.',
+      error: limitCheck.reason === 'daily_limit_reached' ? 'Daily limit reached.' : 'Unable to verify daily limit.',
       limitReached: true,
       limit: limitCheck.limit,
+      reason: limitCheck.reason,
     });
   }
 

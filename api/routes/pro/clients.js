@@ -1,5 +1,6 @@
 // pages/api/pro/clients.js
 import { createClient } from '@supabase/supabase-js';
+import { getRequestUserId } from '../../lib/requestUser.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 // IMPORTANT: this must NOT be public. Set it in .env.local and on Vercel.
@@ -15,7 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export default async function handler(req, res) {
   try {
-    const { userId } = req.query;
+    const userId = getRequestUserId(req);
 
     if (!userId) {
       return res.status(400).json({ error: 'Missing userId' });

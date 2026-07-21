@@ -1,5 +1,6 @@
 // pages/api/pro/profile.js
 import { createClient } from '@supabase/supabase-js';
+import { getRequestUserId } from '../../lib/requestUser.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,7 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
-      const { userId } = req.query;
+      const userId = getRequestUserId(req);
 
       if (!userId) {
         return res.status(400).json({ error: 'Missing userId' });
@@ -38,7 +39,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const { userId, name, business_name, website, location } = req.body;
+      const userId = getRequestUserId(req);
+      const { name, business_name, website, location } = req.body;
 
       if (!userId) {
         return res.status(400).json({ error: 'Missing userId' });

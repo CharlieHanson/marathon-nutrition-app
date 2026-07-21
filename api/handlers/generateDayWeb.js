@@ -7,7 +7,15 @@ import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
+import { createClient } from '@supabase/supabase-js';
+import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 import { buildMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+);
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -22,6 +30,7 @@ export function createGenerateDayWebHandler(provider) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    const userId = getRequestUserId(req);
     const { userProfile, foodPreferences, trainingPlan, day, includeSnacks, includeDessert } = req.body;
 
     if (!userProfile || !day) {
@@ -30,6 +39,17 @@ export function createGenerateDayWebHandler(provider) {
 
     const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
     const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+
+    const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: limitCheck.reason === 'daily_limit_reached' ? 'Daily limit reached.' : 'Unable to verify daily limit.',
+        limitReached: true,
+        limit: limitCheck.limit,
+        reason: limitCheck.reason,
+      });
+    }
 
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

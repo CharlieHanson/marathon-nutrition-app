@@ -11,6 +11,7 @@ import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 import { buildMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
@@ -37,8 +38,8 @@ export function createGenerateDayHandler(provider) {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    const userId = getRequestUserId(req);
     const {
-      userId,
       day,
       userProfile,
       foodPreferences,
@@ -64,9 +65,10 @@ export function createGenerateDayHandler(provider) {
     if (!limitCheck.allowed) {
       return res.status(429).json({
         success: false,
-        error: 'Daily limit reached.',
+        error: limitCheck.reason === 'daily_limit_reached' ? 'Daily limit reached.' : 'Unable to verify daily limit.',
         limitReached: true,
         limit: limitCheck.limit,
+        reason: limitCheck.reason,
       });
     }
 

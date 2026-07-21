@@ -5,7 +5,10 @@ export const LIMITS = {
 };
 
 export async function checkAndIncrementUsage(supabase, userId, actionType) {
-  if (!userId) return { allowed: true };
+  if (!userId) {
+    console.warn('[rateLimiter] fail closed: no_user', { actionType });
+    return { allowed: false, reason: 'no_user' };
+  }
 
   try {
     // userId = auth UUID; fetch profile.id (PK) which is what usage_limits FK expects
@@ -17,12 +20,14 @@ export async function checkAndIncrementUsage(supabase, userId, actionType) {
 
     if (profileError) {
       console.error('[rateLimiter] profile fetch error:', profileError.message);
-      return { allowed: true };
+      console.error('[rateLimiter] fail closed: rate_limit_check_failed', { actionType, userId });
+      return { allowed: false, reason: 'rate_limit_check_failed' };
     }
 
     if (!profile) {
       console.warn('[rateLimiter] no profile found for userId:', userId);
-      return { allowed: true };
+      console.warn('[rateLimiter] fail closed: no_profile', { actionType, userId });
+      return { allowed: false, reason: 'no_profile' };
     }
 
     if (profile.is_unlimited) return { allowed: true };
@@ -41,22 +46,25 @@ export async function checkAndIncrementUsage(supabase, userId, actionType) {
 
     if (rpcError) {
       console.error('[rateLimiter] increment_usage RPC error:', rpcError.message);
-      return { allowed: true };
+      console.error('[rateLimiter] fail closed: rate_limit_check_failed', { actionType, userId });
+      return { allowed: false, reason: 'rate_limit_check_failed' };
     }
 
     if (typeof newCount !== 'number') {
       console.warn('[rateLimiter] RPC returned unexpected value:', newCount);
-      return { allowed: true };
+      console.warn('[rateLimiter] fail closed: rate_limit_check_failed', { actionType, userId });
+      return { allowed: false, reason: 'rate_limit_check_failed' };
     }
 
     if (newCount > limit) {
-      return { allowed: false, count: newCount, limit };
+      return { allowed: false, count: newCount, limit, reason: 'daily_limit_reached' };
     }
 
     return { allowed: true, count: newCount, limit };
 
   } catch (err) {
     console.error('[rateLimiter] unexpected error:', err.message);
-    return { allowed: true };
+    console.error('[rateLimiter] fail closed: rate_limit_check_failed', { actionType, userId });
+    return { allowed: false, reason: 'rate_limit_check_failed' };
   }
 }

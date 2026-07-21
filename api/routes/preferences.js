@@ -1,9 +1,10 @@
 // pages/api/preferences.js
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { userId } = req.query;
+    const userId = getRequestUserId(req);
 
     if (!userId) {
       return res
@@ -48,7 +49,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { userId, preferences } = req.body || {};
+      const userId = getRequestUserId(req);
+      const { preferences } = req.body || {};
 
       if (!userId) {
         return res

@@ -1,10 +1,11 @@
 // pages/api/profile.js
 import { supabaseAdmin } from '../lib/supabaseAdmin.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 export default async function handler(req, res) {
   // ========== GET: Fetch profile ==========
   if (req.method === 'GET') {
-    const { userId } = req.query;
+    const userId = getRequestUserId(req);
 
     if (!userId) {
       return res
@@ -71,7 +72,8 @@ export default async function handler(req, res) {
 
   // ========== POST: Save profile ==========
   if (req.method === 'POST') {
-    const { userId, profile } = req.body;
+    const userId = getRequestUserId(req);
+    const { profile } = req.body;
 
     if (!userId) {
       return res

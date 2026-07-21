@@ -9,6 +9,7 @@ import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -74,8 +75,8 @@ export function createGenerateMealPrepHandler(provider) {
     }
 
     try {
+      const userId = getRequestUserId(req);
       const {
-        userId,
         mealType: rawMealType,
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         userProfile,
@@ -91,9 +92,10 @@ export function createGenerateMealPrepHandler(provider) {
       if (!limitCheck.allowed) {
         return res.status(429).json({
           success: false,
-          error: 'Daily limit reached.',
+          error: limitCheck.reason === 'daily_limit_reached' ? 'Daily limit reached.' : 'Unable to verify daily limit.',
           limitReached: true,
           limit: limitCheck.limit,
+          reason: limitCheck.reason,
         });
       }
 

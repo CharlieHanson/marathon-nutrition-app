@@ -4,6 +4,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
+import { getRequestUserId } from '../lib/requestUser.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -47,7 +48,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { userId, meals } = req.body;
+    const userId = getRequestUserId(req);
+    const { meals } = req.body;
     if (!meals || !Array.isArray(meals) || meals.length === 0) {
       return res.status(400).json({ success: false, error: 'meals array required' });
     }
@@ -56,9 +58,10 @@ export default async function handler(req, res) {
     if (!limitCheck.allowed) {
       return res.status(429).json({
         success: false,
-        error: 'Daily limit reached.',
+        error: limitCheck.reason === 'daily_limit_reached' ? 'Daily limit reached.' : 'Unable to verify daily limit.',
         limitReached: true,
         limit: limitCheck.limit,
+        reason: limitCheck.reason,
       });
     }
 
