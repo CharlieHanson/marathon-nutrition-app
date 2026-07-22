@@ -1,6 +1,28 @@
 // src/hooks/useMealPlan.js
 import { useState, useEffect } from 'react';
 import { apiClient, authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
+import { capture } from '../lib/posthog';
+
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+
+const getMealPlanSummary = (week = {}) => {
+  let mealCount = 0;
+  let hasSnacks = false;
+  let hasDessert = false;
+
+  Object.values(week || {}).forEach((dayMeals) => {
+    MEAL_TYPES.forEach((mealType) => {
+      const meal = dayMeals?.[mealType];
+      if (meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__') {
+        mealCount += 1;
+        if (mealType === 'snacks') hasSnacks = true;
+        if (mealType === 'dessert') hasDessert = true;
+      }
+    });
+  });
+
+  return { meal_count: mealCount, has_snacks: hasSnacks, has_dessert: hasDessert };
+};
 
 const EMPTY_DAY = {
   breakfast: '',
@@ -143,6 +165,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       ...prev,
       [day]: { ...prev[day], [`${mealType}_rating`]: rating },
     }));
+    capture('meal_rated', { rating, meal_type: mealType });
 
     if (user && !isGuest) {
       try {
@@ -221,6 +244,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         });
         setStatusMessage('✅ Meal plan generated successfully!');
         setTimeout(() => setStatusMessage(''), 3000);
+        capture('meal_plan_generated', getMealPlanSummary(result.week));
       } else if (result.error) {
         throw new Error(result.error);
       }
@@ -303,6 +327,9 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
             body: JSON.stringify({ userId: user.id, weekStarting: currentWeekStarting, meals: updatedPlan }),
           });
         }
+        Object.keys(result.meals).forEach((generatedMealType) => {
+          capture('meal_generated', { meal_type: generatedMealType, day });
+        });
       } else if (result.error) {
         throw new Error(result.error);
       }
@@ -349,6 +376,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         }
         setStatusMessage(`✅ ${capitalize(mealType)} for ${capitalize(day)} generated!`);
         setTimeout(() => setStatusMessage(''), 3000);
+        capture('meal_generated', { meal_type: mealType, day });
         return { success: true };
       }
       throw new Error(result?.error || 'Failed to generate meal');
@@ -380,6 +408,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         updateMeal(day, mealType, result.meal);
         setStatusMessage(`✅ ${mealType} for ${day} regenerated!`);
         setTimeout(() => setStatusMessage(''), 3000);
+        capture('meal_regenerated', { meal_type: mealType, day });
         return { success: true };
       }
       throw new Error(result.error || 'Unknown error');

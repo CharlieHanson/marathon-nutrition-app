@@ -5,9 +5,34 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { supabase } from '../supabaseClient';
+import { identify as identifyPostHog, reset as resetPostHog } from '../lib/posthog';
 
 const AuthContext = createContext(undefined);
+
+const toAnalyticsPersona = (role) =>
+  role === 'nutritionist' ? 'nutritionist' : 'athlete';
+
+const getAnalyticsPersona = async (authedUser) => {
+  if (!authedUser) return null;
+
+  try {
+    const { data: prof, error } = await supabase
+      .from('profiles')
+      .select('type')
+      .eq('id', authedUser.id)
+      .maybeSingle();
+
+    if (!error && prof?.type) {
+      return toAnalyticsPersona(prof.type);
+    }
+  } catch (e) {
+    console.warn('getAnalyticsPersona: profiles query failed', e);
+  }
+
+  return toAnalyticsPersona(authedUser.user_metadata?.role);
+};
 
 /**
  * Seed / ensure base profile data for any authenticated user.
@@ -86,6 +111,35 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
+  const identifyMonitoringUser = async (authedUser) => {
+    if (!authedUser?.id) return;
+
+    try {
+      const persona = await getAnalyticsPersona(authedUser);
+      identifyPostHog(authedUser.id, {
+        email: authedUser.email,
+        persona,
+      });
+    } catch (e) {
+      console.warn('AuthContext: analytics identify failed', e);
+    }
+
+    try {
+      Sentry.setUser({ id: authedUser.id });
+    } catch (e) {
+      console.warn('AuthContext: Sentry setUser failed', e);
+    }
+  };
+
+  const resetMonitoringUser = () => {
+    resetPostHog();
+    try {
+      Sentry.setUser(null);
+    } catch (e) {
+      console.warn('AuthContext: Sentry clear user failed', e);
+    }
+  };
+
   // ---------- Initial session restore + listener ----------
   useEffect(() => {
     let mounted = true;
@@ -116,8 +170,12 @@ export const AuthProvider = ({ children }) => {
           ensureProfile(session.user).catch((e) =>
             console.warn('ensureProfile on init failed:', e)
           );
+          identifyMonitoringUser(session.user).catch((e) =>
+            console.warn('monitoring identify on init failed:', e)
+          );
         } else {
           setUser(null);
+          resetMonitoringUser();
         }
       } catch (e) {
         console.error('AuthContext: init crashed', e);
@@ -149,8 +207,12 @@ export const AuthProvider = ({ children }) => {
           ensureProfile(session.user).catch((e) =>
             console.warn('ensureProfile on auth change failed:', e)
           );
+          identifyMonitoringUser(session.user).catch((e) =>
+            console.warn('monitoring identify on auth change failed:', e)
+          );
         } else {
           setUser(null);
+          resetMonitoringUser();
         }
       } catch (e) {
         console.error('AuthContext: onAuthStateChange error', e);
@@ -263,6 +325,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       setIsGuest(false);
+      resetMonitoringUser();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guestMode');
       }
@@ -277,6 +340,7 @@ export const AuthProvider = ({ children }) => {
     }
     setIsGuest(true);
     setUser(null);
+    resetMonitoringUser();
   };
 
   const disableGuestMode = () => {

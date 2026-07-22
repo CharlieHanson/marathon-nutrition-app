@@ -15,6 +15,7 @@ import { Dropdown } from '../components/shared/Dropdown';
 import { useAuth } from '../context/AuthContext';
 import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
+import { capture } from '../lib/posthog';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -225,6 +226,7 @@ export const MealPlanPage = ({
         setCurrentRecipe(result.recipe);
         setShowRecipeModal(true);
         setLocalStatusMessage('✅ Recipe generated!');
+        capture('recipe_viewed', { meal_type: mealType });
       } else {
         throw new Error(result.error);
       }
@@ -278,6 +280,7 @@ export const MealPlanPage = ({
         setGroceryList(result.groceryList);
         setShowGroceryModal(true);
         setLocalStatusMessage('✅ Grocery list generated!');
+        capture('grocery_list_generated');
       } else {
         throw new Error(result.error || 'Failed to generate grocery list');
       }

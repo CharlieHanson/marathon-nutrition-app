@@ -4,6 +4,7 @@ import { User, Briefcase, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/router';
 import { supabase } from '../supabaseClient';
+import { capture } from '../lib/posthog';
 
 const Auth = ({ presetRole }) => {
   const router = useRouter();
@@ -57,6 +58,9 @@ const Auth = ({ presetRole }) => {
 
         const { error } = await signUp(email, password, name, role, metadata);
         if (error) throw error;
+        capture('signup_completed', {
+          persona: role === 'nutritionist' ? 'nutritionist' : 'athlete',
+        });
         
         if (typeof window !== 'undefined') {
           window.alert('Account created! Please check your email to verify your account.');

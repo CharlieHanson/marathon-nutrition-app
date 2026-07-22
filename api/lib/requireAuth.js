@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { setSentryUser } from './sentry.js';
 
 let supabase = null;
 
@@ -52,6 +53,7 @@ export async function requireAuth(req, res, next) {
 
     req.user = data.user;
     req.userId = data.user.id;
+    setSentryUser(req.userId);
     return next();
   } catch (err) {
     console.error('[auth] token verification failed:', err.message);

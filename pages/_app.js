@@ -4,9 +4,14 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import '../src/index.css';
 import { AuthProvider } from '../src/context/AuthContext';
+import { initPostHog } from '../src/lib/posthog';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
+
+  useEffect(() => {
+    initPostHog();
+  }, []);
 
   /**
   useEffect(() => {

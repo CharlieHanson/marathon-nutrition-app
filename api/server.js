@@ -13,6 +13,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { requireAuth } from './lib/requireAuth.js';
+import { initSentry, setupSentryErrorHandler } from './lib/sentry.js';
+
+initSentry();
 
 const app = express();
 
@@ -105,6 +108,8 @@ mount('/api/pro/dashboard', () => import('./routes/pro/dashboard.js'));
 mount('/api/pro/profile', () => import('./routes/pro/profile.js'));
 
 // ── Error handler ───────────────────────────────────────────────────────────
+setupSentryErrorHandler(app);
+
 app.use((err, req, res, next) => {
   console.error('[api] unhandled error:', err);
   if (res.headersSent) return next(err);
