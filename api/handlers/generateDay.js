@@ -23,8 +23,8 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-flash', temperature: 0.8, maxTokens: 50000 },
-  // Keep OpenAI output caps modest — gpt-5* is slow and client SSE times out at ~120s.
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 4000 },
+  // Budget must cover gpt-5 reasoning tokens + JSON output.
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 12000 },
 };
 
 

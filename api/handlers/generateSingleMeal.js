@@ -28,7 +28,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-pro', temperature: 0.7, maxTokens: 5000 },
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 2000 },
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 8000 },
 };
 
 
