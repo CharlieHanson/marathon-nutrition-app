@@ -23,7 +23,8 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-flash', temperature: 0.8, maxTokens: 50000 },
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 16000 },
+  // Keep OpenAI output caps modest — gpt-5* is slow and client SSE times out at ~120s.
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 4000 },
 };
 
 
@@ -221,7 +222,13 @@ export function createGenerateDayHandler(provider) {
       }
 
       if (debug) {
-        send('debug', { prompt, rawResponse, provider });
+        // Avoid shipping full prompt/response over SSE — large payloads stall RN clients
+        // and push generate-day past the 120s XHR timeout after OpenAI already returned.
+        send('debug', {
+          provider,
+          promptChars: typeof prompt === 'string' ? prompt.length : 0,
+          responseChars: typeof rawResponse === 'string' ? rawResponse.length : 0,
+        });
       }
 
       const generatedMealsObj = {};

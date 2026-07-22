@@ -40,6 +40,9 @@ export async function completeJSON(provider, options) {
 
   try {
     if (provider === 'openai') {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY is not set');
+      }
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const request = {
         model: openaiModel,
@@ -51,8 +54,17 @@ export async function completeJSON(provider, options) {
       if (openaiSupportsCustomTemperature(openaiModel)) {
         request.temperature = temperature;
       }
+      console.log(`[ai] OpenAI request model=${openaiModel} max_completion_tokens=${maxTokens}`);
       const response = await openai.chat.completions.create(request);
-      return response.choices[0].message.content;
+      const content = response.choices?.[0]?.message?.content;
+      if (!content || !String(content).trim()) {
+        const finishReason = response.choices?.[0]?.finish_reason;
+        throw new Error(
+          `OpenAI returned empty content (finish_reason=${finishReason || 'unknown'}). ` +
+            'Try lowering max tokens or switching models.'
+        );
+      }
+      return content;
     }
 
     if (provider === 'gemini') {
