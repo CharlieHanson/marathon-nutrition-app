@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useAppleAuth, AppleSignInButton } from '../../hooks/useAppleAuth';
+import { capture } from '../../lib/analytics';
+import { usePostHog } from 'posthog-react-native';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -27,6 +29,7 @@ export default function SignupScreen() {
   const [success, setSuccess] = useState(false);
 
   const router = useRouter();
+  const posthog = usePostHog();
   const { user } = useAuth();
   const { signUp } = useAuth();
   const { promptAsync: signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
@@ -85,6 +88,7 @@ export default function SignupScreen() {
       }
 
       setSuccess(true);
+      capture(posthog, 'signup_completed', { persona: 'athlete' });
     } catch (err) {
       setError(err.message || 'An unexpected error occurred');
     } finally {

@@ -4,6 +4,8 @@ import { fetchCurrentWeekMealPlan, fetchMealPlanByWeek, saveMealPlan } from '../
 import { apiClient, authenticatedFetch, getApiUrl } from '../../shared/services/api';
 import { resolveMealToggles } from '../../shared/lib/mealSlots';
 import { getDayMealToggles, getActiveMealTypes, isPastDay } from '../utils/mealHelpers';
+import { usePostHog } from 'posthog-react-native';
+import { capture } from '../lib/analytics';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
@@ -64,10 +66,30 @@ const countMeals = (mealPlan) => {
   return { filled, total, allFilled: filled === total, hasAny: filled > 0 };
 };
 
+const getMealPlanSummary = (week = {}) => {
+  let mealCount = 0;
+  let hasSnacks = false;
+  let hasDessert = false;
+
+  Object.values(week || {}).forEach((dayMeals) => {
+    MEAL_TYPES.forEach((mealType) => {
+      const meal = dayMeals?.[mealType];
+      if (meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__') {
+        mealCount += 1;
+        if (mealType === 'snacks') hasSnacks = true;
+        if (mealType === 'dessert') hasDessert = true;
+      }
+    });
+  });
+
+  return { meal_count: mealCount, has_snacks: hasSnacks, has_dessert: hasDessert };
+};
+
 // Helper to capitalize day name
 const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
 export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
+  const posthog = usePostHog();
   const [mealPlan, setMealPlan] = useState(EMPTY_WEEK);
   const mealPlanRef = useRef(null);
   // Keep ref in sync so getDayTogglePayload always reads the latest plan
@@ -162,6 +184,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
       ...prev,
       [day]: { ...prev[day], [`${mealType}_rating`]: rating },
     }));
+    capture(posthog, 'meal_rated', { rating, meal_type: mealType });
 
     if (user && !isGuest) {
       try {
@@ -265,6 +288,9 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
           Object.keys(result.meals).forEach((mealType) => {
             updateMeal(day, mealType, result.meals[mealType]);
           });
+          Object.keys(result.meals).forEach((generatedMealType) => {
+            capture(posthog, 'meal_generated', { meal_type: generatedMealType, day });
+          });
         }
         
         // Save to database
@@ -329,6 +355,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
         updateMeal(day, mealType, result.meal);
         setStatusMessage(`✅ ${capitalize(mealType)} for ${capitalize(day)} regenerated!`);
         setTimeout(() => setStatusMessage(''), 3000);
+        capture(posthog, 'meal_regenerated', { meal_type: mealType, day });
         return { success: true };
       }
       throw new Error(result.error || 'Unknown error');
@@ -376,6 +403,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
         
         setStatusMessage(`✅ ${capitalize(mealType)} for ${capitalize(day)} generated!`);
         setTimeout(() => setStatusMessage(''), 3000);
+        capture(posthog, 'meal_generated', { meal_type: mealType, day });
         return { success: true };
       }
       throw new Error(result?.error || 'Failed to generate meal');
@@ -471,6 +499,7 @@ export const useMealPlan = (user, isGuest, reloadKeyProp = 0) => {
 
       setStatusMessage('✅ Meal plan regenerated successfully!');
       setTimeout(() => setStatusMessage(''), 3000);
+      capture(posthog, 'meal_plan_generated', getMealPlanSummary(mealPlan));
       return { success: true };
     } catch (error) {
       console.error('regenerateAllMeals error:', error);

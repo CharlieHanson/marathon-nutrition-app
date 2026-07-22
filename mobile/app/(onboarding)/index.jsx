@@ -9,6 +9,8 @@ import { ProfileStep } from '../../components/onboarding/ProfileStep';
 import { PreferencesStep } from '../../components/onboarding/PreferencesStep';
 import { ProgressIndicator } from '../../components/onboarding/ProgressIndicator';
 import { saveUserProfile, saveFoodPreferences } from '../../../shared/lib/dataClient';
+import { usePostHog } from 'posthog-react-native';
+import { capture } from '../../lib/analytics';
 
 const BG_GRADIENT_START = '#FFF7ED'; // orange-50
 const BG_GRADIENT_END = '#FFFBEB';   // yellow-50-ish
@@ -17,8 +19,15 @@ const ONBOARDING_STEP_KEY = 'onboarding_step';
 const ONBOARDING_PROFILE_KEY = 'onboarding_profile';
 const ONBOARDING_PREFERENCES_KEY = 'onboarding_preferences';
 
+const daysSinceSignup = (user) => {
+  const createdAt = user?.created_at ? new Date(user.created_at).getTime() : Date.now();
+  if (!Number.isFinite(createdAt)) return 0;
+  return Math.max(0, Math.ceil((Date.now() - createdAt) / 86400000));
+};
+
 export default function OnboardingScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const { user, signOut } = useAuth();
   const { isConnected } = useNetwork();
   const [currentStep, setCurrentStep] = useState(1);
@@ -124,6 +133,10 @@ export default function OnboardingScreen() {
         ]);
       } else {
         await AsyncStorage.multiRemove([ONBOARDING_STEP_KEY, ONBOARDING_PROFILE_KEY, ONBOARDING_PREFERENCES_KEY]);
+        capture(posthog, 'onboarding_completed', {
+          persona: 'athlete',
+          days_to_complete: daysSinceSignup(user),
+        });
         router.replace('/(app)/dashboard');
       }
     } catch (err) {

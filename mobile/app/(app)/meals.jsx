@@ -60,6 +60,8 @@ import {
 } from '../../utils/mealHelpers';
 import { MealTypeToggles } from '../../components/meals/MealTypeToggles';
 import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
+import { usePostHog } from 'posthog-react-native';
+import { capture } from '../../lib/analytics';
 
 // Animation constants
 const EXPANDED_HEADER_HEIGHT = 234;
@@ -74,6 +76,7 @@ const OFFLINE_ALERT = () =>
   Alert.alert('No Connection', 'Please check your internet connection and try again.');
 
 export default function MealsScreen() {
+  const posthog = usePostHog();
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
   const { colors } = useTheme();
@@ -312,6 +315,7 @@ export default function MealsScreen() {
       if (result.success) {
         setRecipe(result.recipe || '');
         refetchLimits();
+        capture(posthog, 'recipe_viewed', { meal_type: selectedMeal.mealType });
       } else {
         setShowRecipeModal(false); // Close modal on error
         Alert.alert('Error', result.error || 'Failed to get recipe');
@@ -619,6 +623,7 @@ export default function MealsScreen() {
         setGroceryList(result.groceryList);
         setShowGroceryModal(true);
         refetchLimits();
+        capture(posthog, 'grocery_list_generated');
       } else {
         throw new Error(result.error || 'Failed to generate grocery list');
       }
