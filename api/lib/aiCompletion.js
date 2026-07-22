@@ -7,6 +7,17 @@ const PROVIDER_LABELS = { gemini: 'Gemini', openai: 'OpenAI' };
 /** OpenAI model for meal generation routes (generate-day, single meal, etc.) */
 export const OPENAI_MEAL_MODEL = 'gpt-5-mini';
 
+/** Models that only accept the default temperature (omit the param). */
+function openaiSupportsCustomTemperature(model) {
+  const id = String(model || '').toLowerCase();
+  return !(
+    id.startsWith('gpt-5') ||
+    id.startsWith('o1') ||
+    id.startsWith('o3') ||
+    id.startsWith('o4')
+  );
+}
+
 /**
  * @param {'gemini'|'openai'} provider
  * @param {object} options
@@ -30,13 +41,17 @@ export async function completeJSON(provider, options) {
   try {
     if (provider === 'openai') {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const response = await openai.chat.completions.create({
+      const request = {
         model: openaiModel,
         messages: [{ role: 'user', content: prompt }],
         max_completion_tokens: maxTokens,
-        temperature,
         response_format: { type: 'json_object' },
-      });
+      };
+      // gpt-5* / o-series only allow the default temperature; sending 0.7 → 400
+      if (openaiSupportsCustomTemperature(openaiModel)) {
+        request.temperature = temperature;
+      }
+      const response = await openai.chat.completions.create(request);
       return response.choices[0].message.content;
     }
 
