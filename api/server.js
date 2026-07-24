@@ -73,6 +73,7 @@ function mount(path, importFn) {
   });
 }
 
+mount('/api/auth/apple-exchange', () => import('./routes/auth/apple-exchange.js'));
 mount('/api/delete-account', () => import('./routes/delete-account.js'));
 mount('/api/estimate-macros', () => import('./routes/estimate-macros.js'));
 mount('/api/meal-plan', () => import('./routes/meal-plan.js'));

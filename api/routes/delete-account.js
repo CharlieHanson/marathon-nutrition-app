@@ -4,6 +4,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { generateAppleClientSecret } from '../lib/appleClientSecret.js';
+
+const APPLE_CLIENT_ID = 'com.charliehanson.alimenta';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,6 +41,43 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Revoke Apple Sign In token before any deletes (App Store requirement).
+    // Never block or fail deletion due to a revocation error.
+    try {
+      const { data: appleProfile } = await supabase
+        .from('user_profiles')
+        .select('apple_refresh_token')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (appleProfile?.apple_refresh_token) {
+        const clientSecret = generateAppleClientSecret();
+        const revokeRes = await fetch('https://appleid.apple.com/auth/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: APPLE_CLIENT_ID,
+            client_secret: clientSecret,
+            token: appleProfile.apple_refresh_token,
+            token_type_hint: 'refresh_token',
+          }),
+        });
+
+        if (revokeRes.ok) {
+          console.log('[delete-account] Apple refresh token revoked successfully');
+        } else {
+          const revokeBody = await revokeRes.text();
+          console.error(
+            '[delete-account] Apple token revoke failed:',
+            revokeRes.status,
+            revokeBody
+          );
+        }
+      }
+    } catch (revokeError) {
+      console.error('[delete-account] Apple token revoke error:', revokeError);
+    }
+
     // Delete in order to avoid foreign key issues
     // Most dependent tables first, auth user last
 
