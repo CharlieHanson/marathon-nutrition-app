@@ -4,8 +4,26 @@ import { generateWithRetry } from './geminiWithRetry.js';
 
 const PROVIDER_LABELS = { gemini: 'Gemini', openai: 'OpenAI' };
 
-/** OpenAI model for meal generation routes (generate-day, single meal, etc.) */
-export const OPENAI_MEAL_MODEL = 'gpt-5-mini';
+/**
+ * OpenAI models for meal generation (generate-day, single meal, regenerate, meal prep).
+ * Official API IDs — switch ACTIVE_OPENAI_MEAL_MODEL below (or set OPENAI_MEAL_MODEL in .env).
+ */
+export const OPENAI_MEAL_MODELS = {
+  /** GPT-5.4 nano — cheapest/fastest 5.4-class model */
+  '5.4-nano': 'gpt-5.4-nano',
+  /** GPT-5 mini — previous-gen mini */
+  '5-mini': 'gpt-5-mini',
+  /** GPT-5.4 mini — stronger mini for higher-quality meal plans */
+  '5.4-mini': 'gpt-5.4-mini',
+};
+
+/** <<< Change this to switch meal models: '5.4-nano' | '5-mini' | '5.4-mini' >>> */
+const ACTIVE_OPENAI_MEAL_MODEL = '5.4-mini';
+
+export const OPENAI_MEAL_MODEL =
+  process.env.OPENAI_MEAL_MODEL ||
+  OPENAI_MEAL_MODELS[ACTIVE_OPENAI_MEAL_MODEL] ||
+  OPENAI_MEAL_MODELS['5-mini'];
 
 /** Models that only accept the default temperature (omit the param). */
 function isGpt5Family(model) {
