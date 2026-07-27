@@ -280,14 +280,23 @@ export default function MealsScreen() {
 
     try {
       const mealDescription = mealPlanHook.mealPlan?.[selectedDay]?.[selectedMeal.mealType];
+      const parsed = parseMeal(mealDescription);
       const result = await apiClient.getRecipe({
         userId: user?.id,
         meal: mealDescription,
-        day: selectedDay,
+        description: selectedMeal.name || parsed.name || '',
         mealType: selectedMeal.mealType,
+        macros: {
+          calories: selectedMeal.calories ?? parsed.calories ?? 0,
+          protein: selectedMeal.protein ?? parsed.protein ?? 0,
+          carbs: selectedMeal.carbs ?? parsed.carbs ?? 0,
+          fat: selectedMeal.fat ?? parsed.fat ?? 0,
+        },
+        day: selectedDay,
         servings: servings,
         dislikes: foodPreferences?.dislikes || '',
-        dietaryRestrictions: userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
+        dietaryRestrictions:
+          userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
       });
 
       if (result.success) {

@@ -206,17 +206,33 @@ export const MealPlanPage = ({
     setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
+      const mealString = mealPlan[day][mealType];
+      const nameMatch = typeof mealString === 'string' ? mealString.match(/^(.+?)\s*\(/) : null;
+      const description = nameMatch ? nameMatch[1].trim() : String(mealString || '').trim();
+      const calMatch = typeof mealString === 'string' ? mealString.match(/Cal:\s*(\d+)/i) : null;
+      const proteinMatch = typeof mealString === 'string' ? mealString.match(/P:\s*(\d+)g/i) : null;
+      const carbsMatch = typeof mealString === 'string' ? mealString.match(/C:\s*(\d+)g/i) : null;
+      const fatMatch = typeof mealString === 'string' ? mealString.match(/F:\s*(\d+)g/i) : null;
+
       const response = await authenticatedFetch(getApiUrl('/api/get-recipe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          meal: mealPlan[day][mealType],
+          meal: mealString,
+          description,
           day,
           mealType,
+          macros: {
+            calories: calMatch ? parseInt(calMatch[1], 10) : 0,
+            protein: proteinMatch ? parseInt(proteinMatch[1], 10) : 0,
+            carbs: carbsMatch ? parseInt(carbsMatch[1], 10) : 0,
+            fat: fatMatch ? parseInt(fatMatch[1], 10) : 0,
+          },
           servings: servings,
           dislikes: foodPreferences?.dislikes || '',
-          dietaryRestrictions: userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
+          dietaryRestrictions:
+            userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
         }),
       });
 
