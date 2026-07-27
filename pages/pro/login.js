@@ -10,7 +10,7 @@ export default function ProLogin() {
   }, [router]); // remove router.asPath
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <p className="text-primary font-semibold">Redirecting...</p>
     </div>
   );

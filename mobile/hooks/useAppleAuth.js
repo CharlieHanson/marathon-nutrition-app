@@ -103,6 +103,30 @@ export function useAppleAuth() {
         return;
       }
 
+      // Store Apple refresh token for account-deletion revocation (best-effort).
+      // authorizationCode may be null on repeat sign-ins.
+      // userId is derived server-side from the Bearer JWT — do not send it in the body.
+      try {
+        const authorizationCode = credential.authorizationCode;
+        if (authorizationCode) {
+          const baseUrl = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/$/, '');
+          if (baseUrl) {
+            const headers = { 'Content-Type': 'application/json' };
+            const accessToken = signInData?.session?.access_token;
+            if (accessToken) {
+              headers.Authorization = `Bearer ${accessToken}`;
+            }
+            await fetch(`${baseUrl}/api/auth/apple-exchange`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ authorizationCode }),
+            });
+          }
+        }
+      } catch (exchangeErr) {
+        console.warn('useAppleAuth: apple-exchange failed:', exchangeErr?.message);
+      }
+
       if (credential.fullName) {
         const fullName = AppleAuthentication.formatFullName(credential.fullName);
         if (fullName) {

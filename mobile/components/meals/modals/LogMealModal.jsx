@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { apiClient } from '../../../../shared/services/api';
 import { fetchSavedMealsByType, incrementMealUsage } from '../../../../shared/lib/dataClient';
+import { macroColors } from '../../../../shared/lib/macroColors';
 import { getDayMealToggles, getActiveMealTypes } from '../../../utils/mealHelpers';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -215,24 +216,24 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
   },
   macroChipCalories: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: macroColors.calories,
     borderWidth: 1,
-    borderColor: '#D97706',
+    borderColor: macroColors.calories,
   },
   macroChipProtein: {
-    backgroundColor: '#10B981',
+    backgroundColor: macroColors.protein,
     borderWidth: 1,
-    borderColor: '#059669',
+    borderColor: macroColors.protein,
   },
   macroChipCarbs: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: macroColors.carbs,
     borderWidth: 1,
-    borderColor: '#2563EB',
+    borderColor: macroColors.carbs,
   },
   macroChipFat: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: macroColors.fat,
     borderWidth: 1,
-    borderColor: '#7C3AED',
+    borderColor: macroColors.fat,
   },
   macroChipLabel: {
     fontSize: 11,
@@ -334,6 +335,13 @@ const getStyles = (colors) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  savedMealsErrorText: {
+    fontSize: 13,
+    color: colors.error || '#DC2626',
+    textAlign: 'center',
+    fontWeight: '600',
+    lineHeight: 20,
+  },
 });
 
 export const LogMealModal = ({
@@ -356,6 +364,7 @@ export const LogMealModal = ({
   const [logged, setLogged] = useState(false);
   const [savedMeals, setSavedMeals] = useState([]);
   const [loadingSavedMeals, setLoadingSavedMeals] = useState(false);
+  const [savedMealsError, setSavedMealsError] = useState(null);
   const [loggingSavedMeal, setLoggingSavedMeal] = useState(null);
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -381,12 +390,15 @@ export const LogMealModal = ({
 
     const load = async () => {
       setLoadingSavedMeals(true);
+      setSavedMealsError(null);
       try {
         const meals = await fetchSavedMealsByType(userId, mealTypeToFetch);
         setSavedMeals(meals);
+        setSavedMealsError(null);
       } catch (err) {
         console.error('Failed to fetch saved meals:', err);
         setSavedMeals([]);
+        setSavedMealsError(err?.message || 'Failed to load saved meals');
       } finally {
         setLoadingSavedMeals(false);
       }
@@ -471,6 +483,7 @@ export const LogMealModal = ({
     setLogged(false);
     setEstimatedMacros(null);
     setSavedMeals([]);
+    setSavedMealsError(null);
     setLoggingSavedMeal(null);
     onClose();
   };
@@ -666,6 +679,12 @@ export const LogMealModal = ({
                   {loadingSavedMeals ? (
                     <View style={styles.savedMealsEmpty}>
                       <ActivityIndicator size="small" color={colors.textTertiary} />
+                    </View>
+                  ) : savedMealsError ? (
+                    <View style={styles.savedMealsEmpty}>
+                      <Text style={styles.savedMealsErrorText}>
+                        Couldn't load saved meals
+                      </Text>
                     </View>
                   ) : savedMeals.length === 0 ? (
                     <View style={styles.savedMealsEmpty}>

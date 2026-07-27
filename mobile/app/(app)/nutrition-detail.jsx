@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,18 +16,19 @@ import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useMealCompletions, MEAL_TYPES } from '../../hooks/useMealCompletions';
 import { getDayMealToggles, getActiveMealTypes } from '../../utils/mealHelpers';
+import { macroColors } from '../../../shared/lib/macroColors';
 
 const { width } = Dimensions.get('window');
 
 const TABS = ['Overview', 'Calories', 'Macros'];
 
-// ─── Meal type display config ───────────────────────────────────────────────
+// ─── Meal type display config (muted palette, aligned with macroColors) ─────
 const MEAL_CONFIG = {
-  breakfast: { label: 'Breakfast', color: '#f59e0b' },
-  lunch:     { label: 'Lunch',     color: '#22c55e' },
-  dinner:    { label: 'Dinner',    color: '#3b82f6' },
-  snacks:    { label: 'Snack',     color: '#a855f7' },
-  dessert:   { label: 'Dessert',   color: '#ec4899' },
+  breakfast: { label: 'Breakfast', color: macroColors.calories }, // clay
+  lunch:     { label: 'Lunch',     color: macroColors.protein },  // mint
+  dinner:    { label: 'Dinner',    color: macroColors.carbs },    // dusty blue
+  snacks:    { label: 'Snack',     color: macroColors.fat },      // mauve
+  dessert:   { label: 'Dessert',   color: '#B8956C' },            // sand (same family)
 };
 
 // Fallback for any unknown meal type key
@@ -34,9 +36,9 @@ const getMealConfig = (mealType) =>
   MEAL_CONFIG[mealType] ?? { label: mealType.charAt(0).toUpperCase() + mealType.slice(1), color: '#6b7280' };
 
 const MACRO_CONFIG = [
-  { key: 'carbs',   label: 'Carbs',   color: '#f59e0b', calsPerGram: 4 },
-  { key: 'protein', label: 'Protein', color: '#3b82f6', calsPerGram: 4 },
-  { key: 'fat',     label: 'Lipids',  color: '#ef4444', calsPerGram: 9 },
+  { key: 'carbs',   label: 'Carbs',   color: macroColors.carbs, calsPerGram: 4 },
+  { key: 'protein', label: 'Protein', color: macroColors.protein, calsPerGram: 4 },
+  { key: 'fat',     label: 'Lipids',  color: macroColors.fat, calsPerGram: 9 },
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ const MacroBar = ({ label, eaten, total, color, unit = 'g', colors }) => {
           <Text style={barStyles.valuesOf}> / {total}{unit}</Text>
         </Text>
       </View>
-      <View style={barStyles.track}>
+      <View style={[barStyles.track, { backgroundColor: colors.border }]}>
         <View style={[barStyles.fill, { width: `${pct}%`, backgroundColor: color }]} />
       </View>
     </View>
@@ -127,7 +129,7 @@ const barStyles = StyleSheet.create({
   label:    { fontSize: 15, fontWeight: '700', flex: 1 },
   values:   { fontSize: 14, fontWeight: '800' },
   valuesOf: { fontWeight: '500', opacity: 0.6 },
-  track:    { height: 10, borderRadius: 5, backgroundColor: '#E5E7EB', overflow: 'hidden' },
+  track:    { height: 10, borderRadius: 5, overflow: 'hidden' },
   fill:     { height: '100%', borderRadius: 5 },
 });
 
@@ -189,6 +191,31 @@ export default function NutritionDetailScreen() {
   })).filter((d) => d.value > 0);
 
   const noData = totalMacros.calories === 0;
+  const { isLoading, fetchError } = mealPlanHook;
+  const showLoading = isLoading && noData;
+  const showFetchError = !!fetchError && noData && !isLoading;
+  const showEmpty = !isLoading && !fetchError && noData;
+
+  const renderDataPlaceholder = () => {
+    if (showLoading) {
+      return (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      );
+    }
+    if (showFetchError) {
+      return (
+        <View style={styles.stateContainer}>
+          <Text style={styles.fetchErrorText}>Couldn't load nutrition data</Text>
+        </View>
+      );
+    }
+    if (showEmpty) {
+      return <EmptyState />;
+    }
+    return null;
+  };
 
   // ── Render tabs ──────────────────────────────────────────────────────────
   const renderOverview = () => (
@@ -205,7 +232,7 @@ export default function NutritionDetailScreen() {
       </View>
 
       {noData ? (
-        <EmptyState />
+        renderDataPlaceholder()
       ) : (
         <View style={styles.barsContainer}>
           {MACRO_CONFIG.map((m) => (
@@ -232,7 +259,7 @@ export default function NutritionDetailScreen() {
     return (
       <ScrollView contentContainerStyle={styles.tabContent}>
         {noData || mealTypeCalories.length === 0 ? (
-          <EmptyState />
+          renderDataPlaceholder()
         ) : (
           <>
             <Text style={styles.pieTitle}>Calories by Meal</Text>
@@ -265,7 +292,7 @@ export default function NutritionDetailScreen() {
     return (
       <ScrollView contentContainerStyle={styles.tabContent}>
         {noData || macroPieData.length === 0 ? (
-          <EmptyState />
+          renderDataPlaceholder()
         ) : (
           <>
             <Text style={styles.pieTitle}>Macros by Calories</Text>
@@ -424,6 +451,17 @@ const getStyles = (colors) =>
       padding: 20,
       paddingBottom: 40,
       backgroundColor: colors.cardBackground,
+    },
+    stateContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 48,
+    },
+    fetchErrorText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.error || '#DC2626',
+      textAlign: 'center',
     },
     // ── Overview ──
     consumedHeader: {

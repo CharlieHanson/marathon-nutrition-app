@@ -7,13 +7,16 @@ export const ProLandingPage = () => {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-primary-50">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
+              <span className="text-3xl font-bold tracking-tight" aria-label="Alimenta">
+                <span className="text-primary">Al</span>
+                <span className="text-gray-800">imenta</span>
+              </span>
               <span className="text-sm font-medium text-gray-500">Pro</span>
             </div>
             <div className="flex items-center gap-4">
@@ -23,7 +26,7 @@ export const ProLandingPage = () => {
                 </button>
               </Link> */}
               <Link href="/login?role=nutritionist">
-                <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
+                <button className="px-6 py-2 text-primary font-medium hover:bg-primary-50 rounded-lg transition-colors">
                   Sign In
                 </button>
               </Link>
@@ -37,13 +40,13 @@ export const ProLandingPage = () => {
         <div className="absolute inset-0 bg-gradient-animated"></div>
         
         <div className="max-w-7xl mx-auto text-center relative z-10">
-          <div className="inline-block px-4 py-2 bg-orange-100 rounded-full text-primary font-semibold text-sm mb-6">
+          <div className="inline-block px-4 py-2 bg-primary-100 rounded-full text-primary font-semibold text-sm mb-6">
             For Sports Nutritionists & Dietitians
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
             Manage Your Clients'
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-600"> Nutrition Plans with AI</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-600"> Nutrition Plans with AI</span>
           </h1>
           
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
@@ -52,7 +55,7 @@ export const ProLandingPage = () => {
 
           <div className="flex gap-4 justify-center flex-wrap">
             <Link href="/login?role=nutritionist">
-              <button className="px-8 py-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
+              <button className="px-8 py-4 bg-gradient-to-r from-primary to-primary-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
                 Start Free Trial
                 <ArrowRight className="w-5 h-5" />
               </button>
@@ -78,7 +81,7 @@ export const ProLandingPage = () => {
       </section>
 
       {/* Solution: Key Features */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -168,7 +171,7 @@ export const ProLandingPage = () => {
             {/* Feature 4 */}
             <div className="flex gap-6">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
                   <Clock className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -226,7 +229,7 @@ export const ProLandingPage = () => {
       </section>
 
       {/* Comparison */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12 text-center">
             Alimenta Pro vs. DIY GPTs
@@ -238,7 +241,7 @@ export const ProLandingPage = () => {
               <div className="bg-gray-50 p-6">
                 <h3 className="font-bold text-gray-900 text-lg">Custom ChatGPT</h3>
               </div>
-              <div className="bg-gradient-to-r from-primary to-orange-600 p-6">
+              <div className="bg-gradient-to-r from-primary to-primary-600 p-6">
                 <h3 className="font-bold text-white text-lg">Alimenta Pro</h3>
               </div>
 
@@ -294,7 +297,7 @@ export const ProLandingPage = () => {
       {/* Social Proof / Testimonial Placeholder 
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl p-12">
+          <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-12">
             <div className="flex justify-center mb-6">
               <div className="flex -space-x-2">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white"></div>
@@ -311,12 +314,12 @@ export const ProLandingPage = () => {
       </section> */}
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-orange-600">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-primary-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Scale Your Practice?
           </h2>
-          <p className="text-xl text-orange-100 mb-8">
+          <p className="text-xl text-primary-100 mb-8">
             Start your free trial today. No credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -326,7 +329,7 @@ export const ProLandingPage = () => {
               </button>
             </Link>
           </div>
-          <p className="text-orange-100 text-sm mt-6">
+          <p className="text-primary-100 text-sm mt-6">
             Questions? Email us at alimentanutrition@gmail.com
           </p>
         </div>
@@ -365,7 +368,7 @@ const PainPoint = ({ icon, title, description }) => (
 
 const StepCard = ({ number, title, description }) => (
   <div className="relative">
-    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-r from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-r from-primary to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
       {number}
     </div>
     <div className="pt-8 p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">

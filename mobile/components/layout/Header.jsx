@@ -3,39 +3,42 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { TourTarget } from '../tour/TourTarget';
 
-export const Header = ({ user, userName, isGuest, onSignOut, onDisableGuestMode, onViewChange }) => {
+export const Header = ({
+  user,
+  userName,
+  isGuest,
+  onSignOut,
+  onDisableGuestMode,
+  onViewChange,
+  headerExtra,
+  reserveExtra = false,
+}) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-
-  // Get user initial from name or email
-  const getInitial = () => {
-    if (userName) {
-      return userName.charAt(0).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return 'G'; // Guest
-  };
-
-  const initial = getInitial();
+  const hasExtra = Boolean(headerExtra);
+  const showExtra = hasExtra || reserveExtra;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          {/* User Initial Circle - Top Left */}
-          <TouchableOpacity
-            onPress={() => onViewChange('profile')}
-            style={styles.initialCircle}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.initialText}>{initial}</Text>
-          </TouchableOpacity>
+          {/* Profile icon - Top Left (routes to profile) */}
+          <TourTarget id="header-avatar" style={styles.avatarTarget}>
+            <TouchableOpacity
+              onPress={() => onViewChange('profile')}
+              style={styles.initialCircle}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Profile"
+              accessibilityRole="button"
+            >
+              <Ionicons name="person" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </TourTarget>
 
-          {/* Logo - Centered */}
-          <View style={styles.logoContainer}>
+          {/* Logo - Centered (non-interactive so it can't steal avatar taps) */}
+          <View style={styles.logoContainer} pointerEvents="none">
             <Text style={styles.logoOrange}>Al</Text>
             <Text style={styles.logoGray}>imenta</Text>
           </View>
@@ -67,6 +70,12 @@ export const Header = ({ user, userName, isGuest, onSignOut, onDisableGuestMode,
             </TouchableOpacity>
           </View>
         </View>
+
+        {showExtra ? (
+          <View style={[styles.headerExtra, !hasExtra && styles.headerExtraReserve]}>
+            {headerExtra}
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -94,6 +103,18 @@ const getStyles = (colors) => StyleSheet.create({
     paddingVertical: 10,
     minHeight: 48,
   },
+  headerExtra: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    paddingTop: 0,
+  },
+  // Matches DaySelector / training day strip (padding 4+10 + ~44px row).
+  headerExtraReserve: {
+    minHeight: 58,
+  },
+  avatarTarget: {
+    zIndex: 1,
+  },
   initialCircle: {
     width: 36,
     height: 36,
@@ -101,12 +122,6 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
-  },
-  initialText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textInverse,
   },
   logoContainer: {
     position: 'absolute',

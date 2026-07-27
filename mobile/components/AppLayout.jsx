@@ -1,10 +1,11 @@
 // mobile/components/AppLayout.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Layout } from './layout/Layout';
+import { TourSpotlight } from './tour/TourSpotlight';
 
 import { fetchBaseProfile } from '../../shared/lib/dataClient';
 
@@ -14,7 +15,8 @@ export const AppLayout = ({ children }) => {
   const { user, loading, isGuest, signOut, disableGuestMode } = useAuth();
   const { colors } = useTheme();
   const [userName, setUserName] = useState(null);
-  const [fetchingName, setFetchingName] = useState(false);
+  const fetchingNameRef = useRef(false);
+  const fetchedNameForUserRef = useRef(null);
 
   const styles = getStyles(colors);
 
@@ -25,30 +27,39 @@ export const AppLayout = ({ children }) => {
     }
   }, [user, loading, isGuest, router]);
 
-  // Fetch user name from profiles table
+  // Fetch user name from profiles table (ref guard — do not put fetching flag in deps).
   useEffect(() => {
-    const fetchUserName = async () => {
-      if (!user || isGuest || fetchingName) return;
+    if (!user || isGuest) {
+      setUserName(null);
+      fetchedNameForUserRef.current = null;
+      return undefined;
+    }
 
-      setFetchingName(true);
+    if (fetchedNameForUserRef.current === user.id || fetchingNameRef.current) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    fetchingNameRef.current = true;
+
+    (async () => {
       try {
         const profile = await fetchBaseProfile(user.id);
-        if (profile?.name) {
-          setUserName(profile.name);
-        } else {
-          // Fallback to email if no name
-          setUserName(null);
-        }
+        if (cancelled) return;
+        setUserName(profile?.name || null);
+        fetchedNameForUserRef.current = user.id;
       } catch (error) {
         console.warn('AppLayout: failed to fetch user name', error);
-        setUserName(null);
+        if (!cancelled) setUserName(null);
       } finally {
-        setFetchingName(false);
+        fetchingNameRef.current = false;
       }
-    };
+    })();
 
-    fetchUserName();
-  }, [user, isGuest, fetchingName]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isGuest]);
 
   if (loading) {
     return (
@@ -116,17 +127,20 @@ export const AppLayout = ({ children }) => {
   };
 
   return (
-    <Layout
-      user={user}
-      userName={userName}
-      isGuest={isGuest}
-      onSignOut={handleSignOut}
-      onDisableGuestMode={handleDisableGuestMode}
-      currentView={mappedView}
-      onViewChange={handleViewChange}
-    >
-      {children}
-    </Layout>
+    <View style={{ flex: 1 }}>
+      <Layout
+        user={user}
+        userName={userName}
+        isGuest={isGuest}
+        onSignOut={handleSignOut}
+        onDisableGuestMode={handleDisableGuestMode}
+        currentView={mappedView}
+        onViewChange={handleViewChange}
+      >
+        {children}
+      </Layout>
+      <TourSpotlight />
+    </View>
   );
 };
 

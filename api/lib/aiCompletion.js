@@ -6,7 +6,8 @@ const PROVIDER_LABELS = { gemini: 'Gemini', openai: 'OpenAI' };
 
 /**
  * OpenAI models for meal generation (generate-day, single meal, regenerate, meal prep).
- * Official API IDs — switch ACTIVE_OPENAI_MEAL_MODEL below (or set OPENAI_MEAL_MODEL in .env).
+ * Official API IDs — switch ACTIVE_OPENAI_MEAL_MODEL below.
+ * OPENAI_MEAL_MODEL in .env is only a fallback if the active key is invalid.
  */
 export const OPENAI_MEAL_MODELS = {
   /** GPT-5.4 nano — cheapest/fastest 5.4-class model */
@@ -21,9 +22,9 @@ export const OPENAI_MEAL_MODELS = {
 const ACTIVE_OPENAI_MEAL_MODEL = '5.4-mini';
 
 export const OPENAI_MEAL_MODEL =
-  process.env.OPENAI_MEAL_MODEL ||
   OPENAI_MEAL_MODELS[ACTIVE_OPENAI_MEAL_MODEL] ||
-  OPENAI_MEAL_MODELS['5-mini'];
+  process.env.OPENAI_MEAL_MODEL ||
+  OPENAI_MEAL_MODELS['5.4-mini'];
 
 /** Models that only accept the default temperature (omit the param). */
 function isGpt5Family(model) {

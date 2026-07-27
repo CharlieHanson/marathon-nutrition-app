@@ -23,12 +23,7 @@ const SINGLE_MEAL_FORMAT = `Respond with ONLY valid JSON, no other text:
   "ingredients": [
     { "name": "ingredient name", "type": "protein|carb|vegetable|fat", "grams": 0 }
   ]
-}
-
-Example meals for reference (DO NOT copy these — create something different):
-- Seared salmon with couscous and roasted bell peppers
-- Turkey meatballs with penne and sauteed spinach
-- Tofu stir-fry with jasmine rice and snap peas`;
+}`;
 
 const DAY_MEALS_FORMAT = `Respond with ONLY valid JSON, no other text:
 {
@@ -133,6 +128,64 @@ For ${budget.carbs}g carbs, you need ~${Math.round(budget.carbs / 0.23)}g of coo
 For ${budget.fat}g fat (after accounting for fat in protein), you may need ~${Math.max(0, Math.round((budget.fat - budget.protein * 0.4) / 1.0))}g of added fat.\n`;
 }
 
+/**
+ * Role/format guidance so snacks aren't mini-dinners, desserts aren't savory bowls, etc.
+ * Accepts UI keys ('snacks') or internal keys ('snack').
+ */
+function buildMealTypeGuidance(mealType) {
+  const key = String(mealType || '')
+    .toLowerCase()
+    .trim();
+  const normalized = key === 'snacks' ? 'snack' : key;
+
+  const guidance = {
+    breakfast: {
+      role: 'BREAKFAST',
+      body: `This is BREAKFAST — a morning meal, not lunch or dinner.
+- Typical forms: eggs, oatmeal, yogurt bowl, toast, smoothie, overnight oats, breakfast burrito
+- Avoid dinner-style plates (rice bowls, pasta, steak dinners, heavy stir-fries)
+- Keep it something someone would reasonably eat before noon
+Example name style: "Greek yogurt with berries and honey" or "Scrambled eggs on toast"`,
+    },
+    lunch: {
+      role: 'LUNCH',
+      body: `This is LUNCH — a midday plated meal.
+- Full meal is fine: bowl, wrap, sandwich, salad with protein, grain plate
+- Should feel distinct from a light snack
+Example name style: "Chicken quinoa bowl with roasted vegetables"`,
+    },
+    dinner: {
+      role: 'DINNER',
+      body: `This is DINNER — an evening entrée.
+- Full plated meal: protein + carb + vegetable is appropriate
+Example name style: "Grilled salmon with rice and broccoli"`,
+    },
+    snack: {
+      role: 'SNACK',
+      body: `This is a SNACK — NOT a mini lunch or dinner.
+- Keep it simple: typically 1–3 ingredients, quick to eat, portable when possible
+- Good examples: Greek yogurt, cottage cheese + fruit, protein shake, apple + peanut butter, jerky, toast with avocado, handful of nuts, cheese + crackers
+- DO NOT generate bowls, rice plates, pasta, stir-fries, burrito bowls, or other entrée-style dishes
+- If macros are high, scale a snack format (e.g. larger yogurt parfait) — do not invent a meal
+Example name style: "Cottage cheese with pineapple" or "Peanut butter banana toast"`,
+    },
+    dessert: {
+      role: 'DESSERT',
+      body: `This is DESSERT — a sweet treat after meals, not a savory entrée or snack plate.
+- Real dessert forms: cake, cookie, brownie, pudding, ice cream, fruit crisp, dark chocolate, mousse
+- DO NOT generate smoothie bowls, yogurt bowls, rice bowls, or savory dishes
+Example name style: "Dark chocolate banana soft-serve" or "Berry crisp"`,
+    },
+  };
+
+  const match = guidance[normalized];
+  if (!match) {
+    return `MEAL ROLE: Create a realistic, appetizing ${mealType || 'meal'}.\n`;
+  }
+
+  return `MEAL ROLE (${match.role}):\n${match.body}\n`;
+}
+
 // ─── Prompt Builders ─────────────────────────────────────────────────────────
 
 /**
@@ -156,6 +209,7 @@ export function buildSingleMealPrompt({
   const lines = [
     `You are a sports nutritionist creating a ${mealType} for an athlete.`,
     '',
+    buildMealTypeGuidance(mealType),
     buildMacroBudgetBlock(macroBudget),
     buildPreferencesBlock({ foodPreferences, dietaryRestrictions }),
     buildTrainingBlock({ todayTraining, tomorrowTraining }),
@@ -171,9 +225,9 @@ export function buildSingleMealPrompt({
   lines.push(`RULES:`);
   lines.push(`1. Return ingredients with COOKED gram weights`);
   lines.push(`2. Every ingredient must have a type: protein, carb, vegetable, or fat`);
-  lines.push(`3. Make it a realistic, appetizing ${mealType}`);
-  lines.push(`4. Meal name should be short and descriptive (e.g., "Grilled salmon with quinoa and roasted vegetables")`);
-  lines.push(`5. Do not state the cuisine name, just the meal name.`)
+  lines.push(`3. Follow the MEAL ROLE guidance above — the dish format must match this meal type`);
+  lines.push(`4. Meal name should be short and descriptive`);
+  lines.push(`5. Do not state the cuisine name, just the meal name.`);
   lines.push('');
   lines.push(TYPE_DESCRIPTIONS);
   lines.push('');
@@ -239,13 +293,21 @@ export function buildDayPrompt({
     '3. Use a DIFFERENT vegetable for each meal that has one — do NOT default to broccoli for everything',
     '4. Each meal should be a recognizable dish from a real cuisine, not just "[protein] with [carb] and [vegetable]"',
     cuisines ? `5. Draw from these cuisines across the day: ${cuisines} but [IMPORTANT] DO NOT state the cuisine name, just the meal. (e.g. "Meatballs with pasta", not "Italian Meatballs with pasta")` : '5. Vary cuisines across meals',
-    mealsToGenerate.includes('dessert') ? '6. Dessert must be a real dessert (cake, pudding, ice cream, fruit crisp, etc.) — not a smoothie bowl or yogurt' : '',
-    mealsToGenerate.includes('snack') ? '7. Snack should be simple (1-3 ingredients) and different from the main meals' : '',
+    mealsToGenerate.includes('dessert')
+      ? '6. Dessert must be a real sweet dessert (cake, pudding, ice cream, fruit crisp, cookie) — NOT a smoothie bowl, yogurt bowl, or savory dish'
+      : '',
+    mealsToGenerate.includes('snack')
+      ? '7. Snack must be a true snack (1–3 ingredients, portable/simple: yogurt, fruit + nut butter, jerky, toast) — NOT a rice bowl, pasta, stir-fry, or other mini lunch/dinner'
+      : '',
+    mealsToGenerate.includes('breakfast')
+      ? '8. Breakfast must feel morning-appropriate (eggs, oats, yogurt, toast) — not a dinner entrée'
+      : '',
     '',
     'ADDITIONAL RULES:',
     '1. Each meal must have ingredients with types (protein, carb, vegetable, fat) and gram weights',
     '2. Use COOKED weights for grains, pasta, potatoes',
     '3. Meal names should be short and descriptive',
+    '4. Match dish format to meal role (snack ≠ entrée; dessert ≠ savory bowl)',
     '',
     TYPE_DESCRIPTIONS,
     '',

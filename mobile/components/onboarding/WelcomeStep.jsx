@@ -1,15 +1,32 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const PRIMARY = '#F6921D';
-const PRIMARY_LIGHT = 'rgba(246, 146, 29, 0.15)';
-const TEXT = '#111827';
-const TEXT_SECONDARY = '#4B5563';
+import { useTheme } from '../../context/ThemeContext';
 
 export function WelcomeStep({ onNext }) {
+  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const styles = getStyles(colors);
+
   return (
     <View style={styles.card}>
+      <View style={styles.themeRow}>
+        <View style={styles.themeLeft}>
+          <Ionicons
+            name={isDarkMode ? 'moon' : 'sunny'}
+            size={18}
+            color={colors.textSecondary}
+          />
+          <Text style={styles.themeLabel}>{isDarkMode ? 'Dark' : 'Light'} mode</Text>
+        </View>
+        <Switch
+          value={isDarkMode}
+          onValueChange={toggleTheme}
+          trackColor={{ false: colors.gray300, true: colors.primary }}
+          thumbColor={isDarkMode ? '#FFFFFF' : '#F3F4F6'}
+          ios_backgroundColor={colors.gray300}
+        />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <Text style={styles.logoOrange}>Al</Text>
@@ -24,7 +41,7 @@ export function WelcomeStep({ onNext }) {
       <View style={styles.features}>
         <View style={styles.featureRow}>
           <View style={styles.featureIcon}>
-            <Ionicons name="restaurant-outline" size={24} color={PRIMARY} />
+            <Ionicons name="restaurant-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.featureText}>
             <Text style={styles.featureTitle}>AI-Powered Meal Plans</Text>
@@ -36,7 +53,7 @@ export function WelcomeStep({ onNext }) {
 
         <View style={styles.featureRow}>
           <View style={styles.featureIcon}>
-            <Ionicons name="calendar-outline" size={24} color={PRIMARY} />
+            <Ionicons name="calendar-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.featureText}>
             <Text style={styles.featureTitle}>Training-Adaptive Nutrition</Text>
@@ -48,7 +65,7 @@ export function WelcomeStep({ onNext }) {
 
         <View style={styles.featureRow}>
           <View style={styles.featureIcon}>
-            <Ionicons name="trending-up-outline" size={24} color={PRIMARY} />
+            <Ionicons name="trending-up-outline" size={24} color={colors.primary} />
           </View>
           <View style={styles.featureText}>
             <Text style={styles.featureTitle}>Track Your Progress</Text>
@@ -66,88 +83,109 @@ export function WelcomeStep({ onNext }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 24,
-    marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  logoOrange: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: PRIMARY,
-  },
-  logoGray: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: TEXT_SECONDARY,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: TEXT,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: TEXT_SECONDARY,
-    textAlign: 'center',
-  },
-  features: {
-    marginBottom: 24,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: PRIMARY_LIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  featureText: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT,
-    marginBottom: 4,
-  },
-  featureDesc: {
-    fontSize: 14,
-    color: TEXT_SECONDARY,
-    lineHeight: 20,
-  },
-  button: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      padding: 24,
+      marginHorizontal: 16,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    themeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    themeLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    themeLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    logoRow: {
+      flexDirection: 'row',
+      marginBottom: 12,
+    },
+    logoOrange: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.primary,
+    },
+    logoGray: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.textSecondary,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    features: {
+      marginBottom: 24,
+    },
+    featureRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 20,
+    },
+    featureIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    featureText: {
+      flex: 1,
+    },
+    featureTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    featureDesc: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    button: {
+      backgroundColor: colors.primary,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    buttonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+  });
+}

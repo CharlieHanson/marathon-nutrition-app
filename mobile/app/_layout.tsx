@@ -12,13 +12,14 @@ import { useRouter } from 'expo-router';
 import 'react-native-reanimated';
 import { PostHogProvider } from 'posthog-react-native';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ApiErrorProvider } from '../context/ApiErrorContext';
 import { NetworkProvider } from '../context/NetworkContext';
+import { ProductTourProvider } from '../context/ProductTourContext';
 import { OfflineBanner } from '../components/OfflineBanner';
-import { ThemeProvider as CustomThemeProvider } from '../context/ThemeContext';
+import { ThemeProvider as CustomThemeProvider, useTheme } from '../context/ThemeContext';
 import { shouldEnablePostHog } from '../lib/analytics';
+import { applyQuicksandFont, quicksandFonts } from '../lib/fonts';
 
 const sentryDsn =
   Constants.expoConfig?.extra?.sentryDsn ||
@@ -54,14 +55,18 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 function AppProviders({ children }: { children: ReactNode }) {
-  if (!shouldEnablePostHog) {
-    return <>{children}</>;
-  }
-
+  // Always mount PostHogProvider so usePostHog() callers don't log errors in
+  // dev. capture()/identify()/reset() in lib/analytics.js still no-op when
+  // shouldEnablePostHog is false, so no events are sent outside production.
   return (
     <PostHogProvider
-      apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY || ''}
-      options={{ host: process.env.EXPO_PUBLIC_POSTHOG_HOST }}
+      apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY || 'phc_dev_disabled'}
+      options={{
+        host: process.env.EXPO_PUBLIC_POSTHOG_HOST,
+        captureAppLifecycleEvents: shouldEnablePostHog,
+        persistence: shouldEnablePostHog ? 'file' : 'memory',
+      }}
+      autocapture={shouldEnablePostHog}
     >
       {children}
     </PostHogProvider>
@@ -70,6 +75,7 @@ function AppProviders({ children }: { children: ReactNode }) {
 
 function RootLayout() {
   const [loaded, error] = useFonts({
+    ...quicksandFonts,
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
@@ -89,25 +95,29 @@ function RootLayout() {
     // Show loading view instead of null while fonts are loading
     return (
       <View style={styles.fontLoadingContainer}>
-        <ActivityIndicator size="large" color="#F6921D" />
+        <ActivityIndicator size="large" color="#3D7C65" />
         <Text style={styles.fontLoadingText}>Loading...</Text>
       </View>
     );
   }
 
+  applyQuicksandFont();
+
   return (
     <AppProviders>
       <CustomThemeProvider>
         <AuthProvider>
-          <SessionExpiredHandler />
-          <NetworkProvider>
-            <ApiErrorProvider>
-              <View style={{ flex: 1 }}>
-                <RootLayoutNav />
-                <OfflineBanner />
-              </View>
-            </ApiErrorProvider>
-          </NetworkProvider>
+          <ProductTourProvider>
+            <SessionExpiredHandler />
+            <NetworkProvider>
+              <ApiErrorProvider>
+                <View style={{ flex: 1 }}>
+                  <RootLayoutNav />
+                  <OfflineBanner />
+                </View>
+              </ApiErrorProvider>
+            </NetworkProvider>
+          </ProductTourProvider>
         </AuthProvider>
       </CustomThemeProvider>
     </AppProviders>
@@ -136,10 +146,10 @@ function SessionExpiredHandler() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isDarkMode } = useTheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
       <View style={{ flex: 1 }}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -158,7 +168,7 @@ function RootLayoutNav() {
 const styles = StyleSheet.create({
   fontLoadingContainer: {
     flex: 1,
-    backgroundColor: '#FFF7ED', // orange-50
+    backgroundColor: '#EBF4F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -166,7 +176,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     fontWeight: '600',
-    color: '#F6921D', // primary orange
+    color: '#3D7C65',
   },
 });
 

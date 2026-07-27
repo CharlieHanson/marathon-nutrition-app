@@ -493,7 +493,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               </div>
             </div>
           ) : (
-            <div className="w-full p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg flex items-start gap-4 shadow-sm">
+            <div className="w-full p-5 bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 rounded-lg flex items-start gap-4 shadow-sm">
               <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                 <Lock className="w-5 h-5 text-amber-600" />
               </div>
@@ -510,14 +510,14 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
 
       {/* Macros Calculator Results - above profile completion */}
       {!isGuest && showTdeeTest && tdeeResults && (
-        <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200">
+        <Card className="bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200">
           <div className="mb-4">
             <h3 className="text-xl font-bold text-gray-900 mb-1">Your Daily Nutrition Targets</h3>
             <p className="text-sm text-gray-600">Based on your profile and goals</p>
           </div>
 
           {/* Rest Day */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-orange-100 shadow-sm">
+          <div className="mb-6 p-4 bg-white rounded-lg border border-primary-100 shadow-sm">
             <h4 className="font-semibold text-gray-900 mb-3">Rest days</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-3 bg-blue-50 rounded">
@@ -530,9 +530,9 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 <div className="text-2xl font-bold text-green-600">{tdeeResults.noWorkouts.tdee}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
-              <div className="text-center p-3 bg-orange-50 rounded">
+              <div className="text-center p-3 bg-primary-50 rounded">
                 <div className="text-xs text-gray-600 mb-1">Target calories</div>
-                <div className="text-2xl font-bold text-orange-600">{tdeeResults.noWorkouts.adjustedTdee}</div>
+                <div className="text-2xl font-bold text-primary-600">{tdeeResults.noWorkouts.adjustedTdee}</div>
                 <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
@@ -547,7 +547,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
           </div>
 
           {/* Training Day */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-orange-100 shadow-sm">
+          <div className="mb-6 p-4 bg-white rounded-lg border border-primary-100 shadow-sm">
             <h4 className="font-semibold text-gray-900 mb-3">Training days (example: 10k run)</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-3 bg-blue-50 rounded">
@@ -560,9 +560,9 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 <div className="text-2xl font-bold text-green-600">{tdeeResults.withWorkouts.tdee}</div>
                 <div className="text-xs text-gray-500">cal/day (includes workout)</div>
               </div>
-              <div className="text-center p-3 bg-orange-50 rounded">
+              <div className="text-center p-3 bg-primary-50 rounded">
                 <div className="text-xs text-gray-600 mb-1">Target calories</div>
-                <div className="text-2xl font-bold text-orange-600">{tdeeResults.withWorkouts.adjustedTdee}</div>
+                <div className="text-2xl font-bold text-primary-600">{tdeeResults.withWorkouts.adjustedTdee}</div>
                 <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
@@ -574,7 +574,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 <span><strong>Fat:</strong> {tdeeResults.withWorkouts.dailyMacros.fat}g</span>
               </div>
             </div>
-            <div className="p-3 bg-orange-50 rounded">
+            <div className="p-3 bg-primary-50 rounded">
               <div className="text-sm font-semibold text-gray-700 mb-2">Per-meal targets (morning workout)</div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                 {Object.entries(tdeeResults.withWorkouts.mealBudgets).map(([meal, macros]) => (
@@ -631,7 +631,7 @@ const ProfileCompletionCard = ({ profile }) => {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200 shadow-md">
+    <Card className="bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 flex-1">
           <div className="flex-shrink-0 w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
@@ -648,7 +648,7 @@ const ProfileCompletionCard = ({ profile }) => {
             {/* Progress Bar */}
             <div className="mb-4 bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
               <div
-                className="bg-gradient-to-r from-primary to-orange-600 h-full transition-all duration-500 rounded-full"
+                className="bg-gradient-to-r from-primary to-primary-600 h-full transition-all duration-500 rounded-full"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
@@ -666,7 +666,7 @@ const ProfileCompletionCard = ({ profile }) => {
                     .map((field) => (
                       <span
                         key={field}
-                        className="text-xs bg-white/80 text-gray-700 px-3 py-1.5 rounded-full border border-orange-200 font-medium"
+                        className="text-xs bg-white/80 text-gray-700 px-3 py-1.5 rounded-full border border-primary-200 font-medium"
                       >
                         {field
                           .replace(/([A-Z])/g, ' $1')
@@ -679,7 +679,7 @@ const ProfileCompletionCard = ({ profile }) => {
           </div>
         </div>
         <div className="flex-shrink-0">
-          <div className="text-4xl font-bold bg-gradient-to-r from-primary to-orange-600 bg-clip-text text-transparent">
+          <div className="text-4xl font-bold bg-gradient-to-r from-primary to-primary-600 bg-clip-text text-transparent">
             {completionPercentage}%
           </div>
         </div>

@@ -573,7 +573,7 @@ export const apiClient = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }, 30000);
+      }, 120000);
 
       if (!response.ok) {
         const errorText = await response.text();

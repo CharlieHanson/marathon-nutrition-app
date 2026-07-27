@@ -59,7 +59,7 @@ export default function AuthRedirect() {
 
   if (showMobileChoice) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-6">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 p-6">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckIcon />
@@ -70,7 +70,7 @@ export default function AuthRedirect() {
           <div className="space-y-3">
             <button
               onClick={handleOpenApp}
-              className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+              className="w-full py-3 px-4 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-colors"
             >
               Open in App
             </button>
@@ -87,7 +87,7 @@ export default function AuthRedirect() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <p className="text-primary font-semibold">Signing you in...</p>
     </div>
   );

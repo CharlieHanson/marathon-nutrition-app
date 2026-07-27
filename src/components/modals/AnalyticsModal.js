@@ -12,6 +12,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { macroColors } from '../../../shared/lib/macroColors';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
@@ -106,9 +107,9 @@ export const AnalyticsModal = ({
   
   // Macro distribution for pie chart (calories from each macro)
   const macroDistribution = [
-    { name: 'Protein', value: averages.protein * 4, grams: averages.protein, color: '#22c55e' },
-    { name: 'Carbs', value: averages.carbs * 4, grams: averages.carbs, color: '#3b82f6' },
-    { name: 'Fat', value: averages.fat * 9, grams: averages.fat, color: '#a855f7' },
+    { name: 'Protein', value: averages.protein * 4, grams: averages.protein, color: macroColors.protein },
+    { name: 'Carbs', value: averages.carbs * 4, grams: averages.carbs, color: macroColors.carbs },
+    { name: 'Fat', value: averages.fat * 9, grams: averages.fat, color: macroColors.fat },
   ];
   
   const totalMacroCalories = macroDistribution.reduce((sum, m) => sum + m.value, 0);
@@ -153,10 +154,10 @@ export const AnalyticsModal = ({
       return (
         <div className="bg-white p-3 rounded-lg shadow-lg border text-sm">
           <p className="font-semibold capitalize">{data.fullDay}</p>
-          <p className="text-orange-600">{data.calories} cal</p>
-          <p className="text-green-600">{data.protein}g protein</p>
-          <p className="text-blue-600">{data.carbs}g carbs</p>
-          <p className="text-purple-600">{data.fat}g fat</p>
+          <p style={{ color: macroColors.calories }}>{data.calories} cal</p>
+          <p style={{ color: macroColors.protein }}>{data.protein}g protein</p>
+          <p style={{ color: macroColors.carbs }}>{data.carbs}g carbs</p>
+          <p style={{ color: macroColors.fat }}>{data.fat}g fat</p>
         </div>
       );
     }
@@ -217,25 +218,37 @@ export const AnalyticsModal = ({
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-3">Daily Averages ({daysWithData} days)</h4>
                 <div className="grid grid-cols-4 gap-3">
-                  <div className="bg-orange-50 rounded-lg p-3 text-center">
-                    <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-orange-600">{averages.calories}</p>
-                    <p className="text-xs text-orange-700">calories</p>
+                  <div
+                    className="rounded-lg p-3 text-center"
+                    style={{ backgroundColor: `${macroColors.calories}14` }}
+                  >
+                    <Flame className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.calories }} />
+                    <p className="text-2xl font-bold" style={{ color: macroColors.calories }}>{averages.calories}</p>
+                    <p className="text-xs" style={{ color: macroColors.calories }}>calories</p>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <Beef className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-green-600">{averages.protein}g</p>
-                    <p className="text-xs text-green-700">protein</p>
+                  <div
+                    className="rounded-lg p-3 text-center"
+                    style={{ backgroundColor: `${macroColors.protein}14` }}
+                  >
+                    <Beef className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.protein }} />
+                    <p className="text-2xl font-bold" style={{ color: macroColors.protein }}>{averages.protein}g</p>
+                    <p className="text-xs" style={{ color: macroColors.protein }}>protein</p>
                   </div>
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <Wheat className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-blue-600">{averages.carbs}g</p>
-                    <p className="text-xs text-blue-700">carbs</p>
+                  <div
+                    className="rounded-lg p-3 text-center"
+                    style={{ backgroundColor: `${macroColors.carbs}14` }}
+                  >
+                    <Wheat className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.carbs }} />
+                    <p className="text-2xl font-bold" style={{ color: macroColors.carbs }}>{averages.carbs}g</p>
+                    <p className="text-xs" style={{ color: macroColors.carbs }}>carbs</p>
                   </div>
-                  <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <Droplet className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-purple-600">{averages.fat}g</p>
-                    <p className="text-xs text-purple-700">fat</p>
+                  <div
+                    className="rounded-lg p-3 text-center"
+                    style={{ backgroundColor: `${macroColors.fat}14` }}
+                  >
+                    <Droplet className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.fat }} />
+                    <p className="text-2xl font-bold" style={{ color: macroColors.fat }}>{averages.fat}g</p>
+                    <p className="text-xs" style={{ color: macroColors.fat }}>fat</p>
                   </div>
                 </div>
               </div>

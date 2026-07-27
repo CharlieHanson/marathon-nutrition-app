@@ -10,8 +10,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { DAY_LABELS } from '../../utils/mealHelpers';
+import { macroColors } from '../../../shared/lib/macroColors';
 
-const ARROW_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
+const ARROW_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 4 };
 
 export const WeekNavigation = ({
   weekRange,
@@ -174,12 +175,30 @@ export const DaySelector = ({
   animatedStyle,
   todayDayOfWeek,
   isCurrentWeek,
+  onPreviousWeek,
+  onNextWeek,
+  weekNavDisabled = false,
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
   return (
     <Animated.View style={[styles.calendarRow, animatedStyle]}>
+      <TouchableOpacity
+        onPress={onPreviousWeek}
+        style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+        disabled={weekNavDisabled || !onPreviousWeek}
+        accessibilityLabel="Previous week"
+        accessibilityRole="button"
+        hitSlop={ARROW_HIT_SLOP}
+      >
+        <Ionicons
+          name="chevron-back"
+          size={20}
+          color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+        />
+      </TouchableOpacity>
+
       {days.map((day, index) => {
         const isSelected = selectedDay === day;
         const isToday = isCurrentWeek && day === todayDayOfWeek;
@@ -223,16 +242,26 @@ export const DaySelector = ({
           </TouchableOpacity>
         );
       })}
+
+      <TouchableOpacity
+        onPress={onNextWeek}
+        style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+        disabled={weekNavDisabled || !onNextWeek}
+        accessibilityLabel="Next week"
+        accessibilityRole="button"
+        hitSlop={ARROW_HIT_SLOP}
+      >
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+        />
+      </TouchableOpacity>
     </Animated.View>
   );
 };
 
-const MACRO_COLORS = {
-  calories: '#F59E0B',
-  protein: '#10B981',
-  carbs: '#3B82F6',
-  fat: '#8B5CF6',
-};
+const MACRO_COLORS = macroColors;
 
 const MacroColumn = ({ value, label, color }) => {
   const { colors } = useTheme();
@@ -320,7 +349,6 @@ const getStyles = (colors) => StyleSheet.create({
   quickActionsRow: {
     flexDirection: 'row',
     gap: 8,
-    overflow: 'hidden',
   },
   quickActionBtn: {
     flex: 1,
@@ -348,9 +376,15 @@ const getStyles = (colors) => StyleSheet.create({
 
   calendarRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 6,
+  },
+  weekArrowBtn: {
+    width: 22,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   calendarDay: {
     flex: 1,
@@ -369,9 +403,9 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '700',
   },
   calendarDateCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -389,7 +423,7 @@ const getStyles = (colors) => StyleSheet.create({
   },
   calendarDateTextSelected: {
     fontWeight: '800',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   calendarDateTextToday: {
     color: colors.text,

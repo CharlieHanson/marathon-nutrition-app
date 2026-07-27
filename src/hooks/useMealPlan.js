@@ -88,7 +88,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           weekStarting: week,
         });
 
-        const res = await fetch(
+        const res = await authenticatedFetch(
           getApiUrl(
             `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
               week
@@ -432,7 +432,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         weekStarting,
       });
 
-      const res = await fetch(
+      const res = await authenticatedFetch(
         getApiUrl(
           `/api/meal-plan?userId=${encodeURIComponent(user.id)}&week=${encodeURIComponent(
             weekStarting

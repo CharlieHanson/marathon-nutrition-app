@@ -19,6 +19,7 @@ import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useAppleAuth, AppleSignInButton } from '../../hooks/useAppleAuth';
 import { capture } from '../../lib/analytics';
 import { usePostHog } from 'posthog-react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -27,6 +28,8 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   const router = useRouter();
   const posthog = usePostHog();
@@ -98,7 +101,7 @@ export default function SignupScreen() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/(app)');
+      router.replace('/');
     }
   }, [user, router]);
 
@@ -130,7 +133,7 @@ export default function SignupScreen() {
             {success ? (
               <>
                 <View style={styles.successIconWrap}>
-                  <Ionicons name="checkmark-circle" size={64} color="#22c55e" />
+                  <Ionicons name="checkmark-circle" size={64} color={colors.success} />
                 </View>
                 <Text style={styles.successTitle}>Check Your Email</Text>
                 <Text style={styles.successMessage}>
@@ -163,7 +166,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Enter your name"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholderColor}
                     value={name}
                     onChangeText={setName}
                     autoCapitalize="words"
@@ -178,7 +181,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Enter your email"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholderColor}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -194,7 +197,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Enter your password (min. 6 characters)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholderColor}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -247,7 +250,7 @@ export default function SignupScreen() {
                 >
                   {googleLoading ? (
                     <View style={styles.buttonContent}>
-                      <ActivityIndicator size="small" color="#374151" />
+                      <ActivityIndicator size="small" color={colors.gray700} />
                       <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
                     </View>
                   ) : (
@@ -262,7 +265,7 @@ export default function SignupScreen() {
                 <View style={styles.appleButtonContainer}>
                   {appleLoading ? (
                     <View style={[styles.googleButton, styles.googleButtonDisabled]}>
-                      <ActivityIndicator size="small" color="#374151" />
+                      <ActivityIndicator size="small" color={colors.gray700} />
                       <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
                     </View>
                   ) : (
@@ -299,202 +302,203 @@ export default function SignupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF7ED',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    paddingBottom: 24,
-  },
-  innerContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 32,
-    minHeight: '100%',
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#4B5563',
-  },
-  errorContainer: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 8,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 14,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    width: '100%',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
-    fontSize: 16,
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  primaryButton: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: '#F6921D',
-    marginBottom: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#FB923C',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  signInContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signInText: {
-    fontSize: 14,
-    color: '#4B5563',
-  },
-  signInLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F6921D',
-  },
-  orDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  orText: {
-    marginHorizontal: 12,
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  googleButton: {
-    width: '100%',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  googleButtonDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-  },
-  googleButtonText: {
-    color: '#374151',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  appleButtonContainer: {
-    width: '100%',
-    marginTop: 12,
-  },
-  legalText: {
-    marginTop: 16,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  legalLink: {
-    color: '#F6921D',
-    fontWeight: '600',
-  },
-  // Success state
-  successIconWrap: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  successMessage: {
-    fontSize: 15,
-    color: '#4B5563',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  backToLoginWrap: {
-    alignItems: 'center',
-  },
-  backToLoginText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#F6921D',
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    contentContainer: {
+      flexGrow: 1,
+      paddingBottom: 24,
+    },
+    innerContainer: {
+      paddingHorizontal: 24,
+      paddingTop: 48,
+      paddingBottom: 32,
+      minHeight: '100%',
+      justifyContent: 'center',
+    },
+    card: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 12,
+      padding: 28,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    header: {
+      marginBottom: 24,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    errorContainer: {
+      marginBottom: 16,
+      padding: 12,
+      backgroundColor: colors.errorLight,
+      borderWidth: 1,
+      borderColor: colors.errorBorder,
+      borderRadius: 8,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 14,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.gray700,
+      marginBottom: 8,
+    },
+    input: {
+      width: '100%',
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      backgroundColor: colors.inputBackground,
+      color: colors.text,
+      fontSize: 16,
+    },
+    helperText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    primaryButton: {
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 8,
+      backgroundColor: colors.primary,
+      marginBottom: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    signInContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    signInText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    signInLink: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    orDivider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 16,
+    },
+    orLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    orText: {
+      marginHorizontal: 12,
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    googleButton: {
+      width: '100%',
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    googleButtonDisabled: {
+      opacity: 0.7,
+    },
+    googleIcon: {
+      width: 20,
+      height: 20,
+    },
+    googleButtonText: {
+      color: colors.gray700,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    appleButtonContainer: {
+      width: '100%',
+      marginTop: 12,
+    },
+    legalText: {
+      marginTop: 16,
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    legalLink: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    successIconWrap: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    successTitle: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    successMessage: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 24,
+    },
+    backToLoginWrap: {
+      alignItems: 'center',
+    },
+    backToLoginText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+  });
+}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UtensilsCrossed, Check, Loader2, Heart, Trash2 } from 'lucide-react';
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
+import { macroColors } from '../../../shared/lib/macroColors';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
@@ -252,16 +253,28 @@ export const LogMealModal = ({
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm font-medium text-green-800 mb-2">Estimated Macros:</p>
                   <div className="flex gap-2 flex-wrap">
-                    <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                    >
                       Cal: {estimatedMacros.calories}
                     </span>
-                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                    >
                       P: {estimatedMacros.protein}g
                     </span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                    >
                       C: {estimatedMacros.carbs}g
                     </span>
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                    >
                       F: {estimatedMacros.fat}g
                     </span>
                   </div>
@@ -319,16 +332,28 @@ export const LogMealModal = ({
                         <p className="font-medium text-gray-900 truncate">{meal.name}</p>
                         {meal.calories && (
                           <div className="flex gap-1 mt-1 flex-wrap">
-                            <span className="text-xs px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded">
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                            >
                               {meal.calories} cal
                             </span>
-                            <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                            >
                               {meal.protein}g P
                             </span>
-                            <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                            >
                               {meal.carbs}g C
                             </span>
-                            <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                            >
                               {meal.fat}g F
                             </span>
                           </div>

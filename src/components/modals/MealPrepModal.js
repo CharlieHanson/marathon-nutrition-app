@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
 import { authenticatedFetch, getMealGenApiUrl } from '../../../shared/services/api';
+import { macroColors } from '../../../shared/lib/macroColors';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -132,7 +133,7 @@ export const MealPrepModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b bg-gradient-to-r from-primary/10 to-orange-100">
+        <div className="flex justify-between items-center p-4 border-b bg-gradient-to-r from-primary/10 to-primary-100">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
             Meal Prep Mode
@@ -300,16 +301,28 @@ export const MealPrepModal = ({
                         {/* Macros */}
                         {option.macros && (
                           <div className="flex gap-1.5 mt-2 flex-wrap">
-                            <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                            >
                               {option.macros.calories} cal
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                            >
                               {option.macros.protein}g P
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                            >
                               {option.macros.carbs}g C
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                            >
                               {option.macros.fat}g F
                             </span>
                           </div>

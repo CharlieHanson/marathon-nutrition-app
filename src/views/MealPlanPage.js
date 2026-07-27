@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
 import { capture } from '../lib/posthog';
+import { macroColors } from '../../shared/lib/macroColors';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -657,7 +658,7 @@ export const MealPlanPage = ({
                     onClick={() => setShowAnalyticsModal(true)}
                     icon={BarChart3}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Analytics
                   </Button>
@@ -667,7 +668,7 @@ export const MealPlanPage = ({
                       onClick={generateGroceryList}
                       icon={ShoppingCart}
                       size="lg"
-                      className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                      className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                     >
                       Grocery List
                     </Button>
@@ -679,7 +680,7 @@ export const MealPlanPage = ({
                     onClick={() => setShowMealPrepModal(true)}
                     icon={ChefHat}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Meal Prep
                   </Button>
@@ -688,7 +689,7 @@ export const MealPlanPage = ({
                     onClick={() => handleLogClick()}
                     icon={UtensilsCrossed}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Log Meal
                   </Button>
@@ -1185,16 +1186,28 @@ export const MealPlanPage = ({
                   
                   {dayMacros.hasData && (
                     <div className="flex gap-2 text-sm flex-wrap">
-                      <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                      >
                         Cal: {dayMacros.calories}
                       </span>
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                      >
                         P: {dayMacros.protein}g
                       </span>
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                      >
                         C: {dayMacros.carbs}g
                       </span>
-                      <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                      >
                         F: {dayMacros.fat}g
                       </span>
                     </div>

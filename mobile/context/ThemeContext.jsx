@@ -24,9 +24,9 @@ export const lightColors = {
   borderDark: '#D1D5DB',
   
   // Primary/Accent
-  primary: '#F6921D',
-  primaryLight: '#FFF7ED',
-  primaryBorder: '#FED7AA',
+  primary: '#3D7C65',
+  primaryLight: '#EBF4F0',
+  primaryBorder: '#A8C9BA',
   
   // Success
   success: '#10B981',
@@ -84,10 +84,10 @@ export const darkColors = {
   borderLight: '#4B5563',
   borderDark: '#1F2937',
   
-  // Primary/Accent (keep the same orange)
-  primary: '#F6921D',
-  primaryLight: '#422006',
-  primaryBorder: '#92400E',
+  // Primary/Accent
+  primary: '#3D7C65',
+  primaryLight: '#1A3329',
+  primaryBorder: '#2D5647',
   
   // Success
   success: '#10B981',

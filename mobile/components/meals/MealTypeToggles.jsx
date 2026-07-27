@@ -103,10 +103,8 @@ export const MealTypeToggles = ({
 const getStyles = (colors) =>
   StyleSheet.create({
     container: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      paddingTop: 8,
-      paddingBottom: 4,
+      paddingVertical: 4,
+      marginBottom: 10,
     },
     row: {
       flexDirection: 'row',

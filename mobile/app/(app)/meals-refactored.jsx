@@ -369,7 +369,7 @@ export default function MealsScreen() {
   if (mealPlanHook.isLoading && !hasMeals) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F6921D" />
+        <ActivityIndicator size="large" color="#3D7C65" />
         <Text style={styles.loadingText}>Loading meal plan...</Text>
       </View>
     );
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#FFEDD5',
     borderBottomWidth: 1,
-    borderBottomColor: '#FED7AA',
+    borderBottomColor: '#A8C9BA',
   },
   statusBannerSuccess: { backgroundColor: '#D1FAE5', borderBottomColor: '#A7F3D0' },
   statusBannerError: { backgroundColor: '#FEE2E2', borderBottomColor: '#FECACA' },
@@ -664,9 +664,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#FED7AA',
+    borderColor: '#A8C9BA',
     overflow: 'hidden',
-    shadowColor: '#F6921D',
+    shadowColor: '#3D7C65',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#F6921D',
+    backgroundColor: '#3D7C65',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

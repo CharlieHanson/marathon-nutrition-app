@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import PreferencesScreen from './preferences';
 import { parseHeightCm, computeNutritionTargets } from '../../../shared/lib/tdeeCalc.js';
@@ -108,7 +110,9 @@ export default function ProfileScreen() {
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
   const { colors, isDarkMode } = useTheme();
+  const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
   const profileHook = useUserProfile(user, isGuest);
+  const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [showMacrosModal, setShowMacrosModal] = useState(false);
@@ -155,7 +159,50 @@ export default function ProfileScreen() {
     profileHook.updateProfile('weight', weightValue ? `${weightValue} ${weightUnit}` : '');
   };
 
-  const styles = getStyles(colors, isDarkMode);
+  useFocusEffect(
+    useCallback(() => {
+      if (profileHook.loadingProfile) {
+        setHeaderSlot(null, 'profile');
+        return () => clearHeaderSlot('profile');
+      }
+
+      setHeaderSlot(
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'profile' && styles.tabActive]}
+            onPress={() => setActiveTab('profile')}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'profile' }}
+            accessibilityLabel="Profile"
+          >
+            <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
+              Profile
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'preferences' && styles.tabActive]}
+            onPress={() => setActiveTab('preferences')}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'preferences' }}
+            accessibilityLabel="Preferences"
+          >
+            <Text style={[styles.tabText, activeTab === 'preferences' && styles.tabTextActive]}>
+              Preferences
+            </Text>
+          </TouchableOpacity>
+        </View>,
+        'profile'
+      );
+
+      return () => clearHeaderSlot('profile');
+    }, [
+      activeTab,
+      clearHeaderSlot,
+      profileHook.loadingProfile,
+      setHeaderSlot,
+      styles,
+    ])
+  );
 
   const handleSave = async () => {
     if (isConnected === false) {
@@ -221,26 +268,6 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Profile / Preferences tabs */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'profile' && styles.tabActive]}
-          onPress={() => setActiveTab('profile')}
-        >
-          <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
-            Profile
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'preferences' && styles.tabActive]}
-          onPress={() => setActiveTab('preferences')}
-        >
-          <Text style={[styles.tabText, activeTab === 'preferences' && styles.tabTextActive]}>
-            Preferences
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.contentWrapper}>
         {activeTab === 'preferences' ? (
           <View style={styles.tabContent}>
@@ -249,11 +276,22 @@ export default function ProfileScreen() {
         ) : (
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
 
+            {profileHook.error &&
+            !Object.values(profileHook.profile || {}).some(
+              (v) => v != null && String(v).trim() !== ''
+            ) ? (
+              <View style={styles.fetchErrorBanner}>
+                <Text style={styles.fetchErrorBannerText}>
+                  Couldn't load your profile. Pull down to refresh.
+                </Text>
+              </View>
+            ) : null}
+
             {/* Personal Information */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
-                  <Ionicons name="person-circle-outline" size={20} color="#F6921D" />
+                  <Ionicons name="person-circle-outline" size={20} color="#3D7C65" />
                 </View>
                 <Text style={styles.sectionTitle}>Personal Information</Text>
               </View>
@@ -453,7 +491,7 @@ export default function ProfileScreen() {
               <View style={styles.sectionDivider} />
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
-                  <Ionicons name="target-outline" size={20} color="#F6921D" />
+                  <Ionicons name="target-outline" size={20} color="#3D7C65" />
                 </View>
                 <Text style={styles.sectionTitle}>Training & Goals</Text>
               </View>
@@ -479,7 +517,7 @@ export default function ProfileScreen() {
               <View style={styles.sectionDivider} />
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
-                  <Ionicons name="document-text-outline" size={20} color="#F6921D" />
+                  <Ionicons name="document-text-outline" size={20} color="#3D7C65" />
                 </View>
                 <Text style={styles.sectionTitle}>Dietary Preferences</Text>
               </View>
@@ -589,7 +627,7 @@ export default function ProfileScreen() {
                     {option.label}
                   </Text>
                   {String(profileHook.profile.age) === option.value && (
-                    <Ionicons name="checkmark" size={20} color="#F6921D" />
+                    <Ionicons name="checkmark" size={20} color="#3D7C65" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -618,7 +656,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.pickerOptionText, profileHook.profile.goal === option.value && styles.pickerOptionTextSelected]}>
                     {option.label}
                   </Text>
-                  {profileHook.profile.goal === option.value && <Ionicons name="checkmark" size={20} color="#F6921D" />}
+                  {profileHook.profile.goal === option.value && <Ionicons name="checkmark" size={20} color="#3D7C65" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -646,7 +684,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.pickerOptionText, profileHook.profile.activityLevel === option.value && styles.pickerOptionTextSelected]}>
                     {option.label}
                   </Text>
-                  {profileHook.profile.activityLevel === option.value && <Ionicons name="checkmark" size={20} color="#F6921D" />}
+                  {profileHook.profile.activityLevel === option.value && <Ionicons name="checkmark" size={20} color="#3D7C65" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -674,7 +712,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.pickerOptionText, profileHook.profile.gender === option.value && styles.pickerOptionTextSelected]}>
                     {option.label}
                   </Text>
-                  {profileHook.profile.gender === option.value && <Ionicons name="checkmark" size={20} color="#F6921D" />}
+                  {profileHook.profile.gender === option.value && <Ionicons name="checkmark" size={20} color="#3D7C65" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -706,7 +744,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.pickerOptionText, weightUnit === option.value && styles.pickerOptionTextSelected]}>
                     {option.label}
                   </Text>
-                  {weightUnit === option.value && <Ionicons name="checkmark" size={20} color="#F6921D" />}
+                  {weightUnit === option.value && <Ionicons name="checkmark" size={20} color="#3D7C65" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -761,7 +799,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.pickerOptionText, heightUnit === option.value && styles.pickerOptionTextSelected]}>
                     {option.label}
                   </Text>
-                  {heightUnit === option.value && <Ionicons name="checkmark" size={20} color="#F6921D" />}
+                  {heightUnit === option.value && <Ionicons name="checkmark" size={20} color="#3D7C65" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -878,7 +916,7 @@ const ProfileCompletionCard = ({ profile, styles }) => {
     <View style={styles.completionCard}>
       <View style={styles.completionHeader}>
         <View style={styles.completionIcon}>
-          <Ionicons name="alert-circle-outline" size={24} color="#F6921D" />
+          <Ionicons name="alert-circle-outline" size={24} color="#3D7C65" />
         </View>
         <View style={styles.completionTextContainer}>
           <Text style={styles.completionTitle}>Profile Completion</Text>
@@ -920,15 +958,11 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.cardBackground,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 2,
@@ -948,7 +982,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    marginTop: 11,
+    marginBottom: 12,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -978,6 +1012,21 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 20,
+  },
+  fetchErrorBanner: {
+    backgroundColor: colors.errorLight || '#FEF2F2',
+    borderWidth: 1,
+    borderColor: colors.errorBorder || '#FECACA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  fetchErrorBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.error || '#DC2626',
+    lineHeight: 18,
   },
   // ── Section labels (replacing heavy icon headers) ──
   section: {
@@ -1152,7 +1201,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   confirmationBadge: {
     flexDirection: 'row',
@@ -1174,17 +1223,17 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   guestMessage: {
     flexDirection: 'row',
     padding: 12,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: colors.warningLight,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: colors.warning,
     gap: 10,
   },
   guestIconContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1194,12 +1243,12 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   guestTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#92400E',
+    color: colors.warning,
     marginBottom: 2,
   },
   guestText: {
     fontSize: 12,
-    color: '#78350F',
+    color: colors.textSecondary,
     lineHeight: 16,
     fontWeight: '600',
   },

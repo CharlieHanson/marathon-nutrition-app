@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -427,6 +428,16 @@ export default function PreferencesScreen() {
     <View style={styles.container}>
       {/* Sticky Search + Filter Bar */}
       <View style={styles.stickyHeader}>
+        {preferencesHook.error &&
+        !preferencesHook.preferences.likes &&
+        !preferencesHook.preferences.dislikes &&
+        !preferencesHook.preferences.cuisineFavorites ? (
+          <View style={styles.fetchErrorBanner}>
+            <Text style={styles.fetchErrorBannerText}>
+              Couldn't load your preferences. Pull down to refresh.
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
@@ -438,6 +449,9 @@ export default function PreferencesScreen() {
               onChangeText={setSearchQuery}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="done"
+              blurOnSubmit
+              onSubmitEditing={Keyboard.dismiss}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity
@@ -604,9 +618,9 @@ export default function PreferencesScreen() {
                     disabled={preferencesHook.isSaving}
                   >
                     {preferencesHook.isSaving ? (
-                      <ActivityIndicator size="small" color={colors.textInverse} />
+                      <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Ionicons name="save-outline" size={18} color={colors.textInverse} />
+                      <Ionicons name="save-outline" size={18} color="#FFFFFF" />
                     )}
                     <Text style={styles.saveButtonText}>
                       {preferencesHook.isSaving ? 'Saving...' : 'Save Preferences'}
@@ -662,6 +676,21 @@ const getStyles = (colors) => StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  fetchErrorBanner: {
+    backgroundColor: colors.errorLight || '#FEF2F2',
+    borderWidth: 1,
+    borderColor: colors.errorBorder || '#FECACA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  fetchErrorBannerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.error || '#DC2626',
+    lineHeight: 18,
+  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -701,7 +730,7 @@ const getStyles = (colors) => StyleSheet.create({
   topSaveButtonText: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   searchIcon: {
     marginRight: 8,
@@ -925,7 +954,7 @@ const getStyles = (colors) => StyleSheet.create({
   saveButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   confirmationBadge: {
     flexDirection: 'row',

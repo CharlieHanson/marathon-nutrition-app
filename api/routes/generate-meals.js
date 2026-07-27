@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getTopMealsByVector } from '../lib/rag.js'; // adjust path if needed
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey =
@@ -19,6 +20,26 @@ const ML_API_URL = process.env.ML_API_URL || 'https://alimenta-ml-service.onrend
 const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
 
+function isGpt5Family(model) {
+  return String(model || '').toLowerCase().startsWith('gpt-5');
+}
+
+/** Shared OpenAI call options for meal generation (gpt-5* needs max_completion_tokens). */
+function mealCompletionOptions({ messages, maxTokens = 8000, response_format, temperature = 0.4 }) {
+  const request = {
+    model: OPENAI_MEAL_MODEL,
+    messages,
+    max_completion_tokens: Math.max(maxTokens, isGpt5Family(OPENAI_MEAL_MODEL) ? 8000 : maxTokens),
+  };
+  if (response_format) request.response_format = response_format;
+  if (!(isGpt5Family(OPENAI_MEAL_MODEL) || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o'))) {
+    request.temperature = temperature;
+  }
+  if (isGpt5Family(OPENAI_MEAL_MODEL) || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o')) {
+    request.reasoning_effort = 'low';
+  }
+  return request;
+}
 const DESSERT_CATEGORIES = ['baked', 'frozen', 'chocolate', 'fruit', 'pastry/cream'];
 
 /* ---------------------- NEW: normalize training plan ---------------------- */
@@ -593,16 +614,17 @@ export default async function handler(req, res) {
         missingMealTypes
       });
 
-      const llm = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 500,
-        response_format: {
-          type: "json_schema",
-          json_schema: dayJsonSchemaPartial(day, missingMealTypes)
-        }
-      });
+      const llm = await openai.chat.completions.create(
+        mealCompletionOptions({
+          messages: [{ role: 'user', content: prompt }],
+          maxTokens: 8000,
+          temperature: 0.4,
+          response_format: {
+            type: 'json_schema',
+            json_schema: dayJsonSchemaPartial(day, missingMealTypes),
+          },
+        })
+      );
 
       let dayObj = week[day] || {};
       try {
@@ -663,12 +685,13 @@ Adjust ONLY these meal types minimally so that the total daily calories land bet
 Return ONLY JSON with the same shape for this day:
 { "day": "${day}", "meals": { ${missingMealTypes.map(mt => `"${mt}": "..."`).join(', ')} } }`;
 
-        const retry = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: adjustPrompt }],
-          temperature: 0.4,
-          max_tokens: 500,
-        });
+        const retry = await openai.chat.completions.create(
+          mealCompletionOptions({
+            messages: [{ role: 'user', content: adjustPrompt }],
+            maxTokens: 8000,
+            temperature: 0.4,
+          })
+        );
 
         try {
           const content2 = retry.choices?.[0]?.message?.content ?? '{}';

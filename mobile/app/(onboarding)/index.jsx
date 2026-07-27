@@ -11,9 +11,7 @@ import { ProgressIndicator } from '../../components/onboarding/ProgressIndicator
 import { saveUserProfile, saveFoodPreferences } from '../../../shared/lib/dataClient';
 import { usePostHog } from 'posthog-react-native';
 import { capture } from '../../lib/analytics';
-
-const BG_GRADIENT_START = '#FFF7ED'; // orange-50
-const BG_GRADIENT_END = '#FFFBEB';   // yellow-50-ish
+import { useTheme } from '../../context/ThemeContext';
 
 const ONBOARDING_STEP_KEY = 'onboarding_step';
 const ONBOARDING_PROFILE_KEY = 'onboarding_profile';
@@ -30,6 +28,8 @@ export default function OnboardingScreen() {
   const posthog = usePostHog();
   const { user, signOut } = useAuth();
   const { isConnected } = useNetwork();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -151,7 +151,7 @@ export default function OnboardingScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#F6921D" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -196,17 +196,19 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: BG_GRADIENT_START,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 32,
-    paddingBottom: 48,
-    paddingHorizontal: 0,
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingTop: 32,
+      paddingBottom: 48,
+      paddingHorizontal: 0,
+    },
+  });
+}

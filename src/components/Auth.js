@@ -134,7 +134,7 @@ const Auth = ({ presetRole }) => {
     : (isSignUp ? 'Sign Up' : 'Sign In');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4 relative">
       {/* Back link */}
       <div className="absolute left-4 top-4">
         <Link href={backHref} className="inline-flex items-center gap-2 text-gray-600 hover:text-primary">

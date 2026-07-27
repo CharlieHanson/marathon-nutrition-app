@@ -3,12 +3,15 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { TourTarget } from '../tour/TourTarget';
 
 const FOOTER_ITEMS = [
-  { id: 'training', label: 'Training', icon: 'calendar-outline' },
+  { id: 'training', label: 'Training', icon: 'calendar-outline', tourId: 'footer-training' },
   { id: 'dashboard', label: 'Dashboard', icon: 'home-outline' },
-  { id: 'meals', label: 'Meals', icon: 'restaurant-outline' },
+  { id: 'meals', label: 'Meals', icon: 'restaurant-outline', tourId: 'footer-meals' },
 ];
+
+const DASHBOARD_CIRCLE_SIZE = 68;
 
 export const Footer = ({ currentView, onViewChange }) => {
   const { colors } = useTheme();
@@ -17,30 +20,53 @@ export const Footer = ({ currentView, onViewChange }) => {
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <View style={styles.footer}>
-        {FOOTER_ITEMS.map(({ id, label, icon }) => {
+        {FOOTER_ITEMS.map(({ id, label, icon, tourId }) => {
           const isActive = currentView === id;
-          const isLarge = id === 'dashboard';
-          
-          return (
+          const isDashboard = id === 'dashboard';
+
+          const item = (
             <TouchableOpacity
-              key={id}
               onPress={() => onViewChange(id)}
-              style={[styles.footerItem, isLarge && styles.footerItemLarge]}
+              style={[styles.footerItem, isDashboard && styles.footerItemDashboard]}
               activeOpacity={0.7}
+              accessibilityLabel={label}
             >
-              <Ionicons 
-                name={icon} 
-                size={isLarge ? 28 : 24} 
-                color={isActive ? colors.primary : colors.textSecondary} 
-              />
-              <Text style={[
-                styles.footerLabel, 
-                isLarge && styles.footerLabelLarge,
-                isActive && styles.footerLabelActive
-              ]}>
-                {label}
-              </Text>
+              {isDashboard ? (
+                <View style={styles.dashboardCircle}>
+                  <Ionicons name={icon} size={36} color="#FFFFFF" />
+                </View>
+              ) : (
+                <>
+                  <Ionicons
+                    name={icon}
+                    size={24}
+                    color={isActive ? colors.primary : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.footerLabel,
+                      isActive && styles.footerLabelActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
+          );
+
+          if (tourId) {
+            return (
+              <TourTarget key={id} id={tourId} style={styles.footerSlot}>
+                {item}
+              </TourTarget>
+            );
+          }
+
+          return (
+            <View key={id} style={styles.footerSlot}>
+              {item}
+            </View>
           );
         })}
       </View>
@@ -51,6 +77,8 @@ export const Footer = ({ currentView, onViewChange }) => {
 const getStyles = (colors) => StyleSheet.create({
   safeArea: {
     backgroundColor: colors.cardBackground,
+    overflow: 'visible',
+    zIndex: 10,
   },
   footer: {
     flexDirection: 'row',
@@ -67,16 +95,36 @@ const getStyles = (colors) => StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 3,
+    overflow: 'visible',
+    zIndex: 10,
+  },
+  footerSlot: {
+    flex: 1,
+    overflow: 'visible',
   },
   footerItem: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
     minHeight: 48,
+    width: '100%',
   },
-  footerItemLarge: {
-    // Dashboard is emphasized
+  footerItemDashboard: {
+    overflow: 'visible',
+  },
+  dashboardCircle: {
+    width: DASHBOARD_CIRCLE_SIZE,
+    height: DASHBOARD_CIRCLE_SIZE,
+    borderRadius: DASHBOARD_CIRCLE_SIZE / 2,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -24,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 6,
   },
   footerLabel: {
     fontSize: 12,
@@ -84,13 +132,8 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
   },
-  footerLabelLarge: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
   footerLabelActive: {
     color: colors.primary,
     fontWeight: '600',
   },
 });
-

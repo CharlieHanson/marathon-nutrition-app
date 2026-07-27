@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,8 @@ import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
-import { useMealCompletions, getCurrentDayOfWeek, MEAL_TYPES } from '../../hooks/useMealCompletions';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { useMealCompletions } from '../../hooks/useMealCompletions';
 import {
   calculateDayMacros,
   countMeals,
@@ -27,9 +28,8 @@ import {
   getActiveMealTypes,
   parseMeal,
 } from '../../utils/mealHelpers';
-import { fetchPersonalInfo, fetchActiveTrainingPlan } from '../../../shared/lib/dataClient';
 import { apiClient } from '../../../shared/services/api';
-import { ErrorState } from '../../components/ErrorState';
+import { macroColors } from '../../../shared/lib/macroColors';
 import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 
 const { width } = Dimensions.get('window');
@@ -74,45 +74,34 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const mealPlanHook = useMealPlan(user, isGuest);
   const trainingPlanHook = useTrainingPlan(user, isGuest);
+  const profileHook = useUserProfile(user, isGuest);
   const mealCompletionsHook = useMealCompletions(user, isGuest);
   const { canDo, refetch: refetchLimits } = useUsageLimits(user, isGuest);
 
   const styles = getStyles(colors);
 
-  const [userProfile, setUserProfile] = useState(null);
-  const [foodPreferences, setFoodPreferences] = useState(null);
-  const [trainingPlan, setTrainingPlan] = useState(null);
+  // Prefer DB-shaped profile for generation APIs; fall back to mapped form fields.
+  const userProfile =
+    profileHook.rawUserProfile ||
+    (profileHook.profile
+      ? {
+          name: profileHook.profile.name,
+          age: profileHook.profile.age,
+          gender: profileHook.profile.gender,
+          height: profileHook.profile.height,
+          weight: profileHook.profile.weight,
+          goal: profileHook.profile.goal,
+          activity_level: profileHook.profile.activityLevel,
+          objective: profileHook.profile.objective,
+          dietary_restrictions: profileHook.profile.dietaryRestrictions,
+        }
+      : null);
+  const foodPreferences = profileHook.foodPreferences;
+  const trainingPlan = trainingPlanHook.plan;
+
   const [showGroceryModal, setShowGroceryModal] = useState(false);
   const [groceryList, setGroceryList] = useState([]);
   const [loadingGroceryList, setLoadingGroceryList] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-  const [loadingUserData, setLoadingUserData] = useState(false);
-
-  const loadUserData = useCallback(async () => {
-    if (!user || isGuest) return;
-
-    setLoadingUserData(true);
-    setLoadError(null);
-    try {
-      const [personalInfo, training] = await Promise.all([
-        fetchPersonalInfo(user.id),
-        fetchActiveTrainingPlan(user.id),
-      ]);
-
-      setUserProfile(personalInfo?.userProfile || null);
-      setFoodPreferences(personalInfo?.foodPreferences || null);
-      setTrainingPlan(training?.plan_data || null);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      setLoadError('Failed to load your data');
-    } finally {
-      setLoadingUserData(false);
-    }
-  }, [user?.id, isGuest]);
-
-  useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
 
   // Get today's data
   const todayDay = getTodayDayName();
@@ -237,6 +226,10 @@ export default function DashboardScreen() {
     }
   };
 
+  const hasMealPlanData = weekProgress.filled > 0;
+  const mealPlanFetchFailed = !!mealPlanHook.fetchError && !hasMealPlanData;
+  const trainingFetchFailed = !!trainingPlanHook.fetchError;
+
   // Determine next action based on priority
   const getNextAction = () => {
     // A) No training plan
@@ -249,8 +242,18 @@ export default function DashboardScreen() {
       };
     }
 
-    // B) No meal plan (check if any meals exist)
-    const hasMealPlan = mealPlanHook.mealPlan && weekProgress.filled > 0;
+    // B) Meal plan fetch failed with no data — do not show generate CTA
+    if (mealPlanFetchFailed) {
+      return {
+        title: "Couldn't load your meal plan",
+        subtitle: 'Pull to refresh.',
+        onPress: () => mealPlanHook.refetchCurrentWeek(),
+        isError: true,
+      };
+    }
+
+    // C) No meal plan (check if any meals exist) — only after a successful fetch
+    const hasMealPlan = mealPlanHook.mealPlan && hasMealPlanData;
     if (!hasMealPlan) {
       return {
         title: 'Generate meal plan',
@@ -283,7 +286,7 @@ export default function DashboardScreen() {
       };
     }
 
-    // C) Training plan exists AND meal plan is fully filled
+    // D) Training plan exists AND meal plan is fully filled
     if (weekProgress.filled === weekProgress.total) {
       return {
         title: 'View grocery list',
@@ -300,7 +303,7 @@ export default function DashboardScreen() {
       };
     }
 
-    // D) Otherwise (partial meal plan)
+    // E) Otherwise (partial meal plan)
     return {
       title: 'Finish meal plan',
       subtitle: 'Complete your meals',
@@ -309,18 +312,6 @@ export default function DashboardScreen() {
   };
 
   const nextAction = getNextAction();
-
-  if (loadError && !loadingUserData) {
-    return (
-      <ErrorState
-        message={loadError}
-        onRetry={() => {
-          setLoadError(null);
-          loadUserData();
-        }}
-      />
-    );
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -346,6 +337,12 @@ export default function DashboardScreen() {
           <Text style={styles.tileTitle}>Today's Nutrition</Text>
         </View>
         <View style={styles.tileContent}>
+          {mealPlanFetchFailed ? (
+            <Text style={styles.fetchErrorText}>
+              Couldn't load your meal plan. Pull to refresh.
+            </Text>
+          ) : null}
+
           {/* Calories: eaten / out of total */}
           <View style={styles.caloriesRow}>
             <View style={styles.caloriesEatenBlock}>
@@ -407,7 +404,7 @@ export default function DashboardScreen() {
           <View style={styles.macroBreakdown}>
             {/* Carbs */}
             <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: '#f59e0b' }]} />
+              <View style={[styles.macroDot, { backgroundColor: macroColors.carbs }]} />
               <Text style={styles.macroBreakdownLabel}>Carbs</Text>
               <Text style={styles.macroBreakdownValue}>
                 {todayMacros.carbs > 0 ? `${todayMacros.carbs}g` : '—'}
@@ -420,7 +417,7 @@ export default function DashboardScreen() {
             </View>
             {/* Protein */}
             <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: '#3b82f6' }]} />
+              <View style={[styles.macroDot, { backgroundColor: macroColors.protein }]} />
               <Text style={styles.macroBreakdownLabel}>Protein</Text>
               <Text style={styles.macroBreakdownValue}>
                 {todayMacros.protein > 0 ? `${todayMacros.protein}g` : '—'}
@@ -433,7 +430,7 @@ export default function DashboardScreen() {
             </View>
             {/* Fat */}
             <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: '#ef4444' }]} />
+              <View style={[styles.macroDot, { backgroundColor: macroColors.fat }]} />
               <Text style={styles.macroBreakdownLabel}>Fat</Text>
               <Text style={styles.macroBreakdownValue}>
                 {todayMacros.fat > 0 ? `${todayMacros.fat}g` : '—'}
@@ -459,7 +456,9 @@ export default function DashboardScreen() {
           <Text style={styles.tileTitle}>Today's Training</Text>
         </View>
         <View style={styles.tileContent}>
-          {isGuest || !trainingPlanHook.plan || trainingPlanHook.isLoading ? (
+          {trainingFetchFailed ? (
+            <Text style={styles.fetchErrorText}>Couldn't load training plan</Text>
+          ) : isGuest || !trainingPlanHook.plan || trainingPlanHook.isLoading ? (
             <Text style={styles.noTrainingText}>No training plan yet</Text>
           ) : todayWorkouts.length > 0 ? (
             <View style={styles.workoutsList}>
@@ -511,7 +510,7 @@ export default function DashboardScreen() {
                   style={styles.groceryModalAction}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="share-outline" size={22} color="#F6921D" />
+                  <Ionicons name="share-outline" size={22} color="#3D7C65" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowGroceryModal(false)}
@@ -609,7 +608,7 @@ const getStyles = (colors) => StyleSheet.create({
   tileTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   tileContent: {
     padding: 14,
@@ -813,6 +812,13 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '600',
     fontStyle: 'italic',
     paddingVertical: 8,
+  },
+  fetchErrorText: {
+    fontSize: 13,
+    color: colors.error || '#DC2626',
+    fontWeight: '600',
+    marginBottom: 10,
+    lineHeight: 18,
   },
 
   // ---- Bottom Row ----

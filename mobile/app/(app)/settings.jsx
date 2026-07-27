@@ -13,12 +13,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useProductTour } from '../../context/ProductTourContext';
 import { supabase } from '../../../shared/lib/supabase.native';
 import { apiClient } from '../../../shared/services/api';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const { user, signOut, isGuest } = useAuth();
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { startTour, isActive } = useProductTour();
 
   // Password change state
   const [newPassword, setNewPassword] = useState('');
@@ -105,6 +109,12 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleReplayTutorial = () => {
+    if (isActive) return;
+    router.push('/(app)/dashboard');
+    startTour();
+  };
+
   const handleOpenPrivacyPolicy = async () => {
     const baseUrl = 'https://alimentanutrition.com';
     const url = `${baseUrl}/privacy`;
@@ -162,6 +172,25 @@ export default function SettingsScreen() {
             ios_backgroundColor={colors.gray300}
           />
         </View>
+
+        {!isGuest ? (
+          <TouchableOpacity
+            style={[styles.settingRow, styles.tutorialRow]}
+            onPress={handleReplayTutorial}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons name="compass-outline" size={20} color={colors.textSecondary} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingLabel}>Replay app tutorial</Text>
+                <Text style={styles.settingDescription}>
+                  Walk through training, meals, and profile again
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Change Password */}
@@ -291,6 +320,12 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  tutorialRow: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -343,7 +378,7 @@ const getStyles = (colors) => StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   messageBanner: {
     marginTop: 16,
