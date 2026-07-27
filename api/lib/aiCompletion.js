@@ -16,15 +16,17 @@ export const OPENAI_MEAL_MODELS = {
   '5-mini': 'gpt-5-mini',
   /** GPT-5.4 mini — stronger mini for higher-quality meal plans */
   '5.4-mini': 'gpt-5.4-mini',
+  /** GPT-5.6 Sol — flagship; best meal quality / role-following */
+  '5.6-sol': 'gpt-5.6-sol',
 };
 
-/** <<< Change this to switch meal models: '5.4-nano' | '5-mini' | '5.4-mini' >>> */
-const ACTIVE_OPENAI_MEAL_MODEL = '5.4-mini';
+/** <<< Change this to switch meal models: '5.4-nano' | '5-mini' | '5.4-mini' | '5.6-sol' >>> */
+const ACTIVE_OPENAI_MEAL_MODEL = '5.6-sol';
 
 export const OPENAI_MEAL_MODEL =
   OPENAI_MEAL_MODELS[ACTIVE_OPENAI_MEAL_MODEL] ||
   process.env.OPENAI_MEAL_MODEL ||
-  OPENAI_MEAL_MODELS['5.4-mini'];
+  OPENAI_MEAL_MODELS['5.6-sol'];
 
 /** Models that only accept the default temperature (omit the param). */
 function isGpt5Family(model) {
