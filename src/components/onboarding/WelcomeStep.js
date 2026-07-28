@@ -9,7 +9,10 @@ export const WelcomeStep = ({ onNext }) => {
     <div className="max-w-2xl mx-auto">
       <Card>
         <div className="text-center mb-8">
-          <img src="/alimenta_logo.png" alt="Logo" className="h-16 mx-auto mb-4" />
+          <span className="block text-4xl font-bold tracking-tight mb-4" aria-label="Alimenta">
+            <span className="text-primary">Al</span>
+            <span className="text-gray-800">imenta</span>
+          </span>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome to Alimenta!
           </h1>

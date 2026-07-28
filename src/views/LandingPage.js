@@ -429,7 +429,10 @@ export const LandingPage = () => {
       {/* Footer */}
       <footer className="bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <img src="/alimenta_logo.png" alt="Alimenta" className="h-8 mx-auto mb-4 opacity-80" />
+          <span className="block text-2xl font-bold tracking-tight mb-4 opacity-80" aria-label="Alimenta">
+            <span className="text-primary">Al</span>
+            <span className="text-gray-800">imenta</span>
+          </span>
           <p className="text-sm text-gray-600">
             © 2026 Alimenta. Built with AI for athletes who demand precision.
           </p>

@@ -70,7 +70,10 @@ export const UpdatePasswordPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <div className="text-center mb-6">
-          <img src="/alimenta_logo.png" alt="Alimenta" className="h-12 mx-auto mb-4" />
+          <span className="block text-3xl font-bold tracking-tight mb-4" aria-label="Alimenta">
+            <span className="text-primary">Al</span>
+            <span className="text-gray-800">imenta</span>
+          </span>
           <h2 className="text-2xl font-bold text-gray-900">Update Password</h2>
           <p className="text-gray-600 mt-2">Enter your new password</p>
         </div>

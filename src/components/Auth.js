@@ -144,7 +144,10 @@ const Auth = ({ presetRole }) => {
 
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-6">
-          <img src="/alimenta_logo.png" alt="Alimenta" className="h-14 mx-auto mb-4" />
+          <span className="block text-4xl font-bold tracking-tight mb-4" aria-label="Alimenta">
+            <span className="text-primary">Al</span>
+            <span className="text-gray-800">imenta</span>
+          </span>
           <p className="text-gray-600 mt-2">{heading}</p>
           {isNutritionist && (
             <p className="text-sm text-gray-500 mt-1">Manage your clients' nutrition plans</p>

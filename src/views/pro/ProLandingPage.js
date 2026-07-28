@@ -340,7 +340,10 @@ export const ProLandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
-              <img src="/alimenta_logo.png" alt="Alimenta" className="h-8 opacity-80" />
+              <span className="text-2xl font-bold tracking-tight opacity-80" aria-label="Alimenta">
+                <span className="text-primary">Al</span>
+                <span className="text-gray-800">imenta</span>
+              </span>
               <span className="text-sm text-gray-600">Pro</span>
             </div>
             <div className="flex gap-6 text-sm text-gray-600">
