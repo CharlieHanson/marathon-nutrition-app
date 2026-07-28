@@ -5,21 +5,17 @@ import { useTheme } from '../../context/ThemeContext';
 const NOTICE_TIMEOUT = 4000;
 
 /**
- * Renders two row-level switches for Snacks and Dessert toggles.
- * Matches the visual aesthetic of MealsHeader components.
+ * Renders a row-level switch for the Dessert toggle.
+ * Snacks are no longer AI-generatable and have no toggle.
  *
  * Props:
- *   includeSnacks    {boolean}
  *   includeDessert   {boolean}
- *   onToggleSnacks   {function}
  *   onToggleDessert  {function}
  *   disabled         {boolean}  – true when generating, guest user, or past day
  *   dayMeals         {object}   – current day's meal plan object for notice detection
  */
 export const MealTypeToggles = ({
-  includeSnacks,
   includeDessert,
-  onToggleSnacks,
   onToggleDessert,
   disabled = false,
   dayMeals,
@@ -41,16 +37,6 @@ export const MealTypeToggles = ({
     noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_TIMEOUT);
   };
 
-  const handleToggleSnacks = (value) => {
-    if (!value) {
-      const meal = dayMeals?.snacks;
-      if (meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__') {
-        showNotice();
-      }
-    }
-    onToggleSnacks(value);
-  };
-
   const handleToggleDessert = (value) => {
     if (!value) {
       const meal = dayMeals?.dessert;
@@ -64,21 +50,6 @@ export const MealTypeToggles = ({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <View style={styles.toggleRow}>
-          <Text style={[styles.label, disabled && styles.labelDisabled]}>Snacks</Text>
-          <Switch
-            value={includeSnacks}
-            onValueChange={handleToggleSnacks}
-            disabled={disabled}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.card || '#fff'}
-            ios_backgroundColor={colors.border}
-            accessibilityLabel="Toggle snacks"
-          />
-        </View>
-
-        <View style={styles.divider} />
-
         <View style={styles.toggleRow}>
           <Text style={[styles.label, disabled && styles.labelDisabled]}>Dessert</Text>
           <Switch
@@ -116,12 +87,6 @@ const getStyles = (colors) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 6,
-    },
-    divider: {
-      width: StyleSheet.hairlineWidth,
-      height: 24,
-      backgroundColor: colors.border,
-      marginHorizontal: 4,
     },
     label: {
       fontSize: 13,

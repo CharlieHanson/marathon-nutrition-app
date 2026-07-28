@@ -13,7 +13,7 @@ const MEAL_LABELS = {
   dessert: 'Dessert',
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   mealCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: 14,
@@ -50,10 +50,10 @@ const getStyles = (colors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: isDarkMode ? colors.primary : colors.primaryLight,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: isDarkMode ? 0 : StyleSheet.hairlineWidth,
     borderBottomColor: colors.primaryBorder,
   },
   mealCardHeaderLeft: {
@@ -72,8 +72,25 @@ const getStyles = (colors) => StyleSheet.create({
   mealTypeLabel: {
     fontSize: 17,
     fontWeight: '800',
-    color: colors.text,
+    color: isDarkMode ? '#FFFFFF' : colors.text,
     letterSpacing: 0.2,
+  },
+  mealTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  adjustedBadge: {
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.22)' : colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  adjustedBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   mealTypeLabelCompleted: {
     opacity: 0.75,
@@ -99,8 +116,8 @@ const getStyles = (colors) => StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBackground,
+    borderColor: isDarkMode ? '#FFFFFF' : colors.border,
+    backgroundColor: isDarkMode ? 'transparent' : colors.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -108,7 +125,9 @@ const getStyles = (colors) => StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#22c55e',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.22)' : '#22c55e',
+    borderWidth: isDarkMode ? 2 : 0,
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -187,14 +206,14 @@ export const MealCard = ({
   onRate, 
   onMealPress, 
   onEmptyPress, 
-  onDelete,
   parseMeal,
   isCompleted = false,
   onToggleComplete = null,
   showCheckbox = false,
+  isAdjusted = false,
 }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
   const isGenerating = meal === '__generating__';
   const parsed = isGenerating ? null : parseMeal(meal);
   const hasMeal = !!(meal && meal.trim() && !isGenerating);
@@ -239,12 +258,19 @@ export const MealCard = ({
   const renderHeader = () => (
     <View style={styles.mealCardHeader}>
       <View style={styles.mealCardHeaderLeft}>
-        <Text style={[
-          styles.mealTypeLabel,
-          isCompleted && styles.mealTypeLabelCompleted,
-        ]}>
-          {MEAL_LABELS[mealType]}
-        </Text>
+        <View style={styles.mealTypeRow}>
+          <Text style={[
+            styles.mealTypeLabel,
+            isCompleted && styles.mealTypeLabelCompleted,
+          ]}>
+            {MEAL_LABELS[mealType]}
+          </Text>
+          {isAdjusted ? (
+            <View style={styles.adjustedBadge}>
+              <Text style={styles.adjustedBadgeText}>Adjusted</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
       <View style={styles.mealCardHeaderRight}>
         {showCheckbox && hasMeal && (
@@ -259,7 +285,11 @@ export const MealCard = ({
               </View>
             ) : (
               <View style={styles.checkboxUncompleted}>
-                <Ionicons name="checkmark" size={18} color={colors.border} />
+                <Ionicons
+                  name="checkmark"
+                  size={18}
+                  color={isDarkMode ? '#FFFFFF' : colors.border}
+                />
               </View>
             )}
           </TouchableOpacity>
@@ -333,15 +363,6 @@ export const MealCard = ({
               <View style={styles.ratingRow}>
                 <StarRating rating={rating || 0} onRate={onRate} />
                 <View style={styles.ratingRowActions}>
-                  {onDelete && (
-                    <TouchableOpacity
-                      onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
-                      style={styles.mealOptionsButton}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="trash-outline" size={20} color={colors.error} />
-                    </TouchableOpacity>
-                  )}
                   <TouchableOpacity
                     onPress={() => onMealPress(mealType, parsed)}
                     style={styles.mealOptionsButton}

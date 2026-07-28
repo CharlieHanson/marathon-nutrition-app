@@ -103,6 +103,7 @@ mount('/api/regenerate-meal-openai', () => import('./routes/regenerate-meal-open
 mount('/api/generate-meals', () => import('./routes/generate-meals.js'));
 mount('/api/generate-grocery-list', () => import('./routes/generate-grocery-list.js'));
 mount('/api/rate-meal', () => import('./routes/rate-meal.js'));
+mount('/api/log-snack', () => import('./routes/log-snack.js'));
 
 mount('/api/pro/clients', () => import('./routes/pro/clients.js'));
 mount('/api/pro/dashboard', () => import('./routes/pro/dashboard.js'));

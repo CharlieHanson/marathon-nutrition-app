@@ -51,6 +51,7 @@ export default function MealsPage() {
       <MealPlanPage
         mealPlan={mealPlan.mealPlan}
         onUpdate={mealPlan.updateMeal}
+        onApplyDayMeals={mealPlan.applyDayMeals}
         onRate={mealPlan.rateMeal}
         onGenerate={() =>
           mealPlan.generateMeals(

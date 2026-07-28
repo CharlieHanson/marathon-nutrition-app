@@ -147,7 +147,7 @@ export default function NutritionDetailScreen() {
 
   const todayDay = getTodayDayName();
   const todayMeals = mealPlanHook.mealPlan?.[todayDay] ?? {};
-  const activeTypes = getActiveMealTypes(getDayMealToggles(todayMeals));
+  const activeTypes = getActiveMealTypes(getDayMealToggles(todayMeals), todayMeals);
 
   // Total planned macros for today (active types only)
   const totalMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };

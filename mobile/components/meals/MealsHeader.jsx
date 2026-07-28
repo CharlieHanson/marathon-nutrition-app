@@ -86,6 +86,7 @@ export const QuickActionsRow = ({
   onGroceryList,
   onMealPrep,
   onLogMeal,
+  onLogSnack,
   loadingGroceryList,
   groceryRemaining,
   canGenerate = true,
@@ -94,6 +95,18 @@ export const QuickActionsRow = ({
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const groceryLimitReached = groceryRemaining === 0;
+
+  const logSnackBtn = (
+    <TouchableOpacity
+      style={styles.quickActionBtn}
+      onPress={onLogSnack}
+      accessibilityLabel="Log snack"
+      accessibilityRole="button"
+    >
+      <Ionicons name="nutrition-outline" size={18} color={colors.primary} />
+      <Text style={styles.quickActionText}>Log Snack</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Animated.View style={[styles.quickActionsRow, animatedStyle]}>
@@ -137,6 +150,8 @@ export const QuickActionsRow = ({
               Grocery List
             </Text>
           </TouchableOpacity>
+
+          {logSnackBtn}
         </>
       ) : (
         <>
@@ -161,6 +176,8 @@ export const QuickActionsRow = ({
             <Ionicons name="create-outline" size={18} color={colors.primary} />
             <Text style={styles.quickActionText}>Log Meal</Text>
           </TouchableOpacity>
+
+          {logSnackBtn}
         </>
       )}
     </Animated.View>

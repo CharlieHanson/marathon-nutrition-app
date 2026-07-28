@@ -19,6 +19,7 @@ export const useMealPlan = (_user, _isGuest, reloadKeyProp = 0) => {
   return {
     mealPlan: state.mealPlan,
     updateMeal: actions.updateMeal,
+    applyDayMeals: actions.applyDayMeals,
     rateMeal: actions.rateMeal,
     generateDay: actions.generateDay,
     regenerateMeal: actions.regenerateMeal,

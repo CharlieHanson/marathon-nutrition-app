@@ -4,7 +4,7 @@ import { X, UtensilsCrossed, Check, Loader2, Heart, Trash2 } from 'lucide-react'
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
 
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'dessert'];
 
 export const LogMealModal = ({ 
   isOpen, 

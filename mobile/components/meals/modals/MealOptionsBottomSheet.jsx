@@ -66,6 +66,12 @@ const getStyles = (colors) =>
       color: colors.text,
       marginLeft: 12,
     },
+    bottomSheetOptionDanger: {
+      borderColor: colors.errorBorder,
+    },
+    bottomSheetOptionTextDanger: {
+      color: colors.error,
+    },
     bottomSheetCancel: {
       backgroundColor: colors.cardBackground,
     },
@@ -90,6 +96,7 @@ export const MealOptionsBottomSheet = ({
   onSaveMeal,
   onGetRecipe,
   onRegenerate,
+  onDelete,
   onClose,
   loadingRecipe,
   savingMeal,
@@ -152,6 +159,18 @@ export const MealOptionsBottomSheet = ({
           <TouchableOpacity style={styles.bottomSheetOption} onPress={onRegenerate}>
             <Ionicons name="refresh-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.bottomSheetOptionText}>Regenerate</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {onDelete ? (
+          <TouchableOpacity
+            style={[styles.bottomSheetOption, styles.bottomSheetOptionDanger]}
+            onPress={onDelete}
+          >
+            <Ionicons name="trash-outline" size={22} color={colors.error} />
+            <Text style={[styles.bottomSheetOptionText, styles.bottomSheetOptionTextDanger]}>
+              Delete meal
+            </Text>
           </TouchableOpacity>
         ) : null}
 

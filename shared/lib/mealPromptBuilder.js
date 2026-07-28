@@ -33,7 +33,6 @@ const DAY_MEALS_FORMAT = `Respond with ONLY valid JSON, no other text:
   },
   "lunch": { "meal_name": "...", "ingredients": [...] },
   "dinner": { "meal_name": "...", "ingredients": [...] },
-  "snack": { "meal_name": "...", "ingredients": [...] },
   "dessert": { "meal_name": "...", "ingredients": [...] }
 }`;
 
@@ -43,7 +42,6 @@ const WEEK_MEALS_FORMAT = `Respond with ONLY valid JSON, no other text:
     "breakfast": { "meal_name": "...", "ingredients": [{ "name": "...", "type": "protein|carb|vegetable|fat", "grams": 0 }, ...] },
     "lunch": { "meal_name": "...", "ingredients": [...] },
     "dinner": { "meal_name": "...", "ingredients": [...] },
-    "snack": { "meal_name": "...", "ingredients": [...] },
     "dessert": { "meal_name": "...", "ingredients": [...] }
   },
   "tuesday": { ... },
@@ -296,18 +294,15 @@ export function buildDayPrompt({
     mealsToGenerate.includes('dessert')
       ? '6. Dessert must be a real sweet dessert (cake, pudding, ice cream, fruit crisp, cookie) — NOT a smoothie bowl, yogurt bowl, or savory dish'
       : '',
-    mealsToGenerate.includes('snack')
-      ? '7. Snack must be a true snack (1–3 ingredients, portable/simple: yogurt, fruit + nut butter, jerky, toast) — NOT a rice bowl, pasta, stir-fry, or other mini lunch/dinner'
-      : '',
     mealsToGenerate.includes('breakfast')
-      ? '8. Breakfast must feel morning-appropriate (eggs, oats, yogurt, toast) — not a dinner entrée'
+      ? '7. Breakfast must feel morning-appropriate (eggs, oats, yogurt, toast) — not a dinner entrée'
       : '',
     '',
     'ADDITIONAL RULES:',
     '1. Each meal must have ingredients with types (protein, carb, vegetable, fat) and gram weights',
     '2. Use COOKED weights for grains, pasta, potatoes',
     '3. Meal names should be short and descriptive',
-    '4. Match dish format to meal role (snack ≠ entrée; dessert ≠ savory bowl)',
+    '4. Match dish format to meal role (dessert ≠ savory bowl)',
     '',
     TYPE_DESCRIPTIONS,
     '',
@@ -387,7 +382,7 @@ export function buildWeekPrompt({
     '3. NEVER repeat the same dinner protein on consecutive days',
     '4. Vary cuisines across the week. But, do not state the cuisine name, just the meal name.',
     '5. Desserts should be creative (not just yogurt or pudding variations)',
-    '6. Snacks can be simple (1-3 ingredients)',
+    '6. Do NOT include snacks — snacks are logged manually by the user',
     '7. Respect dietary restrictions absolutely',
     '8. Never use disliked foods',
     '',

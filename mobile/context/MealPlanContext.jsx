@@ -33,7 +33,7 @@ const EMPTY_DAY = {
   dinner_rating: 0,
   dessert_rating: 0,
   snacks_rating: 0,
-  include_snacks: true,
+  include_snacks: false,
   include_dessert: true,
 };
 
@@ -87,6 +87,7 @@ const getMealPlanSummary = (week = {}) => {
     MEAL_TYPES.forEach((mealType) => {
       const meal = dayMeals?.[mealType];
       if (meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__') {
+        if (mealType === 'snacks' && dayMeals?.snacks_user_logged !== true) return;
         mealCount += 1;
         if (mealType === 'snacks') hasSnacks = true;
         if (mealType === 'dessert') hasDessert = true;
@@ -274,6 +275,15 @@ export function MealPlanProvider({ children }) {
     }));
   };
 
+  /** Merge a full day object from the server (e.g. log-snack response). */
+  const applyDayMeals = useCallback((day, dayMeals) => {
+    if (!day || !dayMeals || typeof dayMeals !== 'object') return;
+    setMealPlan((prev) => ({
+      ...prev,
+      [day]: { ...(prev[day] || {}), ...dayMeals },
+    }));
+  }, []);
+
   const rateMeal = async (day, mealType, rating) => {
     if (!day || !(day in mealPlan)) return;
     setMealPlan((prev) => ({
@@ -324,9 +334,10 @@ export function MealPlanProvider({ children }) {
       // Get existing meals for this day
       const existingDayMeals = mealPlan[day] || { ...EMPTY_DAY };
       
-      // Find empty meal slots among active types only
+      // Find empty meal slots among AI-generatable types only (never snacks)
       const togglePayload = getDayTogglePayload(day);
-      const activeUiTypes = getActiveMealTypes(togglePayload);
+      const activeUiTypes = getActiveMealTypes(togglePayload, existingDayMeals)
+        .filter((mt) => mt !== 'snacks');
       const emptyMealTypes = activeUiTypes.filter(mt => {
         const meal = existingDayMeals[mt];
         return !meal || typeof meal !== 'string' || !meal.trim();
@@ -362,6 +373,7 @@ export function MealPlanProvider({ children }) {
               updateMeal(day, event.mealType, '__generating__');
             }
           } else if (event.type === 'meal' && event.mealType && event.meal) {
+            if (event.mealType === 'snacks' || event.mealType === 'snack') return;
             updateMeal(day, event.mealType, event.meal);
           } else if (event.type === 'error') {
             console.error('Generation error:', event.message);
@@ -375,18 +387,25 @@ export function MealPlanProvider({ children }) {
         // Final update with all meals (in case any events were missed)
         if (result.meals && Object.keys(result.meals).length > 0) {
           Object.keys(result.meals).forEach((mealType) => {
+            if (mealType === 'snacks' || mealType === 'snack') return;
             updateMeal(day, mealType, result.meals[mealType]);
           });
           Object.keys(result.meals).forEach((generatedMealType) => {
+            if (generatedMealType === 'snacks' || generatedMealType === 'snack') return;
             capture(posthog, 'meal_generated', { meal_type: generatedMealType, day });
           });
         }
         
         // Save to database
         if (user && !isGuest) {
+          const mealsWithoutSnack = Object.fromEntries(
+            Object.entries(result.meals || {}).filter(
+              ([k]) => k !== 'snacks' && k !== 'snack'
+            )
+          );
           const updatedPlan = {
             ...mealPlan,
-            [day]: { ...mealPlan[day], ...result.meals }
+            [day]: { ...mealPlan[day], ...mealsWithoutSnack, include_snacks: false }
           };
           await saveMealPlan(user.id, updatedPlan, currentWeekStarting);
         }
@@ -551,7 +570,7 @@ export function MealPlanProvider({ children }) {
       // Generate each day sequentially
       for (const day of DAYS) {
         const togglePayload = getDayTogglePayload(day);
-        const activeUiTypes = getActiveMealTypes(togglePayload);
+        const activeUiTypes = getActiveMealTypes(togglePayload).filter((mt) => mt !== 'snacks');
         activeUiTypes.forEach((mt) => updateMeal(day, mt, '__generating__'));
 
         const result = await apiClient.generateDay(
@@ -752,12 +771,11 @@ export function MealPlanProvider({ children }) {
   const getDayTogglePayload = useCallback((day) => {
     const dayData = mealPlanRef.current?.[day];
     return resolveMealToggles({
-      includeSnacks: dayData?.include_snacks,
       includeDessert: dayData?.include_dessert,
     });
   }, []);
 
-  const setDayMealToggles = useCallback(async (day, { includeSnacks, includeDessert }) => {
+  const setDayMealToggles = useCallback(async (day, { includeDessert }) => {
     const week = currentWeekStartingRef.current;
     if (isPastDay(day, week)) {
       console.warn('MealPlanProvider: cannot change toggles for a past day', day);
@@ -768,7 +786,7 @@ export function MealPlanProvider({ children }) {
       ...prev,
       [day]: {
         ...prev[day],
-        include_snacks: includeSnacks,
+        include_snacks: false,
         include_dessert: includeDessert,
       },
     });
@@ -833,6 +851,7 @@ export function MealPlanProvider({ children }) {
   const actionsValue = useMemo(
     () => ({
       updateMeal,
+      applyDayMeals,
       rateMeal,
       generateDay,
       regenerateMeal,

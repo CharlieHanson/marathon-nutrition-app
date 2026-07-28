@@ -18,7 +18,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ML_API_URL = process.env.ML_API_URL || 'https://alimenta-ml-service.onrender.com';
 const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
+const MEAL_TYPES = ['breakfast','lunch','dinner','dessert'];
 
 function isGpt5Family(model) {
   return String(model || '').toLowerCase().startsWith('gpt-5');
@@ -98,10 +98,9 @@ function dayJsonSchema(day) {
             breakfast: { type: "string" },
             lunch: { type: "string" },
             dinner: { type: "string" },
-            dessert: { type: "string" },
-            snacks: { type: "string" }
+            dessert: { type: "string" }
           },
-          required: ["breakfast","lunch","dinner","dessert","snacks"]
+          required: ["breakfast","lunch","dinner","dessert"]
         }
       },
       required: ["day","meals"]
@@ -295,15 +294,14 @@ async function buildDayPrompt({
 }) {
   const prevSummary = summarizePreviousMeals(soFarWeek);
 
-  const [pB,pL,pD,pS,pDe] = await Promise.all([
+  const [pB,pL,pD,pDe] = await Promise.all([
     personalizationBulletsPerMeal({ userId, mealType:'breakfast', foodPreferences, userProfile, trainingPlan, day }),
     personalizationBulletsPerMeal({ userId, mealType:'lunch',     foodPreferences, userProfile, trainingPlan, day }),
     personalizationBulletsPerMeal({ userId, mealType:'dinner',    foodPreferences, userProfile, trainingPlan, day }),
-    personalizationBulletsPerMeal({ userId, mealType:'snacks',    foodPreferences, userProfile, trainingPlan, day }),
     personalizationBulletsPerMeal({ userId, mealType:'dessert',   foodPreferences, userProfile, trainingPlan, day }),
   ]);
 
-  const perMealContext = [pB,pL,pD,pS,pDe].filter(Boolean).join('\n\n');
+  const perMealContext = [pB,pL,pD,pDe].filter(Boolean).join('\n\n');
 
   const dessertCategory = pickNextDessertCategory(soFarWeek);
 
@@ -349,7 +347,7 @@ CRITICAL REQUIREMENTS:
 
 Return a JSON object that matches the required schema, with:
 - "day" equal to "${day}"
-- "meals" containing string descriptions for breakfast, lunch, dinner, dessert, and snacks.
+- "meals" containing string descriptions for breakfast, lunch, dinner, and dessert. Do NOT include snacks.
 Do not include macros in the strings.`;
 }
 

@@ -108,7 +108,7 @@ export default function DashboardScreen() {
   const todayDate = formatTodayDate();
   const todayMeals = mealPlanHook.mealPlan?.[todayDay];
   const todayToggles = getDayMealToggles(todayMeals);
-  const todayActiveTypes = getActiveMealTypes(todayToggles);
+  const todayActiveTypes = getActiveMealTypes(todayToggles, todayMeals);
   const todayMacros = todayMeals ? calculateDayMacros(todayMeals) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
   const todayWorkouts = getTodayWorkouts(trainingPlanHook.plan);
   const weekProgress = countMeals(mealPlanHook.mealPlan);

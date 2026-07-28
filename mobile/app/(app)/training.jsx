@@ -639,7 +639,9 @@ export default function TrainingScreen() {
               </TouchableOpacity>
             )}
 
-            <Text style={styles.saveHintText}>Save your plan when done editing</Text>
+            <Text style={styles.saveHintText}>
+              Save your plan when done editing, create a new plan or see saved plans with buttons at the top.
+            </Text>
           </View>
         </ScrollView>
       </TourTarget>

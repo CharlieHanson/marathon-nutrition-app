@@ -12,7 +12,7 @@ import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import {
-  buildMealSlots,
+  buildGenerationMealSlots,
   toInternalMealType,
   toUiMealType,
   resolveMealToggles,
@@ -64,7 +64,6 @@ export function createGenerateSingleMealHandler(provider) {
         weekStarting,
         userPrompt,
         ragContext,
-        includeSnacks,
         includeDessert,
       } = req.body;
 
@@ -83,11 +82,11 @@ export function createGenerateSingleMealHandler(provider) {
         });
       }
 
-      const inactiveError = getInactiveMealTypeError(rawMealType, { includeSnacks, includeDessert });
+      const inactiveError = getInactiveMealTypeError(rawMealType, { includeDessert });
       if (inactiveError) return res.status(400).json({ success: false, error: inactiveError });
 
-      const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
-      const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+      const { includeDessert: iD } = resolveMealToggles({ includeDessert });
+      const mealSlots = buildGenerationMealSlots({ includeDessert: iD });
 
       const mealType = toInternalMealType(rawMealType);
       const outKey = toUiMealType(mealType);

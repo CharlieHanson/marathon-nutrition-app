@@ -88,6 +88,14 @@ export function createGenerateMealPrepHandler(provider) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
 
+      const mealType = toInternalKey(rawMealType);
+      if (mealType === 'snack') {
+        return res.status(400).json({
+          success: false,
+          error: 'Snacks are logged manually and cannot be AI-generated',
+        });
+      }
+
       const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
       if (!limitCheck.allowed) {
         return res.status(429).json({
@@ -99,7 +107,6 @@ export function createGenerateMealPrepHandler(provider) {
         });
       }
 
-      const mealType = toInternalKey(rawMealType);
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
@@ -113,6 +120,7 @@ export function createGenerateMealPrepHandler(provider) {
           userProfile,
           todayWorkouts: dayWorkouts,
           workoutTiming: timingMap[dayTiming] || null,
+          mealSlots: ['breakfast', 'lunch', 'dinner', 'dessert'],
         });
 
         const b = nutrition.mealBudgets[mealType];

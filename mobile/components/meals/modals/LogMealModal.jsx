@@ -28,7 +28,7 @@ const DAY_LABELS = {
   saturday: 'Sat',
   sunday: 'Sun',
 };
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'dessert'];
 const MEAL_LABELS = {
   breakfast: 'Breakfast',
   lunch: 'Lunch',
@@ -358,7 +358,10 @@ export const LogMealModal = ({
   const [selectedDay, setSelectedDay] = useState(defaultDay || 'monday');
   const [selectedMealType, setSelectedMealType] = useState(defaultMealType || 'lunch');
 
-  const logMealActiveTypes = getActiveMealTypes(getDayMealToggles(mealPlan?.[selectedDay]));
+  const logMealActiveTypes = getActiveMealTypes(
+    getDayMealToggles(mealPlan?.[selectedDay]),
+    mealPlan?.[selectedDay]
+  ).filter((mt) => mt !== 'snacks');
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimatedMacros, setEstimatedMacros] = useState(null);
   const [logged, setLogged] = useState(false);

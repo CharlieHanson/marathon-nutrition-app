@@ -14,6 +14,7 @@ const getMealPlanSummary = (week = {}) => {
     MEAL_TYPES.forEach((mealType) => {
       const meal = dayMeals?.[mealType];
       if (meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__') {
+        if (mealType === 'snacks' && dayMeals?.snacks_user_logged !== true) return;
         mealCount += 1;
         if (mealType === 'snacks') hasSnacks = true;
         if (mealType === 'dessert') hasDessert = true;
@@ -159,6 +160,14 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }));
   };
 
+  const applyDayMeals = (day, dayMeals) => {
+    if (!day || !dayMeals || typeof dayMeals !== 'object') return;
+    setMealPlan((prev) => ({
+      ...prev,
+      [day]: { ...(prev[day] || {}), ...dayMeals },
+    }));
+  };
+
   const rateMeal = async (day, mealType, rating) => {
     if (!day || !(day in mealPlan)) return;
     setMealPlan((prev) => ({
@@ -264,7 +273,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
   const generateDay = async (day, userProfile, foodPreferences, trainingPlan) => {
     if (!user && !isGuest) return { success: false, error: 'Not authenticated' };
 
-    const MEAL_TYPES_LIST = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+    const MEAL_TYPES_LIST = ['breakfast', 'lunch', 'dinner', 'dessert'];
 
     // Immediately mark all empty slots as generating for instant visual feedback
     const markedSlots = [];
@@ -297,6 +306,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           if (event.type === 'status') {
             if (event.message) setStatusMessage(`🔄 ${event.message}`);
           } else if (event.type === 'meal' && event.mealType && event.meal) {
+            if (event.mealType === 'snacks' || event.mealType === 'snack') return;
             updateMeal(day, event.mealType, event.meal);
             setStatusMessage(`✅ ${capitalize(event.mealType)} done!`);
           } else if (event.type === 'done') {
@@ -311,6 +321,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       if (result.success && result.meals && Object.keys(result.meals).length > 0) {
         // Final pass: apply any meals that may have been missed by SSE events
         Object.keys(result.meals).forEach((mealType) => {
+          if (mealType === 'snacks' || mealType === 'snack') return;
           updateMeal(day, mealType, result.meals[mealType]);
         });
         // Clear any slots still stuck on __generating__ (skipped/error slots)
@@ -320,7 +331,15 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           }
         });
         if (user && !isGuest) {
-          const updatedPlan = { ...mealPlan, [day]: { ...mealPlan[day], ...result.meals } };
+          const mealsWithoutSnack = Object.fromEntries(
+            Object.entries(result.meals || {}).filter(
+              ([k]) => k !== 'snacks' && k !== 'snack'
+            )
+          );
+          const updatedPlan = {
+            ...mealPlan,
+            [day]: { ...mealPlan[day], ...mealsWithoutSnack, include_snacks: false },
+          };
           await authenticatedFetch(getApiUrl('/api/meal-plan'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -328,6 +347,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           });
         }
         Object.keys(result.meals).forEach((generatedMealType) => {
+          if (generatedMealType === 'snacks' || generatedMealType === 'snack') return;
           capture('meal_generated', { meal_type: generatedMealType, day });
         });
       } else if (result.error) {
@@ -513,6 +533,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
   return {
     mealPlan,
     updateMeal,
+    applyDayMeals,
     rateMeal,
     generateMeals,
     generateDay,

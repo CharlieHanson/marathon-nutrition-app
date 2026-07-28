@@ -292,14 +292,14 @@ export function parseHeightCm(raw) {
    * @param {{ calories, protein, carbs, fat }} params.dailyMacros
    * @param {Array}  [params.workouts]     - today's workouts for carb timing shifts
    * @param {string} [params.workoutTiming] - "am" | "pm" | "midday" | null
-   * @param {string[]} [params.mealSlots]  - which meals to generate (defaults to all 5)
+   * @param {string[]} [params.mealSlots]  - which meals to generate (defaults to B/L/D/dessert; snack omitted)
    * @returns {Object<string, { calories, protein, carbs, fat }>}
    */
   export function splitMealBudgets({
     dailyMacros,
     workouts = [],
     workoutTiming = null,
-    mealSlots = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'],
+    mealSlots = ['breakfast', 'lunch', 'dinner', 'dessert'],
   }) {
     // Start with default splits, filtered to requested meals
     const splits = {};
@@ -405,7 +405,7 @@ export function parseHeightCm(raw) {
     userProfile,
     todayWorkouts = [],
     workoutTiming = null,
-    mealSlots = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'],
+    mealSlots = ['breakfast', 'lunch', 'dinner', 'dessert'],
   }) {
     // Parse raw inputs
     const heightCm = parseHeightCm(userProfile.height);

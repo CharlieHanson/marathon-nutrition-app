@@ -22,7 +22,7 @@ import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
 import { useUserProfile } from '../../hooks/useUserProfile';
-import { useMealCompletions, getCurrentDayOfWeek } from '../../hooks/useMealCompletions';
+import { useMealCompletions, getCurrentDayOfWeek, getTodayDate } from '../../hooks/useMealCompletions';
 import { saveMeal } from '../../../shared/lib/dataClient';
 import { apiClient } from '../../../shared/services/api';
 
@@ -40,6 +40,7 @@ import { EmptyMealOptionsBottomSheet } from '../../components/meals/modals/Empty
 import { AnalyticsModal } from '../../components/meals/modals/AnalyticsModal';
 import { MealPrepModal } from '../../components/meals/modals/MealPrepModal';
 import { LogMealModal } from '../../components/meals/modals/LogMealModal';
+import { LogSnackModal } from '../../components/meals/modals/LogSnackModal';
 import { ErrorState } from '../../components/ErrorState';
 import { ServingsPickerModal } from '../../components/meals/modals/ServingsPickerModal';
 import { TourTarget } from '../../components/tour/TourTarget';
@@ -112,6 +113,8 @@ export default function MealsScreen() {
   const [mealPrepDefaultType, setMealPrepDefaultType] = useState(undefined);
   const [showLogMealModal, setShowLogMealModal] = useState(false);
   const [logMealDefaultType, setLogMealDefaultType] = useState(undefined);
+  const [showLogSnackModal, setShowLogSnackModal] = useState(false);
+  const [logSnackSubmitting, setLogSnackSubmitting] = useState(false);
   const [showServingsPicker, setShowServingsPicker] = useState(false);
 
   // Debug prompt display
@@ -184,7 +187,7 @@ export default function MealsScreen() {
     }
 
     const todayDayMeals = mealPlanHook.mealPlan?.[todayDayOfWeek] || {};
-    const todayActiveTypes = getActiveMealTypes(getDayMealToggles(todayDayMeals));
+    const todayActiveTypes = getActiveMealTypes(getDayMealToggles(todayDayMeals), todayDayMeals);
     const todayCompletions = mealCompletionsHook.completions.filter(
       (c) => c.day_of_week === todayDayOfWeek
     );
@@ -209,6 +212,10 @@ export default function MealsScreen() {
   // Auto-save lives in MealPlanProvider (single writer).
   // Handlers
   const handleMealPress = (mealType, parsedMeal) => {
+    if (mealType === 'snacks') {
+      setShowLogSnackModal(true);
+      return;
+    }
     setSelectedMeal({ mealType, ...parsedMeal });
     setShowMealOptions(true);
   };
@@ -420,10 +427,91 @@ export default function MealsScreen() {
     mealPlanHook.updateMeal(day, mealType, mealDescription);
   };
 
+  const handleLogSnack = async ({ day, name, calories, protein, carbs, fat }) => {
+    if (!user || isGuest) {
+      Alert.alert('Sign in required', 'Log in to save snacks.');
+      return;
+    }
+    if (isConnected === false) {
+      OFFLINE_ALERT();
+      return;
+    }
+    setShowLogSnackModal(false);
+    try {
+      setLogSnackSubmitting(true);
+      const result = await apiClient.logSnack({
+        day,
+        weekStarting: mealPlanHook.currentWeekStarting,
+        localDate: getTodayDate(),
+        name,
+        calories,
+        protein,
+        carbs,
+        fat,
+      });
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to log snack');
+      }
+      mealPlanHook.applyDayMeals(day, result.dayMeals);
+      capture(posthog, 'snack_logged', {
+        day,
+        calories,
+        protein,
+        carbs,
+        fat,
+        source: 'mobile',
+        over_budget: Boolean(result.over_budget),
+        rebalanced: Boolean(result.rebalanced),
+        adjusted_meal_types: result.adjusted_meal_types || [],
+      });
+      if (result.rebalanced) {
+        if (result.over_budget) {
+          Alert.alert(
+            'Over daily budget',
+            'Snack logged. Some meals were kept at their minimum targets.'
+          );
+        } else {
+          Alert.alert('Snack logged', 'Remaining meals updated to fit your day.');
+        }
+      } else {
+        Alert.alert('Snack logged', 'Your snack was saved.');
+      }
+    } catch (error) {
+      console.error('log snack error:', error);
+      Alert.alert('Error', error.message || 'Failed to log snack');
+    } finally {
+      setLogSnackSubmitting(false);
+    }
+  };
+
+  const handleDeleteSnack = async ({ day }) => {
+    if (!user || isGuest) return;
+    try {
+      setLogSnackSubmitting(true);
+      const result = await apiClient.deleteSnack({
+        day,
+        weekStarting: mealPlanHook.currentWeekStarting,
+        localDate: getTodayDate(),
+      });
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove snack');
+      }
+      mealPlanHook.applyDayMeals(day, result.dayMeals);
+      capture(posthog, 'snack_deleted', { day, source: 'mobile' });
+      setShowLogSnackModal(false);
+      Alert.alert('Snack removed', 'Meal targets restored.');
+    } catch (error) {
+      console.error('delete snack error:', error);
+      Alert.alert('Error', error.message || 'Failed to remove snack');
+    } finally {
+      setLogSnackSubmitting(false);
+    }
+  };
+
   // Helper to get meal status for a specific day
   const getDayMealStatus = (day) => {
     const dayMeals = mealPlanHook.mealPlan?.[day] || {};
-    const activeTypes = getActiveMealTypes(getDayMealToggles(dayMeals));
+    const activeTypes = getActiveMealTypes(getDayMealToggles(dayMeals), dayMeals);
     let filled = 0;
     let total = activeTypes.length;
 
@@ -591,6 +679,11 @@ export default function MealsScreen() {
           ) {
             return;
           }
+          // Snacks are never grocery items: legacy AI snacks are hidden;
+          // snacks_user_logged snacks are intentional exclusions.
+          if (mealType === 'snacks') {
+            return;
+          }
           allMeals.push(meal);
         });
       });
@@ -673,7 +766,7 @@ export default function MealsScreen() {
 
   const selectedDayMeals = mealPlanHook.mealPlan?.[selectedDay] || {};
   const dayToggles = getDayMealToggles(selectedDayMeals);
-  const activeTypes = getActiveMealTypes(dayToggles);
+  const activeTypes = getActiveMealTypes(dayToggles, selectedDayMeals);
 
   const showFab = !dayMealStatus.allFilled && canDo('meal_generation');
   const scrollBottomPadding = showFab ? 96 : 20;
@@ -783,6 +876,7 @@ export default function MealsScreen() {
           onGroceryList={generateGroceryList}
           onMealPrep={() => setShowMealPrepModal(true)}
           onLogMeal={() => setShowLogMealModal(true)}
+          onLogSnack={() => setShowLogSnackModal(true)}
           loadingGroceryList={loadingGroceryList}
           groceryRemaining={remaining('grocery_list')}
           canGenerate={canDo('meal_generation')}
@@ -791,14 +885,19 @@ export default function MealsScreen() {
 
         {!isPastDay(selectedDay, mealPlanHook.currentWeekStarting) && (
           <MealTypeToggles
-            includeSnacks={dayToggles.includeSnacks}
             includeDessert={dayToggles.includeDessert}
-            onToggleSnacks={(val) => setDayMealToggles(selectedDay, { includeSnacks: val, includeDessert: dayToggles.includeDessert })}
-            onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeSnacks: dayToggles.includeSnacks, includeDessert: val })}
+            onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeDessert: val })}
             disabled={mealPlanHook.isGenerating || isGuest}
             dayMeals={selectedDayMeals}
           />
         )}
+        {selectedDayMeals?.over_budget ? (
+          <View style={styles.overBudgetBanner}>
+            <Text style={styles.overBudgetText}>
+              Over daily budget — some meals kept at minimum targets
+            </Text>
+          </View>
+        ) : null}
         {activeTypes.map((mealType, index) => {
           const isToday = isCurrentWeek && selectedDay === todayDayOfWeek;
           const isCompleted = isToday && mealCompletionsHook.completions.some(
@@ -829,11 +928,11 @@ export default function MealsScreen() {
                     }
                   : handleEmptyMealPress
               }
-              onDelete={() => handleDeleteMealForCard(selectedDay, mealType)}
               parseMeal={parseMeal}
               showCheckbox={isToday}
               isCompleted={isCompleted}
               onToggleComplete={() => mealCompletionsHook.toggleMealCompletion(selectedDay, mealType)}
+              isAdjusted={(selectedDayMeals?.adjusted_meal_types || []).includes(mealType)}
             />
           );
 
@@ -887,6 +986,16 @@ export default function MealsScreen() {
         onSaveMeal={!isGuest && user?.id ? handleSaveMeal : undefined}
         onGetRecipe={handleGetRecipe}
         onRegenerate={handleRegenerate}
+        onDelete={() => {
+          const mealType = selectedMeal?.mealType;
+          if (!mealType) return;
+          setShowMealOptions(false);
+          if (mealType === 'snacks' && selectedDayMeals?.snacks_user_logged) {
+            handleDeleteSnack({ day: selectedDay });
+            return;
+          }
+          handleDeleteMealForCard(selectedDay, mealType);
+        }}
         onClose={() => {
           setShowMealOptions(false);
           notifyTargetDismissed('meals-generate-action');
@@ -992,6 +1101,17 @@ export default function MealsScreen() {
         mealPlan={mealPlanHook.mealPlan}
       />
 
+      <LogSnackModal
+        visible={showLogSnackModal}
+        onClose={() => setShowLogSnackModal(false)}
+        onSubmit={handleLogSnack}
+        onDelete={handleDeleteSnack}
+        defaultDay={selectedDay}
+        existingSnack={mealPlanHook.mealPlan?.[selectedDay]?.snacks || ''}
+        snacksUserLogged={mealPlanHook.mealPlan?.[selectedDay]?.snacks_user_logged === true}
+        submitting={logSnackSubmitting}
+      />
+
       <ServingsPickerModal
         visible={showServingsPicker}
         onClose={() => setShowServingsPicker(false)}
@@ -1044,6 +1164,21 @@ const getStyles = (colors) => StyleSheet.create({
   },
   quickActionsInScroll: {
     marginBottom: 10,
+  },
+  overBudgetBanner: {
+    backgroundColor: colors.errorLight || '#fdecea',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.errorBorder || '#f5c6cb',
+  },
+  overBudgetText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.error || '#c0392b',
+    textAlign: 'center',
   },
   emptyState: {
     flex: 1,

@@ -40,9 +40,8 @@ export const DayCardSkeleton = () => (
       <MealCardSkeleton />
     </div>
 
-    {/* Snacks & Dessert (2 cards) */}
+    {/* Dessert (1 card) */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <MealCardSkeleton />
       <MealCardSkeleton />
     </div>
   </div>

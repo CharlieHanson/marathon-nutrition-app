@@ -12,7 +12,7 @@ import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCom
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
-import { buildMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { buildGenerationMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -50,7 +50,6 @@ export function createGenerateDayHandler(provider) {
       ragContext,
       debug = false,
       forceRegenerate = false,
-      includeSnacks,
       includeDessert,
     } = req.body;
 
@@ -58,8 +57,8 @@ export function createGenerateDayHandler(provider) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
     }
 
-    const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
-    const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+    const { includeDessert: iD } = resolveMealToggles({ includeDessert });
+    const mealSlots = buildGenerationMealSlots({ includeDessert: iD });
 
     // Rate limit check must happen BEFORE writeHead sets SSE headers
     const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
