@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../shared/lib/supabase.native';
+import { useTheme } from '../../context/ThemeContext';
 
 const getSiteUrl = () => {
   const siteUrl = process.env.EXPO_PUBLIC_SITE_URL;
@@ -22,10 +25,32 @@ const getSiteUrl = () => {
   return String(siteUrl).trim().replace(/\/$/, '');
 };
 
+const KEYBOARD_LIFT = 56;
+
 export const ForgotPasswordModal = ({ visible, onClose }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardOpen(false);
+      return undefined;
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
@@ -64,6 +89,7 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
   const handleClose = () => {
     setEmail('');
     setMessage('');
+    setKeyboardOpen(false);
     onClose();
   };
 
@@ -76,31 +102,33 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
     >
       <View style={styles.modalOverlay}>
         <Pressable onPress={handleClose} style={styles.overlayPressable} />
-        <View style={styles.modalContent}>
+        <View
+          style={[
+            styles.modalContent,
+            keyboardOpen && { transform: [{ translateY: -KEYBOARD_LIFT }] },
+          ]}
+        >
           <View style={styles.modalInner}>
-            {/* Header */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Reset Password</Text>
               <TouchableOpacity
                 onPress={handleClose}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={22} color="#6B7280" />
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {/* Description */}
             <Text style={styles.description}>
               Enter your email address and we'll send you a link to reset your password.
             </Text>
 
-            {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email Address</Text>
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.placeholderColor}
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -115,7 +143,6 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
               />
             </View>
 
-            {/* Message */}
             {message ? (
               <View
                 style={[
@@ -138,7 +165,6 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
               </View>
             ) : null}
 
-            {/* Buttons */}
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
@@ -169,122 +195,123 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overlayPressable: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  modalContent: {
-    width: '90%',
-    maxWidth: 400,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    zIndex: 1,
-  },
-  modalInner: {
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#111827',
-  },
-  description: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    width: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
-    fontSize: 16,
-  },
-  messageContainer: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  messageContainerSuccess: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  messageContainerError: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  messageTextSuccess: {
-    color: '#166534',
-  },
-  messageTextError: {
-    color: '#DC2626',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  sendButton: {
-    backgroundColor: '#F6921D',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  sendButtonDisabled: {
-    opacity: 0.6,
-  },
-  sendButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-});
-
+function getStyles(colors) {
+  return StyleSheet.create({
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: colors.modalOverlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    overlayPressable: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    modalContent: {
+      width: '90%',
+      maxWidth: 400,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 12,
+      overflow: 'hidden',
+      zIndex: 1,
+    },
+    modalInner: {
+      padding: 20,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '900',
+      color: colors.text,
+    },
+    description: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.gray700,
+      marginBottom: 8,
+    },
+    input: {
+      width: '100%',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.borderDark,
+      borderRadius: 8,
+      backgroundColor: colors.inputBackground,
+      color: colors.text,
+      fontSize: 16,
+    },
+    messageContainer: {
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 16,
+    },
+    messageContainerSuccess: {
+      backgroundColor: colors.successLight,
+      borderWidth: 1,
+      borderColor: colors.successBorder,
+    },
+    messageContainerError: {
+      backgroundColor: colors.errorLight,
+      borderWidth: 1,
+      borderColor: colors.errorBorder,
+    },
+    messageText: {
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    messageTextSuccess: {
+      color: colors.successText,
+    },
+    messageTextError: {
+      color: colors.error,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    button: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cancelButton: {
+      backgroundColor: colors.gray100,
+    },
+    cancelButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.gray700,
+    },
+    sendButton: {
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    sendButtonDisabled: {
+      opacity: 0.6,
+    },
+    sendButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+  });
+}

@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { macroColors } from '../../../shared/lib/macroColors';
 import { StarRating } from './StarRating';
 
 const MEAL_LABELS = {
@@ -12,33 +13,48 @@ const MEAL_LABELS = {
   dessert: 'Dessert',
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   mealCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: 14,
-    padding: 16,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
     shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
-    position: 'relative',
+    overflow: 'hidden',
   },
   mealCardCompleted: {
-    borderLeftColor: '#22c55e',
     backgroundColor: colors.successLight,
-    borderColor: '#86efac',
+    borderColor: colors.successBorder,
+  },
+  mealCardGenerating: {
+    borderColor: colors.primaryBorder,
+  },
+  generatingBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 28,
+  },
+  generatingText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
   },
   mealCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    backgroundColor: isDarkMode ? colors.primary : colors.primaryLight,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: isDarkMode ? 0 : StyleSheet.hairlineWidth,
+    borderBottomColor: colors.primaryBorder,
   },
   mealCardHeaderLeft: {
     flex: 1,
@@ -48,10 +64,33 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  mealCardBody: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
   mealTypeLabel: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '800',
-    color: colors.text,
+    color: isDarkMode ? '#FFFFFF' : colors.text,
+    letterSpacing: 0.2,
+  },
+  mealTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  adjustedBadge: {
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.22)' : colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  adjustedBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   mealTypeLabelCompleted: {
     opacity: 0.75,
@@ -77,8 +116,8 @@ const getStyles = (colors) => StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBackground,
+    borderColor: isDarkMode ? '#FFFFFF' : colors.border,
+    backgroundColor: isDarkMode ? 'transparent' : colors.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -86,7 +125,9 @@ const getStyles = (colors) => StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#22c55e',
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.22)' : '#22c55e',
+    borderWidth: isDarkMode ? 2 : 0,
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -105,20 +146,20 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
   },
   macroChipCalories: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#D97706',
+    backgroundColor: macroColors.calories,
+    borderColor: macroColors.calories,
   },
   macroChipProtein: {
-    backgroundColor: '#10B981',
-    borderColor: '#059669',
+    backgroundColor: macroColors.protein,
+    borderColor: macroColors.protein,
   },
   macroChipCarbs: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#2563EB',
+    backgroundColor: macroColors.carbs,
+    borderColor: macroColors.carbs,
   },
   macroChipFat: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#7C3AED',
+    backgroundColor: macroColors.fat,
+    borderColor: macroColors.fat,
   },
   macroChipValue: {
     fontSize: 14,
@@ -165,24 +206,29 @@ export const MealCard = ({
   onRate, 
   onMealPress, 
   onEmptyPress, 
-  onDelete,
   parseMeal,
   isCompleted = false,
   onToggleComplete = null,
   showCheckbox = false,
+  isAdjusted = false,
 }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
   const isGenerating = meal === '__generating__';
   const parsed = isGenerating ? null : parseMeal(meal);
   const hasMeal = !!(meal && meal.trim() && !isGenerating);
 
-  // Animation for completion
+  // Scale the whole card when the user marks it complete — not on remount.
+  // Remounting meals (Stack push) was re-running the spring for every completed
+  // card and reading as a tab-switch "pop."
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const prevCompletedRef = useRef(isCompleted);
 
   useEffect(() => {
-    if (isCompleted) {
-      // Scale up and down animation
+    const wasCompleted = prevCompletedRef.current;
+    prevCompletedRef.current = isCompleted;
+
+    if (isCompleted && !wasCompleted) {
       Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 1.05,
@@ -197,8 +243,10 @@ export const MealCard = ({
           friction: 7,
         }),
       ]).start();
+    } else if (!isCompleted) {
+      scaleAnim.setValue(1);
     }
-  }, [isCompleted]);
+  }, [isCompleted, scaleAnim]);
 
   const handleCheckboxPress = (e) => {
     e.stopPropagation();
@@ -207,22 +255,59 @@ export const MealCard = ({
     }
   };
 
+  const renderHeader = () => (
+    <View style={styles.mealCardHeader}>
+      <View style={styles.mealCardHeaderLeft}>
+        <View style={styles.mealTypeRow}>
+          <Text style={[
+            styles.mealTypeLabel,
+            isCompleted && styles.mealTypeLabelCompleted,
+          ]}>
+            {MEAL_LABELS[mealType]}
+          </Text>
+          {isAdjusted ? (
+            <View style={styles.adjustedBadge}>
+              <Text style={styles.adjustedBadgeText}>Adjusted</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <View style={styles.mealCardHeaderRight}>
+        {showCheckbox && hasMeal && (
+          <TouchableOpacity
+            onPress={handleCheckboxPress}
+            style={styles.checkboxButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {isCompleted ? (
+              <View style={styles.checkboxCompleted}>
+                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              </View>
+            ) : (
+              <View style={styles.checkboxUncompleted}>
+                <Ionicons
+                  name="checkmark"
+                  size={18}
+                  color={isDarkMode ? '#FFFFFF' : colors.border}
+                />
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   // Show loading spinner while generating
   if (isGenerating) {
     return (
-      <View style={styles.mealCard}>
-        <View style={styles.mealCardHeader}>
-          <View style={styles.mealCardHeaderLeft}>
-            <Text style={styles.mealTypeLabel}>
-              {MEAL_LABELS[mealType]}
-            </Text>
+      <View style={[styles.mealCard, styles.mealCardGenerating]}>
+        {renderHeader()}
+        <View style={styles.mealCardBody}>
+          <View style={styles.generatingBody}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.generatingText}>Generating…</Text>
           </View>
-        </View>
-        <View style={[styles.emptyMeal, { paddingVertical: 32 }]}>
-          <Ionicons name="hourglass-outline" size={32} color={colors.primary} />
-          <Text style={[styles.emptyMealText, { color: colors.primary }]}>
-            Generating {MEAL_LABELS[mealType].toLowerCase()}...
-          </Text>
         </View>
       </View>
     );
@@ -244,94 +329,58 @@ export const MealCard = ({
         }}
         activeOpacity={0.75}
       >
-        <View style={styles.mealCardHeader}>
-          <View style={styles.mealCardHeaderLeft}>
-            <Text style={[
-              styles.mealTypeLabel,
-              isCompleted && styles.mealTypeLabelCompleted
-            ]}>
-              {MEAL_LABELS[mealType]}
-            </Text>
-          </View>
-          <View style={styles.mealCardHeaderRight}>
-            {showCheckbox && hasMeal && (
-              <TouchableOpacity 
-                onPress={handleCheckboxPress}
-                style={styles.checkboxButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {isCompleted ? (
-                  <View style={styles.checkboxCompleted}>
-                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                  </View>
-                ) : (
-                  <View style={styles.checkboxUncompleted}>
-                    <Ionicons name="checkmark" size={18} color={colors.border} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
+        {renderHeader()}
+
+        <View style={styles.mealCardBody}>
+          {hasMeal ? (
+            <>
+              <Text style={[
+                styles.mealName,
+                isCompleted && styles.mealNameCompleted,
+              ]}>
+                {parsed.name}
+              </Text>
+
+              <View style={styles.macroRow}>
+                <View style={[styles.macroChip, styles.macroChipCalories]}>
+                  <Text style={styles.macroChipValue}>{parsed.calories}</Text>
+                  <Text style={styles.macroChipLabel}>Cal</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipProtein]}>
+                  <Text style={styles.macroChipValue}>{parsed.protein}g</Text>
+                  <Text style={styles.macroChipLabel}>P</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipCarbs]}>
+                  <Text style={styles.macroChipValue}>{parsed.carbs}g</Text>
+                  <Text style={styles.macroChipLabel}>C</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipFat]}>
+                  <Text style={styles.macroChipValue}>{parsed.fat}g</Text>
+                  <Text style={styles.macroChipLabel}>F</Text>
+                </View>
+              </View>
+
+              <View style={styles.ratingRow}>
+                <StarRating rating={rating || 0} onRate={onRate} />
+                <View style={styles.ratingRowActions}>
+                  <TouchableOpacity
+                    onPress={() => onMealPress(mealType, parsed)}
+                    style={styles.mealOptionsButton}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          ) : (
+            <View style={styles.emptyMeal}>
+              <Ionicons name="add-circle-outline" size={32} color={colors.textTertiary} />
+              <Text style={styles.emptyMealText}>Tap to add meal</Text>
+            </View>
+          )}
         </View>
-
-      {hasMeal ? (
-        <>
-          <Text style={[
-            styles.mealName,
-            isCompleted && styles.mealNameCompleted
-          ]}>
-            {parsed.name}
-          </Text>
-
-          <View style={styles.macroRow}>
-            <View style={[styles.macroChip, styles.macroChipCalories]}>
-              <Text style={styles.macroChipValue}>{parsed.calories}</Text>
-              <Text style={styles.macroChipLabel}>Cal</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipProtein]}>
-              <Text style={styles.macroChipValue}>{parsed.protein}g</Text>
-              <Text style={styles.macroChipLabel}>P</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipCarbs]}>
-              <Text style={styles.macroChipValue}>{parsed.carbs}g</Text>
-              <Text style={styles.macroChipLabel}>C</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipFat]}>
-              <Text style={styles.macroChipValue}>{parsed.fat}g</Text>
-              <Text style={styles.macroChipLabel}>F</Text>
-            </View>
-          </View>
-
-          <View style={styles.ratingRow}>
-            <StarRating rating={rating || 0} onRate={onRate} />
-            <View style={styles.ratingRowActions}>
-              {onDelete && (
-                <TouchableOpacity 
-                  onPress={(e) => { e?.stopPropagation?.(); onDelete(); }} 
-                  style={styles.mealOptionsButton}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="trash-outline" size={20} color={colors.error} />
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity 
-                onPress={() => onMealPress(mealType, parsed)} 
-                style={styles.mealOptionsButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </>
-      ) : (
-        <View style={styles.emptyMeal}>
-          <Ionicons name="add-circle-outline" size={32} color={colors.textTertiary} />
-          <Text style={styles.emptyMealText}>Tap to add meal</Text>
-        </View>
-      )}
       </TouchableOpacity>
     </Animated.View>
   );
 };
-

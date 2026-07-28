@@ -9,17 +9,17 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#F6921D', // Orange
-          50: '#FFF7ED',
-          100: '#FFEDD5',
-          200: '#FED7AA',
-          300: '#FDBA74',
-          400: '#FB923C',
-          500: '#F6921D', // Main orange
-          600: '#EA580C',
-          700: '#C2410C',
-          800: '#9A3412',
-          900: '#7C2D12',
+          DEFAULT: '#3D7C65', // Mint green (matches mobile)
+          50: '#EBF4F0',
+          100: '#D5EBE3',
+          200: '#A8C9BA',
+          300: '#7AA994',
+          400: '#5A947A',
+          500: '#3D7C65', // Main mint
+          600: '#326654',
+          700: '#285043',
+          800: '#1E3C33',
+          900: '#152820',
         },
         secondary: {
           DEFAULT: '#ffcd00', // Yellow

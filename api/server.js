@@ -13,6 +13,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { requireAuth } from './lib/requireAuth.js';
+import { initSentry, setupSentryErrorHandler } from './lib/sentry.js';
+
+initSentry();
 
 const app = express();
 
@@ -70,6 +73,7 @@ function mount(path, importFn) {
   });
 }
 
+mount('/api/auth/apple-exchange', () => import('./routes/auth/apple-exchange.js'));
 mount('/api/delete-account', () => import('./routes/delete-account.js'));
 mount('/api/estimate-macros', () => import('./routes/estimate-macros.js'));
 mount('/api/meal-plan', () => import('./routes/meal-plan.js'));
@@ -99,12 +103,15 @@ mount('/api/regenerate-meal-openai', () => import('./routes/regenerate-meal-open
 mount('/api/generate-meals', () => import('./routes/generate-meals.js'));
 mount('/api/generate-grocery-list', () => import('./routes/generate-grocery-list.js'));
 mount('/api/rate-meal', () => import('./routes/rate-meal.js'));
+mount('/api/log-snack', () => import('./routes/log-snack.js'));
 
 mount('/api/pro/clients', () => import('./routes/pro/clients.js'));
 mount('/api/pro/dashboard', () => import('./routes/pro/dashboard.js'));
 mount('/api/pro/profile', () => import('./routes/pro/profile.js'));
 
 // ── Error handler ───────────────────────────────────────────────────────────
+setupSentryErrorHandler(app);
+
 app.use((err, req, res, next) => {
   console.error('[api] unhandled error:', err);
   if (res.headersSent) return next(err);

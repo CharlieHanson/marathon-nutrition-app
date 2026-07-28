@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../../shared/lib/supabase.native';
+import { useMealCompletionsActions, useMealCompletionsState } from '../context/MealCompletionsContext';
 
 // Get current day of week in lowercase (e.g., 'monday')
 const getCurrentDayOfWeek = () => {
@@ -20,132 +19,24 @@ const getTodayDate = () => {
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
-export const useMealCompletions = (user, isGuest) => {
-  const [completions, setCompletions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const totalMeals = 5;
-
-  // Fetch today's completions
-  const fetchCompletions = async () => {
-    if (isGuest || !user?.id) {
-      setCompletions([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const todayDate = getTodayDate();
-      const { data, error: fetchError } = await supabase
-        .from('meal_completions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('completion_date', todayDate);
-
-      if (fetchError) throw fetchError;
-
-      setCompletions(data || []);
-    } catch (err) {
-      console.error('Error fetching meal completions:', err);
-      setError(err.message);
-      setCompletions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCompletions();
-  }, [user?.id, isGuest]);
-
-  // Toggle meal completion: insert if not exists, delete if exists
-  const toggleMealCompletion = async (dayOfWeek, mealType) => {
-    if (isGuest || !user?.id) return;
-
-    try {
-      const todayDate = getTodayDate();
-      
-      // Check if completion exists
-      const existing = completions.find(
-        (c) => c.day_of_week === dayOfWeek && c.meal_type === mealType
-      );
-
-      if (existing) {
-        // Delete completion
-        const { error: deleteError } = await supabase
-          .from('meal_completions')
-          .delete()
-          .eq('id', existing.id);
-
-        if (deleteError) throw deleteError;
-
-        // Update local state
-        setCompletions((prev) => prev.filter((c) => c.id !== existing.id));
-      } else {
-        // Insert completion
-        const { data, error: insertError } = await supabase
-          .from('meal_completions')
-          .insert({
-            user_id: user.id,
-            completion_date: todayDate,
-            day_of_week: dayOfWeek,
-            meal_type: mealType,
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-
-        // Update local state
-        setCompletions((prev) => [...prev, data]);
-      }
-    } catch (err) {
-      console.error('Error toggling meal completion:', err);
-      setError(err.message);
-      // Refetch to ensure consistency
-      fetchCompletions();
-    }
-  };
-
-  // Remove completion for a slot (e.g. when meal is deleted) so the card is no longer checked/green
-  const removeMealCompletion = async (dayOfWeek, mealType) => {
-    if (isGuest || !user?.id) return;
-
-    const existing = completions.find(
-      (c) => c.day_of_week === dayOfWeek && c.meal_type === mealType
-    );
-    if (!existing) return;
-
-    try {
-      const { error: deleteError } = await supabase
-        .from('meal_completions')
-        .delete()
-        .eq('id', existing.id);
-
-      if (deleteError) throw deleteError;
-
-      setCompletions((prev) => prev.filter((c) => c.id !== existing.id));
-    } catch (err) {
-      console.error('Error removing meal completion:', err);
-      setError(err.message);
-      fetchCompletions();
-    }
-  };
-
-  const completedCount = completions.length;
+/**
+ * Shared meal-completions API (backed by MealCompletionsProvider).
+ * Signature preserved for existing callers.
+ */
+export const useMealCompletions = (_user, _isGuest) => {
+  const state = useMealCompletionsState();
+  const actions = useMealCompletionsActions();
 
   return {
-    completions,
-    loading,
-    error,
-    toggleMealCompletion,
-    removeMealCompletion,
-    completedCount,
-    refetch: fetchCompletions,
+    completions: state.completions,
+    loading: state.loading,
+    isLoading: state.isLoading,
+    isValidating: state.isValidating,
+    error: state.error,
+    toggleMealCompletion: actions.toggleMealCompletion,
+    removeMealCompletion: actions.removeMealCompletion,
+    completedCount: state.completedCount,
+    refetch: actions.refetch,
   };
 };
 

@@ -47,14 +47,14 @@ export default function HelpPage() {
         <title>Help & Support - Alimenta</title>
         <meta name="description" content="Get help with Alimenta nutrition planning" />
       </Head>
-      <div className="min-h-screen bg-gradient-to-b from-white to-orange-50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-primary-50">
         {/* Header with Back Button */}
         <div className="bg-white shadow-sm border-b sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4 h-16">
               <button
                 onClick={() => router.back()}
-                className="p-2 text-gray-600 hover:text-primary hover:bg-orange-50 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-primary hover:bg-primary-50 rounded-lg transition-colors"
                 aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -98,7 +98,7 @@ export default function HelpPage() {
                   // Navigate to privacy policy page (to be created)
                   router.push('/privacy');
                 }}
-                className="w-full flex items-center justify-between p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors group"
+                className="w-full flex items-center justify-between p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <Shield className="w-5 h-5 text-primary" />
@@ -112,7 +112,7 @@ export default function HelpPage() {
                   // Navigate to terms of service page (to be created)
                   router.push('/terms');
                 }}
-                className="w-full flex items-center justify-between p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors group"
+                className="w-full flex items-center justify-between p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-primary" />
@@ -130,7 +130,7 @@ export default function HelpPage() {
             </p>
             <a
               href="mailto:alimentanutrition@gmail.com"
-              className="text-primary hover:text-orange-600 font-semibold transition-colors"
+              className="text-primary hover:text-primary-600 font-semibold transition-colors"
             >
               alimentanutrition@gmail.com
             </a>

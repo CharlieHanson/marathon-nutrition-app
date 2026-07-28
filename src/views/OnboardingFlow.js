@@ -5,6 +5,13 @@ import { ProfileStep } from '../components/onboarding/ProfileStep';
 import { PreferencesStep } from '../components/onboarding/PreferencesStep';
 import { ProgressIndicator } from '../components/onboarding/ProgressIndicator';
 import { saveUserProfile, saveFoodPreferences } from '../dataClient';
+import { capture } from '../lib/posthog';
+
+const daysSinceSignup = (user) => {
+  const createdAt = user?.created_at ? new Date(user.created_at).getTime() : Date.now();
+  if (!Number.isFinite(createdAt)) return 0;
+  return Math.max(0, Math.ceil((Date.now() - createdAt) / 86400000));
+};
 
 export const OnboardingFlow = ({ user, onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -60,6 +67,10 @@ export const OnboardingFlow = ({ user, onComplete }) => {
       if (error) {
         alert('Failed to save preferences. Please try again.');
       } else {
+        capture('onboarding_completed', {
+          persona: 'athlete',
+          days_to_complete: daysSinceSignup(user),
+        });
         // Mark onboarding as complete
         onComplete();
       }
@@ -71,7 +82,7 @@ export const OnboardingFlow = ({ user, onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4">
       {currentStep > 1 && (
         <ProgressIndicator currentStep={currentStep} totalSteps={3} />
       )}

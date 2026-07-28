@@ -573,7 +573,7 @@ export const apiClient = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }, 30000);
+      }, 120000);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -705,6 +705,70 @@ export const apiClient = {
       30000
     );
     return response.json();
+  },
+
+  async logSnack(data) {
+    try {
+      const response = await apiRequest(
+        getApiUrl('/api/log-snack'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        },
+        30000
+      );
+      const text = await response.text();
+      if (!text || !text.trim()) {
+        return { success: false, error: 'Empty response from server' };
+      }
+      try {
+        return JSON.parse(text);
+      } catch {
+        const looksHtml = text.trimStart().startsWith('<');
+        return {
+          success: false,
+          error: looksHtml
+            ? `log-snack is not available on this API (${response.status}). Redeploy the Express API or point EXPO_PUBLIC_API_URL at a local server that includes /api/log-snack.`
+            : `Invalid JSON from log-snack (HTTP ${response.status})`,
+        };
+      }
+    } catch (error) {
+      console.error('logSnack error:', error);
+      return { success: false, error: error.message || 'Failed to log snack' };
+    }
+  },
+
+  async deleteSnack(data) {
+    try {
+      const response = await apiRequest(
+        getApiUrl('/api/log-snack'),
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        },
+        30000
+      );
+      const text = await response.text();
+      if (!text || !text.trim()) {
+        return { success: false, error: 'Empty response from server' };
+      }
+      try {
+        return JSON.parse(text);
+      } catch {
+        const looksHtml = text.trimStart().startsWith('<');
+        return {
+          success: false,
+          error: looksHtml
+            ? `log-snack is not available on this API (${response.status}). Redeploy the Express API or point EXPO_PUBLIC_API_URL at a local server that includes /api/log-snack.`
+            : `Invalid JSON from log-snack (HTTP ${response.status})`,
+        };
+      }
+    } catch (error) {
+      console.error('deleteSnack error:', error);
+      return { success: false, error: error.message || 'Failed to remove snack' };
+    }
   },
 
   async generateMealPrep(data) {

@@ -10,7 +10,7 @@ import { parseAIJson } from '../lib/parseAIJson.js';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
-import { buildMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { buildGenerationMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -21,7 +21,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.0-flash', temperature: 0.7, maxTokens: 800 },
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 800 },
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 8000 },
 };
 
 export function createGenerateDayWebHandler(provider) {
@@ -31,14 +31,14 @@ export function createGenerateDayWebHandler(provider) {
     }
 
     const userId = getRequestUserId(req);
-    const { userProfile, foodPreferences, trainingPlan, day, includeSnacks, includeDessert } = req.body;
+    const { userProfile, foodPreferences, trainingPlan, day, includeDessert } = req.body;
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
     }
 
-    const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
-    const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+    const { includeDessert: iD } = resolveMealToggles({ includeDessert });
+    const mealSlots = buildGenerationMealSlots({ includeDessert: iD });
 
     const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
     if (!limitCheck.allowed) {

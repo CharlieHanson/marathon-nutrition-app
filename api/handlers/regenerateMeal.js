@@ -12,7 +12,7 @@ import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import {
-  buildMealSlots,
+  buildGenerationMealSlots,
   toInternalMealType,
   resolveMealToggles,
   getInactiveMealTypeError,
@@ -27,7 +27,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-flash', temperature: 0.7, maxTokens: 5000 },
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 800 },
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.7, maxTokens: 8000 },
 };
 
 function toMealString(mealName, macros) {
@@ -51,7 +51,6 @@ export function createRegenerateMealHandler(provider) {
         mealType,
         reason,
         currentMeal,
-        includeSnacks,
         includeDessert,
       } = req.body;
 
@@ -70,11 +69,11 @@ export function createRegenerateMealHandler(provider) {
         });
       }
 
-      const inactiveError = getInactiveMealTypeError(mealType, { includeSnacks, includeDessert });
+      const inactiveError = getInactiveMealTypeError(mealType, { includeDessert });
       if (inactiveError) return res.status(400).json({ success: false, error: inactiveError });
 
-      const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
-      const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+      const { includeDessert: iD } = resolveMealToggles({ includeDessert });
+      const mealSlots = buildGenerationMealSlots({ includeDessert: iD });
 
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';

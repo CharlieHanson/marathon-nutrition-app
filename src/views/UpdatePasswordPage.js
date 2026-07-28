@@ -67,7 +67,7 @@ export const UpdatePasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <div className="text-center mb-6">
           <img src="/alimenta_logo.png" alt="Alimenta" className="h-12 mx-auto mb-4" />

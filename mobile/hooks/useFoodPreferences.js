@@ -11,6 +11,7 @@ const EMPTY_PREFERENCES = {
 export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,12 +19,14 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     // If logged out or guest → clear preferences
     if (!user || isGuest) {
       setPreferences(EMPTY_PREFERENCES);
+      setError(null);
       return () => {
         cancelled = true;
       };
     }
 
     (async () => {
+      setError(null);
       try {
         console.log('useFoodPreferences: fetching preferences', {
           userId: user.id,
@@ -42,10 +45,12 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
         } else {
           setPreferences(EMPTY_PREFERENCES);
         }
+        setError(null);
       } catch (err) {
         console.error('useFoodPreferences: fetch error', err);
         if (!cancelled) {
           setPreferences(EMPTY_PREFERENCES);
+          setError(err?.message || 'Failed to load preferences');
         }
       }
     })();
@@ -94,6 +99,7 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     updatePreferences,
     savePreferences,
     isSaving,
+    error,
   };
 };
 

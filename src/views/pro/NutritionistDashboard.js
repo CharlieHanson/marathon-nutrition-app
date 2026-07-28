@@ -170,7 +170,7 @@ export const NutritionistDashboard = ({ currentUser }) => {
                 >
                   <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-semibold">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
                         {client.name?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div>
@@ -221,7 +221,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => {
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
-    orange: 'bg-orange-50 text-orange-600',
+    orange: 'bg-primary-50 text-primary-600',
   };
 
   return (
@@ -242,7 +242,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => {
 const QuickLink = ({ href, icon: Icon, label, description }) => (
   <Link href={href}>
     <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group">
-      <div className="p-2 bg-orange-50 rounded-lg group-hover:bg-orange-100 transition-colors">
+      <div className="p-2 bg-primary-50 rounded-lg group-hover:bg-primary-100 transition-colors">
         <Icon className="w-5 h-5 text-primary" />
       </div>
       <div className="flex-1">

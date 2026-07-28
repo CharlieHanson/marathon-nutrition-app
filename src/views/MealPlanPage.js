@@ -6,6 +6,7 @@ import { RecipeModal } from '../components/modals/RecipeModal';
 import { GroceryModal } from '../components/modals/GroceryModal';
 import { CopyMealModal } from '../components/modals/CopyMealModal';
 import { LogMealModal } from '../components/modals/LogMealModal';
+import { LogSnackModal } from '../components/modals/LogSnackModal';
 import { calculateDayMacros } from '../services/mealService';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
 import { Tooltip } from '../components/shared/Tooltip';
@@ -15,12 +16,24 @@ import { Dropdown } from '../components/shared/Dropdown';
 import { useAuth } from '../context/AuthContext';
 import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
+import { capture } from '../lib/posthog';
+import { macroColors } from '../../shared/lib/macroColors';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+/** Client local calendar date — same formula as meal_completions getTodayDate. */
+const getTodayDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const MealPlanPage = ({ 
   mealPlan, 
   onUpdate, 
+  onApplyDayMeals,
   onRate,
   onGenerate,
   onGenerateDay,
@@ -57,6 +70,9 @@ export const MealPlanPage = ({
   // Log meal state
   const [showLogModal, setShowLogModal] = useState(false);
   const [logMealDefaults, setLogMealDefaults] = useState({ day: 'monday', mealType: 'lunch' });
+  const [showLogSnackModal, setShowLogSnackModal] = useState(false);
+  const [logSnackDay, setLogSnackDay] = useState('monday');
+  const [logSnackSubmitting, setLogSnackSubmitting] = useState(false);
   
   const [localStatusMessage, setLocalStatusMessage] = useState('');
 
@@ -155,13 +171,101 @@ export const MealPlanPage = ({
     setTimeout(() => setLocalStatusMessage(''), 3000);
   };
 
+  const handleOpenLogSnack = (day = 'monday') => {
+    setLogSnackDay(day);
+    setShowLogSnackModal(true);
+  };
+
+  const handleLogSnack = async ({ day, name, calories, protein, carbs, fat }) => {
+    if (!user || isGuest) {
+      setLocalStatusMessage('❌ Sign in to log snacks');
+      setTimeout(() => setLocalStatusMessage(''), 3000);
+      return;
+    }
+    try {
+      setLogSnackSubmitting(true);
+      const res = await authenticatedFetch(getApiUrl('/api/log-snack'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day,
+          weekStarting: currentWeekStarting,
+          localDate: getTodayDate(),
+          name,
+          calories,
+          protein,
+          carbs,
+          fat,
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Failed to log snack');
+      if (onApplyDayMeals) onApplyDayMeals(day, result.dayMeals);
+      capture('snack_logged', {
+        day,
+        calories,
+        protein,
+        carbs,
+        fat,
+        source: 'web',
+        over_budget: Boolean(result.over_budget),
+        rebalanced: Boolean(result.rebalanced),
+        adjusted_meal_types: result.adjusted_meal_types || [],
+      });
+      setShowLogSnackModal(false);
+      if (result.rebalanced) {
+        setLocalStatusMessage(
+          result.over_budget
+            ? '⚠️ Snack logged — over budget; some meals at minimum'
+            : '✅ Snack logged — remaining meals updated'
+        );
+      } else {
+        setLocalStatusMessage('✅ Snack logged');
+      }
+      setTimeout(() => setLocalStatusMessage(''), 4000);
+    } catch (error) {
+      setLocalStatusMessage(`❌ ${error.message}`);
+      setTimeout(() => setLocalStatusMessage(''), 5000);
+    } finally {
+      setLogSnackSubmitting(false);
+    }
+  };
+
+  const handleDeleteSnack = async ({ day }) => {
+    if (!user || isGuest) return;
+    try {
+      setLogSnackSubmitting(true);
+      const res = await authenticatedFetch(getApiUrl('/api/log-snack'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day,
+          weekStarting: currentWeekStarting,
+          localDate: getTodayDate(),
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Failed to remove snack');
+      if (onApplyDayMeals) onApplyDayMeals(day, result.dayMeals);
+      capture('snack_deleted', { day, source: 'web' });
+      setShowLogSnackModal(false);
+      setLocalStatusMessage('✅ Snack removed — meal targets restored');
+      setTimeout(() => setLocalStatusMessage(''), 4000);
+    } catch (error) {
+      setLocalStatusMessage(`❌ ${error.message}`);
+      setTimeout(() => setLocalStatusMessage(''), 5000);
+    } finally {
+      setLogSnackSubmitting(false);
+    }
+  };
+
   const handleMealPrepClick = (day, mealType) => {
     setMealPrepDefaults({ mealType, days: [day] });
     setShowMealPrepModal(true);
   };
 
   const isDayFull = (day) => {
-    const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+    const mealTypes = ['breakfast', 'lunch', 'dinner', 'dessert'];
     return mealTypes.every((mt) => {
       const meal = mealPlan?.[day]?.[mt];
       return meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__';
@@ -172,7 +276,7 @@ export const MealPlanPage = ({
   const countMeals = () => {
     let filled = 0;
     let total = 0;
-    const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
+    const mealTypes = ['breakfast', 'lunch', 'dinner', 'dessert'];
     
     DAYS.forEach(day => {
       mealTypes.forEach(mt => {
@@ -204,17 +308,33 @@ export const MealPlanPage = ({
     setLocalStatusMessage(`🔄 Getting recipe for ${mealPlan[day][mealType]}...`);
 
     try {
+      const mealString = mealPlan[day][mealType];
+      const nameMatch = typeof mealString === 'string' ? mealString.match(/^(.+?)\s*\(/) : null;
+      const description = nameMatch ? nameMatch[1].trim() : String(mealString || '').trim();
+      const calMatch = typeof mealString === 'string' ? mealString.match(/Cal:\s*(\d+)/i) : null;
+      const proteinMatch = typeof mealString === 'string' ? mealString.match(/P:\s*(\d+)g/i) : null;
+      const carbsMatch = typeof mealString === 'string' ? mealString.match(/C:\s*(\d+)g/i) : null;
+      const fatMatch = typeof mealString === 'string' ? mealString.match(/F:\s*(\d+)g/i) : null;
+
       const response = await authenticatedFetch(getApiUrl('/api/get-recipe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
-          meal: mealPlan[day][mealType],
+          meal: mealString,
+          description,
           day,
           mealType,
+          macros: {
+            calories: calMatch ? parseInt(calMatch[1], 10) : 0,
+            protein: proteinMatch ? parseInt(proteinMatch[1], 10) : 0,
+            carbs: carbsMatch ? parseInt(carbsMatch[1], 10) : 0,
+            fat: fatMatch ? parseInt(fatMatch[1], 10) : 0,
+          },
           servings: servings,
           dislikes: foodPreferences?.dislikes || '',
-          dietaryRestrictions: userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
+          dietaryRestrictions:
+            userProfile?.dietary_restrictions || userProfile?.dietaryRestrictions || '',
         }),
       });
 
@@ -225,6 +345,7 @@ export const MealPlanPage = ({
         setCurrentRecipe(result.recipe);
         setShowRecipeModal(true);
         setLocalStatusMessage('✅ Recipe generated!');
+        capture('recipe_viewed', { meal_type: mealType });
       } else {
         throw new Error(result.error);
       }
@@ -250,6 +371,11 @@ export const MealPlanPage = ({
             mealType.includes('_rating') ||
             meal.trim() === ''
           ) {
+            return;
+          }
+          // Snacks are never grocery items: legacy AI snacks are hidden;
+          // snacks_user_logged snacks are intentional exclusions.
+          if (mealType === 'snacks') {
             return;
           }
           allMeals.push(meal);
@@ -278,6 +404,7 @@ export const MealPlanPage = ({
         setGroceryList(result.groceryList);
         setShowGroceryModal(true);
         setLocalStatusMessage('✅ Grocery list generated!');
+        capture('grocery_list_generated');
       } else {
         throw new Error(result.error || 'Failed to generate grocery list');
       }
@@ -654,7 +781,7 @@ export const MealPlanPage = ({
                     onClick={() => setShowAnalyticsModal(true)}
                     icon={BarChart3}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Analytics
                   </Button>
@@ -664,7 +791,7 @@ export const MealPlanPage = ({
                       onClick={generateGroceryList}
                       icon={ShoppingCart}
                       size="lg"
-                      className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                      className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                     >
                       Grocery List
                     </Button>
@@ -676,7 +803,7 @@ export const MealPlanPage = ({
                     onClick={() => setShowMealPrepModal(true)}
                     icon={ChefHat}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Meal Prep
                   </Button>
@@ -685,12 +812,21 @@ export const MealPlanPage = ({
                     onClick={() => handleLogClick()}
                     icon={UtensilsCrossed}
                     size="lg"
-                    className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
                   >
                     Log Meal
                   </Button>
                 </>
               )}
+
+              <Button
+                onClick={() => handleOpenLogSnack(selectedTestDay || 'monday')}
+                icon={Sparkles}
+                size="lg"
+                className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+              >
+                Log Snack
+              </Button>
 
               {/* More Actions Dropdown */}
               <div className="relative" ref={dropdownRef}>
@@ -720,6 +856,13 @@ export const MealPlanPage = ({
                           <UtensilsCrossed className="w-4 h-4" />
                           Log Meal
                         </button>
+                        <button
+                          onClick={() => { handleOpenLogSnack(); setShowDropdown(false); }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          Log Snack
+                        </button>
                       </>
                     ) : (
                       <>
@@ -729,6 +872,13 @@ export const MealPlanPage = ({
                         >
                           <BarChart3 className="w-4 h-4" />
                           Analytics
+                        </button>
+                        <button
+                          onClick={() => { handleOpenLogSnack(); setShowDropdown(false); }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          Log Snack
                         </button>
                         {hasMeals && (
                           <button
@@ -1182,16 +1332,28 @@ export const MealPlanPage = ({
                   
                   {dayMacros.hasData && (
                     <div className="flex gap-2 text-sm flex-wrap">
-                      <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                      >
                         Cal: {dayMacros.calories}
                       </span>
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                      >
                         P: {dayMacros.protein}g
                       </span>
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                      >
                         C: {dayMacros.carbs}g
                       </span>
-                      <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
+                      <span
+                        className="px-3 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                      >
                         F: {dayMacros.fat}g
                       </span>
                     </div>
@@ -1218,12 +1380,22 @@ export const MealPlanPage = ({
                       onSaveMeal={onSaveMeal}
                       isMealSaved={isMealSaved}
                       isGuest={isGuest}
+                      isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
                     />
                   ))}
                 </div>
 
+                {mealPlan[day]?.over_budget ? (
+                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                    Over daily budget — some meals kept at minimum targets
+                  </div>
+                ) : null}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {['snacks', 'dessert'].map((mealType) => (
+                  {(mealPlan[day]?.snacks_user_logged
+                    ? ['snacks', 'dessert']
+                    : ['dessert']
+                  ).map((mealType) => (
                     <MealCard
                       key={mealType}
                       day={day}
@@ -1232,16 +1404,17 @@ export const MealPlanPage = ({
                       rating={mealPlan[day][`${mealType}_rating`] || 0}
                       onUpdate={onUpdate}
                       onRate={onRate}
-                      onRegenerate={handleRegenerate}
+                      onRegenerate={mealType === 'snacks' ? undefined : handleRegenerate}
                       onGetRecipe={getRecipe}
                       onCopy={handleCopyClick}
                       onLogClick={handleLogClick}
-                      onGenerateSingleMeal={onGenerateSingleMeal}
-                      onMealPrepClick={handleMealPrepClick}
+                      onGenerateSingleMeal={mealType === 'snacks' ? undefined : onGenerateSingleMeal}
+                      onMealPrepClick={mealType === 'snacks' ? undefined : handleMealPrepClick}
                       loadingRecipe={loadingRecipe}
                       onSaveMeal={onSaveMeal}
                       isMealSaved={isMealSaved}
                       isGuest={isGuest}
+                      isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
                     />
                   ))}
                 </div>
@@ -1306,6 +1479,17 @@ export const MealPlanPage = ({
         isGuest={isGuest}                     // Add
       />
 
+      <LogSnackModal
+        isOpen={showLogSnackModal}
+        onClose={() => setShowLogSnackModal(false)}
+        onSubmit={handleLogSnack}
+        onDelete={handleDeleteSnack}
+        defaultDay={logSnackDay}
+        existingSnack={mealPlan?.[logSnackDay]?.snacks || ''}
+        snacksUserLogged={mealPlan?.[logSnackDay]?.snacks_user_logged === true}
+        submitting={logSnackSubmitting}
+      />
+
       <ServingsPickerModal
         isOpen={showServingsPicker}
         onClose={() => setShowServingsPicker(false)}
@@ -1332,7 +1516,8 @@ const MealCard = ({
   loadingRecipe,
   onSaveMeal,
   isMealSaved,
-  isGuest
+  isGuest,
+  isAdjusted = false,
 }) => {
   const [showAddOptions, setShowAddOptions] = React.useState(false);
   const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
@@ -1421,8 +1606,13 @@ const MealCard = ({
   return (
     <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-center">
-        <label className="block text-sm font-semibold text-gray-700 capitalize">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 capitalize">
           {mealType}
+          {isAdjusted ? (
+            <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              Adjusted
+            </span>
+          ) : null}
         </label>
         <div className="flex gap-1">
           {/* Save/Heart Button */}

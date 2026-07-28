@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Calendar, Utensils, Sparkles, TrendingUp, Shield, ChefHat, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { macroColors } from '../../shared/lib/macroColors';
 
 export const LandingPage = () => {
   const router = useRouter();
@@ -14,13 +15,16 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-primary-50">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
+              <span className="text-3xl font-bold tracking-tight" aria-label="Alimenta">
+                <span className="text-primary">Al</span>
+                <span className="text-gray-800">imenta</span>
+              </span>
             </div>
             <div className="flex items-center gap-4">
               {/* <Link href="/pro">
@@ -29,7 +33,7 @@ export const LandingPage = () => {
                 </button>
               </Link> */}
               <Link href="/login">
-                <button className="px-6 py-2 text-primary font-medium hover:bg-orange-50 rounded-lg transition-colors">
+                <button className="px-6 py-2 text-primary font-medium hover:bg-primary-50 rounded-lg transition-colors">
                   Sign In
                 </button>
               </Link>
@@ -46,14 +50,14 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto text-center relative z-10">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
             Fuel Your Training with
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-600"> AI-Powered Nutrition</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-600"> AI-Powered Nutrition</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Get personalized weekly meal plans that adapt to your training schedule, dietary restrictions, and fitness goals. Powered by advanced AI that learns from your ratings and gets smarter with every meal.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Link href="/login">
-              <button className="px-8 py-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
+              <button className="px-8 py-4 bg-gradient-to-r from-primary to-primary-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </button>
@@ -107,7 +111,7 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1">
-              <div className="inline-block p-3 bg-orange-100 rounded-lg mb-4">
+              <div className="inline-block p-3 bg-primary-100 rounded-lg mb-4">
                 <Calendar className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-4xl font-bold text-gray-900 mb-6">
@@ -124,7 +128,7 @@ export const LandingPage = () => {
             </div>
             <div className="order-1 md:order-2">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-600 rounded-2xl transform rotate-3"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary-600 rounded-2xl transform rotate-3"></div>
                 <div className="relative bg-white p-8 rounded-2xl shadow-2xl">
                   <img 
                     src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80" 
@@ -132,11 +136,11 @@ export const LandingPage = () => {
                     className="rounded-lg w-full h-64 object-cover"
                   />
                   <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
                       <span className="font-medium">Monday: 10 mile run</span>
                       <span className="text-primary font-bold">Intensity: 7/10</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
                       <span className="font-medium">Tuesday: Strength training</span>
                       <span className="text-primary font-bold">Intensity: 6/10</span>
                     </div>
@@ -149,7 +153,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Feature 2: Dietary Restrictions */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
@@ -239,10 +243,30 @@ export const LandingPage = () => {
                       </div>
                       <p className="text-sm text-gray-600">Steak with mashed potatoes and broccoli</p>
                       <div className="flex gap-2 mt-2 text-xs">
-                        <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full">720 cal</span>
-                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">60g P</span>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">39g C</span>
-                        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full">24g F</span>
+                        <span
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
+                        >
+                          720 cal
+                        </span>
+                        <span
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
+                        >
+                          60g P
+                        </span>
+                        <span
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
+                        >
+                          39g C
+                        </span>
+                        <span
+                          className="px-2 py-1 rounded-full"
+                          style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
+                        >
+                          24g F
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -254,7 +278,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Feature 4: RAG Learning System */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-orange-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-primary-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-block p-3 bg-blue-100 rounded-lg mb-4">
@@ -272,7 +296,7 @@ export const LandingPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <div className="relative">
               <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-                <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-primary-300 to-primary-500 rounded-full flex items-center justify-center mx-auto mb-6">
                   <span className="text-3xl">⭐</span>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">
@@ -332,17 +356,17 @@ export const LandingPage = () => {
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-6 bg-orange-50 rounded-xl">
+              <div className="text-center p-6 bg-primary-50 rounded-xl">
                 <div className="text-3xl mb-2">🔍</div>
                 <div className="font-bold text-gray-900 mb-1">Semantic Search</div>
                 <div className="text-sm text-gray-600">Vector embeddings find similar meals you'll love</div>
               </div>
-              <div className="text-center p-6 bg-orange-50 rounded-xl">
+              <div className="text-center p-6 bg-primary-50 rounded-xl">
                 <div className="text-3xl mb-2">⚖️</div>
                 <div className="font-bold text-gray-900 mb-1">Weighted Scoring</div>
                 <div className="text-sm text-gray-600">Balances similarity, ratings, and recency</div>
               </div>
-              <div className="text-center p-6 bg-orange-50 rounded-xl">
+              <div className="text-center p-6 bg-primary-50 rounded-xl">
                 <div className="text-3xl mb-2">🎯</div>
                 <div className="font-bold text-gray-900 mb-1">Context-Aware</div>
                 <div className="text-sm text-gray-600">Adapts to your current training phase</div>
@@ -353,7 +377,7 @@ export const LandingPage = () => {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Get Started in 3 Simple Steps
@@ -386,12 +410,12 @@ export const LandingPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-orange-600">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-primary-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Transform Your Nutrition?
           </h2>
-          <p className="text-xl text-orange-100 mb-8">
+          <p className="text-xl text-primary-100 mb-8">
             Join athletes who are fueling their training with intelligent meal planning
           </p>
           <Link href="/login">
@@ -489,7 +513,7 @@ const MobileAppCarousel = () => {
   };
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-orange-50 to-white overflow-hidden">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-12">
@@ -543,7 +567,7 @@ const MobileAppCarousel = () => {
                         }`}
                       >
                         {/* Placeholder for screenshot - replace src with actual screenshots */}
-                        <div className="w-full h-full bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
+                        <div className="w-full h-full bg-gradient-to-b from-primary-50 to-white flex items-center justify-center">
                           <img
                             src={slide.image}
                             alt={`${slide.title} screen`}
@@ -556,7 +580,7 @@ const MobileAppCarousel = () => {
                           />
                           {/* Placeholder shown if image fails to load */}
                           <div 
-                            className="absolute inset-0 bg-gradient-to-b from-orange-100 to-orange-50 flex-col items-center justify-center text-center p-8 hidden"
+                            className="absolute inset-0 bg-gradient-to-b from-primary-100 to-primary-50 flex-col items-center justify-center text-center p-8 hidden"
                             style={{ display: 'none' }}
                           >
                             <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mb-4">
@@ -573,7 +597,7 @@ const MobileAppCarousel = () => {
               </div>
 
               {/* Reflection/Glow Effect */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-orange-500/20 rounded-[4rem] blur-2xl -z-10"></div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary-500/20 rounded-[4rem] blur-2xl -z-10"></div>
             </div>
           </div>
 
@@ -631,11 +655,11 @@ const FeaturePoint = ({ text }) => (
 
 const StepCard = ({ number, icon, title, description }) => (
   <div className="relative">
-    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-r from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-r from-primary to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
       {number}
     </div>
     <div className="pt-8 p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-      <div className="inline-block p-3 bg-orange-50 rounded-lg mb-4 text-primary">
+      <div className="inline-block p-3 bg-primary-50 rounded-lg mb-4 text-primary">
         {icon}
       </div>
       <h3 className="text-xl font-bold text-gray-900 mb-3">{title}</h3>

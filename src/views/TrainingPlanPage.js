@@ -146,21 +146,6 @@ export const TrainingPlanPage = ({
     }
   };
 
-  const intensityAccent = (intensity) => {
-    switch (intensity) {
-      case 'High':
-        return 'border-l-red-500';
-      case 'Medium':
-        return 'border-l-orange-500';
-      case 'Low':
-        return 'border-l-blue-500';
-      case 'Recovery':
-        return 'border-l-green-500';
-      default:
-        return 'border-l-gray-200';
-    }
-  };
-
   const isWorkoutPlanned = (w) =>
     (w.type && String(w.type).trim()) ||
     (w.distance && String(w.distance).trim()) ||
@@ -331,9 +316,7 @@ export const TrainingPlanPage = ({
                   {workouts.map((workout, index) => (
                     <div
                       key={index}
-                      className={`flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm border-l-4 ${intensityAccent(
-                        workout.intensity
-                      )}`}
+                      className="flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm"
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
                         {/* Row 1: Workout type | Distance */}

@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { checkOnboardingStatus } from '../../shared/lib/dataClient';
 
 const ONBOARDING_STORAGE_KEY = 'hasSeenOnboarding';
@@ -10,6 +11,8 @@ const ONBOARDING_STORAGE_KEY = 'hasSeenOnboarding';
 export default function Index() {
   const router = useRouter();
   const { user, loading, isGuest, getUserRole } = useAuth();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(null);
 
   // When unauthenticated, read AsyncStorage for onboarding flag
@@ -79,7 +82,7 @@ export default function Index() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F6921D" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -88,7 +91,7 @@ export default function Index() {
   if (user || isGuest) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F6921D" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -96,23 +99,25 @@ export default function Index() {
   // Waiting for hasSeenOnboarding read or redirecting to carousel/login
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#F6921D" />
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#FFF7ED', // orange-50
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F6921D', // primary orange
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+  });
+}
 

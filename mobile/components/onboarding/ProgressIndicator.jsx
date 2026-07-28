@@ -1,14 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const PRIMARY = '#F6921D';
-const GREEN = '#10B981';
-const GRAY = '#E5E7EB';
-const GRAY_TEXT = '#6B7280';
-const TEXT = '#111827';
+import { useTheme } from '../../context/ThemeContext';
 
 export function ProgressIndicator({ currentStep, totalSteps }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const steps = [
     { number: 1, label: 'Welcome' },
     { number: 2, label: 'Profile' },
@@ -63,58 +61,60 @@ export function ProgressIndicator({ currentStep, totalSteps }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  stepColumn: {
-    alignItems: 'center',
-  },
-  circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: GRAY,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  circleActive: {
-    backgroundColor: PRIMARY,
-  },
-  circleDone: {
-    backgroundColor: GREEN,
-  },
-  circleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: GRAY_TEXT,
-  },
-  circleTextActive: {
-    color: '#FFF',
-  },
-  label: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  labelActive: {
-    color: TEXT,
-  },
-  labelInactive: {
-    color: GRAY_TEXT,
-  },
-  connector: {
-    flex: 1,
-    height: 4,
-    backgroundColor: GRAY,
-    marginHorizontal: 4,
-    borderRadius: 2,
-  },
-  connectorDone: {
-    backgroundColor: GREEN,
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      marginBottom: 24,
+    },
+    stepColumn: {
+      alignItems: 'center',
+    },
+    circle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    circleActive: {
+      backgroundColor: colors.primary,
+    },
+    circleDone: {
+      backgroundColor: colors.success,
+    },
+    circleText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    circleTextActive: {
+      color: '#FFF',
+    },
+    label: {
+      marginTop: 8,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    labelActive: {
+      color: colors.text,
+    },
+    labelInactive: {
+      color: colors.textSecondary,
+    },
+    connector: {
+      flex: 1,
+      height: 4,
+      backgroundColor: colors.border,
+      marginHorizontal: 4,
+      borderRadius: 2,
+    },
+    connectorDone: {
+      backgroundColor: colors.success,
+    },
+  });
+}

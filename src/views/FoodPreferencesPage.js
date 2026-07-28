@@ -421,7 +421,7 @@ useEffect(() => {
               )}
             </div>
           ) : (
-            <div className="w-full p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg flex items-start gap-4 shadow-sm">
+            <div className="w-full p-5 bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 rounded-lg flex items-start gap-4 shadow-sm">
               <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                 <Lock className="w-5 h-5 text-amber-600" />
               </div>

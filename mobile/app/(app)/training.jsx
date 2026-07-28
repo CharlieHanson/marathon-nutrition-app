@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,18 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
 import { ErrorState } from '../../components/ErrorState';
+import { TourTarget } from '../../components/tour/TourTarget';
+import { DaySelector } from '../../components/meals/MealsHeader';
+import { getMondayOfCurrentWeek } from '../../utils/mealHelpers';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const WORKOUT_TYPES = [
   'Rest',
@@ -89,6 +93,15 @@ const getPickerStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  pickerOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  pickerOptionIcon: {
+    marginRight: 0,
+  },
   pickerOptionSelected: {
     backgroundColor: colors.primaryLight,
     borderColor: colors.primary,
@@ -105,7 +118,7 @@ const getPickerStyles = (colors) => StyleSheet.create({
 });
 
 // Simple Picker component using Modal
-const Picker = ({ visible, options, selectedValue, onValueChange, onClose, title }) => {
+const Picker = ({ visible, options, selectedValue, onValueChange, onClose, title, getOptionIcon }) => {
   const { colors } = useTheme();
   const pickerStyles = getPickerStyles(colors);
   
@@ -132,14 +145,24 @@ const Picker = ({ visible, options, selectedValue, onValueChange, onClose, title
                   onClose();
                 }}
               >
-                <Text
-                  style={[
-                    pickerStyles.pickerOptionText,
-                    selectedValue === option && pickerStyles.pickerOptionTextSelected,
-                  ]}
-                >
-                  {option}
-                </Text>
+                <View style={pickerStyles.pickerOptionLeft}>
+                  {getOptionIcon ? (
+                    <Ionicons
+                      name={getOptionIcon(option)}
+                      size={20}
+                      color={selectedValue === option ? colors.primary : colors.textSecondary}
+                      style={pickerStyles.pickerOptionIcon}
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      pickerStyles.pickerOptionText,
+                      selectedValue === option && pickerStyles.pickerOptionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </View>
                 {selectedValue === option && (
                   <Ionicons name="checkmark" size={20} color={colors.primary} />
                 )}
@@ -154,34 +177,53 @@ const Picker = ({ visible, options, selectedValue, onValueChange, onClose, title
 
 const getWorkoutIcon = (type) => {
   switch (type) {
-    case 'Swim':
-      return 'water-outline';
-    case 'Bike Ride':
-      return 'bicycle-outline';
-    case 'Strength Training':
-      return 'barbell-outline';
+    case 'Rest':
+      return 'bed-outline';
     case 'Distance Run':
-    case 'Walk/Hike':
       return 'walk-outline';
     case 'Speed or Agility Training':
       return 'flash-outline';
+    case 'Bike Ride':
+      return 'bicycle-outline';
+    case 'Walk/Hike':
+      return 'trail-sign-outline';
+    case 'Swim':
+      return 'water-outline';
+    case 'Strength Training':
+      return 'barbell-outline';
+    case 'Sport Practice':
+      return 'football-outline';
     default:
       return 'fitness-outline';
   }
 };
 
-const getIntensityColor = (intensity) => {
+const getIntensityIcon = (intensity) => {
   switch (intensity) {
     case 'High':
-      return '#DC2626'; // red
+      return 'flame-outline';
     case 'Medium':
-      return '#F6921D'; // orange
+      return 'speedometer-outline';
     case 'Low':
-      return '#3B82F6'; // blue
+      return 'leaf-outline';
     case 'Recovery':
-      return '#10B981'; // green
+      return 'heart-outline';
     default:
-      return '#9CA3AF'; // gray
+      return 'options-outline';
+  }
+};
+
+const getTimingIcon = (timing) => {
+  switch (timing) {
+    case 'Morning':
+      return 'sunny-outline';
+    case 'Afternoon':
+      return 'partly-sunny-outline';
+    case 'Evening':
+      return 'moon-outline';
+    case '—':
+    default:
+      return 'time-outline';
   }
 };
 
@@ -224,7 +266,10 @@ export default function TrainingScreen() {
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
   const { colors } = useTheme();
+  const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
+  const isFocused = useIsFocused();
   const trainingPlanHook = useTrainingPlan(user, isGuest);
+  const styles = useMemo(() => getStyles(colors), [colors]);
 
   const [planName, setPlanName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -241,6 +286,36 @@ export default function TrainingScreen() {
   useEffect(() => {
     setPlanName(trainingPlanHook.currentPlanName || '');
   }, [trainingPlanHook.currentPlanName]);
+
+  // Day strip in the global header — useLayoutEffect so it lands before first paint.
+  useLayoutEffect(() => {
+    if (!isFocused) {
+      clearHeaderSlot('training');
+      return undefined;
+    }
+
+    setHeaderSlot(
+      <DaySelector
+        days={DAYS}
+        weekDateNumbers={weekDates}
+        weekStarting={getMondayOfCurrentWeek()}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+        todayDayOfWeek={todayDay}
+        isCurrentWeek
+        showWeekNav={false}
+        animatedStyle={{
+          paddingHorizontal: 12,
+          paddingTop: 4,
+          paddingBottom: 10,
+          marginBottom: 0,
+        }}
+      />,
+      'training'
+    );
+
+    return () => clearHeaderSlot('training');
+  }, [clearHeaderSlot, isFocused, selectedDay, setHeaderSlot, todayDay, weekDates]);
 
   const handleSave = async () => {
     if (isConnected === false) {
@@ -347,9 +422,6 @@ export default function TrainingScreen() {
     }
   };
 
-
-  const styles = getStyles(colors);
-
   const selectedDayData = trainingPlanHook.plan[selectedDay] || { workouts: [{ ...DEFAULT_WORKOUT }] };
   const selectedWorkouts = selectedDayData.workouts?.length
     ? selectedDayData.workouts
@@ -376,18 +448,13 @@ export default function TrainingScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.trainingHeader}>
+      <TourTarget id="training-editor" style={{ flex: 1 }}>
         <View style={styles.planControlRow}>
           <View style={styles.planInfo}>
             <View style={styles.planTitleRow}>
               <Text style={styles.planTitle} numberOfLines={1}>
                 {trainingPlanHook.currentPlanName || 'New Training Plan'}
               </Text>
-              {trainingPlanHook.isLoadedSavedPlan ? (
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>Active</Text>
-                </View>
-              ) : null}
               {showConfirmation ? (
                 <View style={styles.savedConfirmationPill}>
                   <Ionicons name="checkmark-circle" size={12} color={colors.success} />
@@ -419,7 +486,7 @@ export default function TrainingScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.headerActionButton, styles.headerActionButtonPrimary]}
+              style={[styles.headerActionButton, styles.headerActionButtonPrimary, styles.headerSaveButton]}
               onPress={() => setShowSaveModal(true)}
               disabled={trainingPlanHook.isSaving}
               accessibilityLabel={trainingPlanHook.isSaving ? 'Saving plan' : 'Save plan'}
@@ -427,165 +494,129 @@ export default function TrainingScreen() {
               hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
             >
               {trainingPlanHook.isSaving ? (
-                <ActivityIndicator size="small" color={colors.textInverse} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons name="save-outline" size={20} color={colors.textInverse} />
+                <Ionicons name="save-outline" size={18} color="#FFFFFF" />
               )}
+              <Text style={styles.headerSaveButtonText}>
+                {trainingPlanHook.isSaving ? 'Saving...' : 'Save'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.calendarRow}>
-          {DAYS.map((day, index) => {
-            const isSelected = selectedDay === day;
-            const isToday = day === todayDay;
-
-            return (
-              <TouchableOpacity
-                key={day}
-                style={styles.calendarDay}
-                onPress={() => setSelectedDay(day)}
-                activeOpacity={0.7}
-                accessibilityLabel={`${DAY_LABELS[index]}, ${weekDates[index]}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.workoutsContainer}>
+            {selectedWorkouts.map((workout, index) => (
+              <View
+                key={index}
+                style={styles.workoutCard}
               >
-                <Text
-                  style={[
-                    styles.calendarWeekday,
-                    isSelected && styles.calendarWeekdaySelected,
-                  ]}
+                <TouchableOpacity
+                  style={styles.workoutField}
+                  onPress={() => openPicker(selectedDay, index, 'type', WORKOUT_TYPES)}
                 >
-                  {DAY_LABELS[index].toUpperCase()}
-                </Text>
-                <View
-                  style={[
-                    styles.calendarDateCircle,
-                    isSelected && styles.calendarDateCircleSelected,
-                    isToday && !isSelected && styles.calendarDateCircleToday,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.calendarDateText,
-                      isSelected && styles.calendarDateTextSelected,
-                      isToday && !isSelected && styles.calendarDateTextToday,
-                    ]}
-                  >
-                    {weekDates[index]}
-                  </Text>
+                  <Text style={styles.workoutFieldLabel}>Workout Type</Text>
+                  <View style={styles.workoutFieldValue}>
+                    {workout.type ? (
+                      <View style={styles.workoutTypeRow}>
+                        <Ionicons
+                          name={getWorkoutIcon(workout.type)}
+                          size={18}
+                          color={colors.textSecondary}
+                        />
+                        <Text style={styles.workoutFieldText}>{workout.type}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.workoutFieldPlaceholder}>Select workout</Text>
+                    )}
+                    <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.workoutField}>
+                  <Text style={styles.workoutFieldLabel}>Distance/Duration</Text>
+                  <TextInput
+                    style={styles.workoutInput}
+                    placeholder="e.g., 5km, 30 min"
+                    value={workout.distance || ''}
+                    onChangeText={(text) => updateWorkout(selectedDay, index, 'distance', text)}
+                    placeholderTextColor={colors.placeholderColor}
+                    returnKeyType="done"
+                    maxLength={20}
+                  />
                 </View>
-                {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.workoutsContainer}>
-          {selectedWorkouts.map((workout, index) => (
-            <View
-              key={index}
-              style={[
-                styles.workoutCard,
-                { borderLeftColor: getIntensityColor(workout.intensity || 'Medium') },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.workoutField}
-                onPress={() => openPicker(selectedDay, index, 'type', WORKOUT_TYPES)}
-              >
-                <Text style={styles.workoutFieldLabel}>Workout Type</Text>
-                <View style={styles.workoutFieldValue}>
-                  {workout.type ? (
+                <TouchableOpacity
+                  style={styles.workoutField}
+                  onPress={() => openPicker(selectedDay, index, 'intensity', INTENSITY_LEVELS)}
+                >
+                  <Text style={styles.workoutFieldLabel}>Intensity</Text>
+                  <View style={styles.workoutFieldValue}>
                     <View style={styles.workoutTypeRow}>
                       <Ionicons
-                        name={getWorkoutIcon(workout.type)}
+                        name={getIntensityIcon(workout.intensity || 'Medium')}
                         size={18}
                         color={colors.textSecondary}
                       />
-                      <Text style={styles.workoutFieldText}>{workout.type}</Text>
+                      <Text style={styles.workoutFieldText}>
+                        {workout.intensity || 'Medium'}
+                      </Text>
                     </View>
-                  ) : (
-                    <Text style={styles.workoutFieldPlaceholder}>Select workout</Text>
-                  )}
-                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.workoutField}>
-                <Text style={styles.workoutFieldLabel}>Distance/Duration</Text>
-                <TextInput
-                  style={styles.workoutInput}
-                  placeholder="e.g., 5km, 30 min"
-                  value={workout.distance || ''}
-                  onChangeText={(text) => updateWorkout(selectedDay, index, 'distance', text)}
-                  placeholderTextColor={colors.placeholderColor}
-                  returnKeyType="done"
-                  maxLength={20}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.workoutField}
-                onPress={() => openPicker(selectedDay, index, 'intensity', INTENSITY_LEVELS)}
-              >
-                <Text style={styles.workoutFieldLabel}>Intensity</Text>
-                <View style={styles.workoutFieldValue}>
-                  <View style={styles.intensityRow}>
-                    <View
-                      style={[
-                        styles.intensityDot,
-                        { backgroundColor: getIntensityColor(workout.intensity || 'Medium') },
-                      ]}
-                    />
-                    <Text style={styles.workoutFieldText}>
-                      {workout.intensity || 'Medium'}
-                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
                   </View>
-                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.workoutField}
-                onPress={() => openPicker(selectedDay, index, 'timing', WORKOUT_TIMING_OPTIONS)}
-              >
-                <Text style={styles.workoutFieldLabel}>Workout Time</Text>
-                <View style={styles.workoutFieldValue}>
-                  <Text style={styles.workoutFieldText}>
-                    {workout.timing || '—'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
-                </View>
-              </TouchableOpacity>
-
-              {index > 0 && (
-                <TouchableOpacity
-                  style={styles.removeWorkoutBtn}
-                  onPress={() => removeWorkout(selectedDay, index)}
-                >
-                  <Ionicons name="trash-outline" size={18} color={colors.error} />
-                  <Text style={styles.removeWorkoutText}>Remove</Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          ))}
 
-          {selectedWorkouts.length < 5 && (
-            <TouchableOpacity
-              style={styles.addAnotherWorkoutButton}
-              onPress={() => addWorkout(selectedDay)}
-              accessibilityLabel={addWorkoutLabel}
-              accessibilityRole="button"
-            >
-              <Ionicons name="add" size={20} color={colors.primary} />
-              <Text style={styles.addAnotherWorkoutText}>{addWorkoutLabel}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
+                <TouchableOpacity
+                  style={styles.workoutField}
+                  onPress={() => openPicker(selectedDay, index, 'timing', WORKOUT_TIMING_OPTIONS)}
+                >
+                  <Text style={styles.workoutFieldLabel}>Workout Time</Text>
+                  <View style={styles.workoutFieldValue}>
+                    <View style={styles.workoutTypeRow}>
+                      <Ionicons
+                        name={getTimingIcon(workout.timing || '—')}
+                        size={18}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={styles.workoutFieldText}>
+                        {workout.timing || '—'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                  </View>
+                </TouchableOpacity>
+
+                {index > 0 && (
+                  <TouchableOpacity
+                    style={styles.removeWorkoutBtn}
+                    onPress={() => removeWorkout(selectedDay, index)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Text style={styles.removeWorkoutText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+
+            {selectedWorkouts.length < 5 && (
+              <TouchableOpacity
+                style={styles.addAnotherWorkoutButton}
+                onPress={() => addWorkout(selectedDay)}
+                accessibilityLabel={addWorkoutLabel}
+                accessibilityRole="button"
+              >
+                <Ionicons name="add" size={20} color={colors.primary} />
+                <Text style={styles.addAnotherWorkoutText}>{addWorkoutLabel}</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={styles.saveHintText}>
+              Save your plan when done editing, create a new plan or see saved plans with buttons at the top.
+            </Text>
+          </View>
+        </ScrollView>
+      </TourTarget>
 
       {/* Save Modal */}
       <Modal
@@ -735,6 +766,7 @@ export default function TrainingScreen() {
         onValueChange={handlePickerValueChange}
         onClose={() => setShowTypePicker(false)}
         title="Select Workout Type"
+        getOptionIcon={getWorkoutIcon}
       />
 
       {/* Intensity Picker */}
@@ -750,6 +782,7 @@ export default function TrainingScreen() {
         onValueChange={handlePickerValueChange}
         onClose={() => setShowIntensityPicker(false)}
         title="Select Intensity"
+        getOptionIcon={getIntensityIcon}
       />
 
       {/* Workout Time Picker */}
@@ -765,6 +798,7 @@ export default function TrainingScreen() {
         onValueChange={handlePickerValueChange}
         onClose={() => setShowTimingPicker(false)}
         title="Workout Time"
+        getOptionIcon={getTimingIcon}
       />
     </View>
   );
@@ -774,12 +808,14 @@ const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    paddingHorizontal: 16,
   },
   loadingText: {
     marginTop: 16,
@@ -787,21 +823,12 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  trainingHeader: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 12,
-  },
   planControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 40,
-    marginBottom: 4,
+    marginBottom: 8,
   },
   planInfo: {
     flex: 1,
@@ -858,75 +885,23 @@ const getStyles = (colors) => StyleSheet.create({
   headerActionButtonPrimary: {
     backgroundColor: colors.primary,
   },
-  calendarRow: {
+  headerSaveButton: {
+    width: 'auto',
+    paddingHorizontal: 12,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginTop: 6,
+    gap: 5,
   },
-  calendarDay: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 0,
+  headerSaveButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  calendarWeekday: {
-    fontSize: 10,
-    fontWeight: '600',
+  saveHintText: {
+    fontSize: 13,
     color: colors.textTertiary,
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
-  calendarWeekdaySelected: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  calendarDateCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDateCircleSelected: {
-    backgroundColor: colors.primary,
-  },
-  calendarDateCircleToday: {
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-  },
-  calendarDateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  calendarDateTextSelected: {
-    fontWeight: '800',
-    color: colors.textInverse,
-  },
-  calendarDateTextToday: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 2,
-  },
-  activeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: colors.successLight,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-    flexShrink: 0,
-  },
-  activeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.successText,
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
   },
   activeBadgeSmall: {
     paddingHorizontal: 6,
@@ -973,7 +948,6 @@ const getStyles = (colors) => StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 4,
     padding: 14,
     gap: 12,
   },
@@ -1029,17 +1003,6 @@ const getStyles = (colors) => StyleSheet.create({
   workoutInputMultiline: {
     minHeight: 60,
     textAlignVertical: 'top',
-  },
-  intensityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  intensityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
   },
   removeWorkoutBtn: {
     flexDirection: 'row',
@@ -1129,7 +1092,7 @@ const getStyles = (colors) => StyleSheet.create({
   modalButtonTextPrimary: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   emptyPlansContainer: {
     alignItems: 'center',
@@ -1203,6 +1166,6 @@ const getStyles = (colors) => StyleSheet.create({
   planActionBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
 });

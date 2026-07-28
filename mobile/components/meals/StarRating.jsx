@@ -16,7 +16,7 @@ export const StarRating = ({ rating, onRate, disabled = false }) => {
           <Ionicons
             name={star <= (rating || 0) ? 'star' : 'star-outline'}
             size={20}
-            color={star <= (rating || 0) ? '#F6921D' : '#D1D5DB'}
+            color={star <= (rating || 0) ? '#3D7C65' : '#D1D5DB'}
           />
         </TouchableOpacity>
       ))}

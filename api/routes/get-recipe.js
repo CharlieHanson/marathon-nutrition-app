@@ -2,11 +2,19 @@
  * get-recipe.js
  * pages/api/get-recipe.js
  *
- * Generates a cookbook-style recipe for a meal string.
+ * Generates a cookbook-style recipe for a meal.
  * Respects user's disliked foods and dietary restrictions.
  * Supports user-selected serving count (1-6).
  *
- * Body: { meal, servings?, dislikes?, dietaryRestrictions? }
+ * Body: {
+ *   meal?,                // full string e.g. "Salmon toast (Cal: 590, P: 33g, C: 76g, F: 17g)"
+ *   description?,         // meal name without macros
+ *   mealType?,            // breakfast | lunch | dinner | snacks | dessert
+ *   macros?,              // { calories, protein, carbs, fat }
+ *   servings?,
+ *   dislikes?,
+ *   dietaryRestrictions?,
+ * }
  *
  * Returns: { success, recipe (display string), structured (JSON) }
  */
@@ -22,6 +30,58 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
+
+const MEAL_TYPE_LABELS = {
+  breakfast: 'breakfast',
+  lunch: 'lunch',
+  dinner: 'dinner',
+  snack: 'snack',
+  snacks: 'snack',
+  dessert: 'dessert',
+};
+
+function parseMealString(mealString) {
+  if (!mealString || typeof mealString !== 'string') {
+    return { description: '', macros: null };
+  }
+
+  const calMatch = mealString.match(/Cal:\s*(\d+)/i);
+  const proteinMatch = mealString.match(/P:\s*(\d+)g/i);
+  const carbsMatch = mealString.match(/C:\s*(\d+)g/i);
+  const fatMatch = mealString.match(/F:\s*(\d+)g/i);
+  const nameMatch = mealString.match(/^(.+?)\s*\(/);
+  const description = (nameMatch ? nameMatch[1] : mealString).trim();
+
+  const hasMacros = calMatch || proteinMatch || carbsMatch || fatMatch;
+  return {
+    description,
+    macros: hasMacros
+      ? {
+          calories: calMatch ? parseInt(calMatch[1], 10) : 0,
+          protein: proteinMatch ? parseInt(proteinMatch[1], 10) : 0,
+          carbs: carbsMatch ? parseInt(carbsMatch[1], 10) : 0,
+          fat: fatMatch ? parseInt(fatMatch[1], 10) : 0,
+        }
+      : null,
+  };
+}
+
+function normalizeMacros(macros) {
+  if (!macros || typeof macros !== 'object') return null;
+  const calories = Number(macros.calories);
+  const protein = Number(macros.protein);
+  const carbs = Number(macros.carbs);
+  const fat = Number(macros.fat);
+  if (![calories, protein, carbs, fat].some((n) => Number.isFinite(n) && n > 0)) {
+    return null;
+  }
+  return {
+    calories: Number.isFinite(calories) ? Math.round(calories) : 0,
+    protein: Number.isFinite(protein) ? Math.round(protein) : 0,
+    carbs: Number.isFinite(carbs) ? Math.round(carbs) : 0,
+    fat: Number.isFinite(fat) ? Math.round(fat) : 0,
+  };
+}
 
 // ─── JSON Schema ─────────────────────────────────────────────────────────────
 
@@ -114,14 +174,27 @@ export default async function handler(req, res) {
     const userId = getRequestUserId(req);
     const {
       meal,
+      description: descriptionInput,
+      mealType: mealTypeInput,
+      macros: macrosInput,
       servings = 1,
       dislikes = '',
       dietaryRestrictions = '',
     } = req.body;
 
-    if (!meal || typeof meal !== 'string') {
-      return res.status(400).json({ success: false, error: 'Missing meal' });
+    const parsedFromMeal = parseMealString(typeof meal === 'string' ? meal : '');
+    const description = String(descriptionInput || parsedFromMeal.description || '').trim();
+    const macros = normalizeMacros(macrosInput) || parsedFromMeal.macros;
+
+    if (!description && !(typeof meal === 'string' && meal.trim())) {
+      return res.status(400).json({ success: false, error: 'Missing meal description' });
     }
+
+    const mealLabel = description || String(meal).trim();
+    const mealTypeKey = String(mealTypeInput || '')
+      .toLowerCase()
+      .trim();
+    const mealTypeLabel = MEAL_TYPE_LABELS[mealTypeKey] || mealTypeKey || null;
 
     const limitCheck = await checkAndIncrementUsage(supabase, userId, 'recipe_generation');
     if (!limitCheck.allowed) {
@@ -138,28 +211,37 @@ export default async function handler(req, res) {
 
     // Build banned list for post-generation filtering
     const bannedList = [
-      ...dislikes.toLowerCase().split(','),
-      ...dietaryRestrictions.toLowerCase().split(','),
+      ...String(dislikes || '').toLowerCase().split(','),
+      ...String(dietaryRestrictions || '').toLowerCase().split(','),
     ]
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    // Build prompt with preference constraints
+    // Build prompt with meal context + preference constraints
     let constraintBlock = '';
     if (dietaryRestrictions) {
-      constraintBlock += `\n- DIETARY RESTRICTIONS (MUST follow): ${dietaryRestrictions}`;
+      constraintBlock += `\n- DIETARY RESTRICTIONS (MUST follow — never include forbidden foods): ${dietaryRestrictions}`;
     }
     if (dislikes) {
       constraintBlock += `\n- DISLIKED FOODS (NEVER use any of these as ingredients): ${dislikes}`;
       constraintBlock += `\n- If the meal name contains a disliked ingredient, substitute it with a similar alternative.`;
     }
 
-    const prompt = `Write a concise cookbook-style recipe for: "${meal}".
+    let contextBlock = '';
+    if (mealTypeLabel) {
+      contextBlock += `\n- Meal type: ${mealTypeLabel} — keep methods and portions appropriate for this meal type.`;
+    }
+    if (macros) {
+      contextBlock += `\n- Target macros for 1 serving of this meal: ${macros.calories} kcal, ${macros.protein}g protein, ${macros.carbs}g carbs, ${macros.fat}g fat.`;
+      contextBlock += `\n- Scale ingredient amounts so the finished dish approximately matches those macros per serving, then scale the written recipe to ${clampedServings} serving${clampedServings > 1 ? 's' : ''}.`;
+    }
+
+    const prompt = `Write a concise cookbook-style recipe for: "${mealLabel}".
 - Servings: exactly ${clampedServings}.
 - Ingredients with amounts scaled for ${clampedServings} serving${clampedServings > 1 ? 's' : ''}.
 - Step-by-step instructions.
 - Prep/cook/total time (minutes).
-- Optional brief notes.${constraintBlock}
+- Optional brief notes.${contextBlock}${constraintBlock}
 Return ONLY JSON that matches the provided schema. No extra text.`;
 
     const resp = await openai.chat.completions.create({

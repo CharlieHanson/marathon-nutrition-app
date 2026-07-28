@@ -12,7 +12,7 @@ import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCom
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
-import { buildMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { buildGenerationMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -23,7 +23,8 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-flash', temperature: 0.8, maxTokens: 50000 },
-  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 16000 },
+  // Budget must cover gpt-5 reasoning tokens + JSON output.
+  openai: { openaiModel: OPENAI_MEAL_MODEL, temperature: 0.8, maxTokens: 12000 },
 };
 
 
@@ -49,7 +50,6 @@ export function createGenerateDayHandler(provider) {
       ragContext,
       debug = false,
       forceRegenerate = false,
-      includeSnacks,
       includeDessert,
     } = req.body;
 
@@ -57,8 +57,8 @@ export function createGenerateDayHandler(provider) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
     }
 
-    const { includeSnacks: iS, includeDessert: iD } = resolveMealToggles({ includeSnacks, includeDessert });
-    const mealSlots = buildMealSlots({ includeSnacks: iS, includeDessert: iD });
+    const { includeDessert: iD } = resolveMealToggles({ includeDessert });
+    const mealSlots = buildGenerationMealSlots({ includeDessert: iD });
 
     // Rate limit check must happen BEFORE writeHead sets SSE headers
     const limitCheck = await checkAndIncrementUsage(supabase, userId, 'meal_generation');
@@ -221,7 +221,13 @@ export function createGenerateDayHandler(provider) {
       }
 
       if (debug) {
-        send('debug', { prompt, rawResponse, provider });
+        // Avoid shipping full prompt/response over SSE — large payloads stall RN clients
+        // and push generate-day past the 120s XHR timeout after OpenAI already returned.
+        send('debug', {
+          provider,
+          promptChars: typeof prompt === 'string' ? prompt.length : 0,
+          responseChars: typeof rawResponse === 'string' ? rawResponse.length : 0,
+        });
       }
 
       const generatedMealsObj = {};

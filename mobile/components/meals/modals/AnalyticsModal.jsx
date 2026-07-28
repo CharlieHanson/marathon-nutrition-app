@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { DAYS, MEAL_TYPES, parseMeal, calculateDayMacros } from '../../../utils/mealHelpers';
+import { macroColors } from '../../../../shared/lib/macroColors';
 
 // Calculate week totals and averages
 const calculateWeekStats = (mealPlan) => {
@@ -221,16 +222,16 @@ const getStyles = (colors) => StyleSheet.create({
     fontWeight: '900',
   },
   caloriesValue: {
-    color: '#F97316',
+    color: macroColors.calories,
   },
   proteinValue: {
-    color: '#22C55E',
+    color: macroColors.protein,
   },
   carbsValue: {
-    color: '#3B82F6',
+    color: macroColors.carbs,
   },
   fatValue: {
-    color: '#A855F7',
+    color: macroColors.fat,
   },
   summaryLabel: {
     fontSize: 11,
@@ -427,9 +428,9 @@ export const AnalyticsModal = ({ visible, onClose, mealPlan, userProfile, traini
 
   // Macro distribution (calories from each macro)
   const macroDistribution = [
-    { name: 'Protein', value: averages.protein * 4, grams: averages.protein, color: '#22c55e' },
-    { name: 'Carbs', value: averages.carbs * 4, grams: averages.carbs, color: '#3b82f6' },
-    { name: 'Fat', value: averages.fat * 9, grams: averages.fat, color: '#a855f7' },
+    { name: 'Protein', value: averages.protein * 4, grams: averages.protein, color: macroColors.protein },
+    { name: 'Carbs', value: averages.carbs * 4, grams: averages.carbs, color: macroColors.carbs },
+    { name: 'Fat', value: averages.fat * 9, grams: averages.fat, color: macroColors.fat },
   ];
 
   const totalMacroCalories = macroDistribution.reduce((sum, m) => sum + m.value, 0);
@@ -488,28 +489,28 @@ export const AnalyticsModal = ({ visible, onClose, mealPlan, userProfile, traini
                   </Text>
                   <View style={styles.summaryGrid}>
                     <View style={[styles.summaryCard, styles.caloriesCard]}>
-                      <Ionicons name="flame-outline" size={20} color="#F97316" />
+                      <Ionicons name="flame-outline" size={20} color={macroColors.calories} />
                       <Text style={[styles.summaryValue, styles.caloriesValue]}>
                         {averages.calories}
                       </Text>
                       <Text style={styles.summaryLabel}>calories</Text>
                     </View>
                     <View style={[styles.summaryCard, styles.proteinCard]}>
-                      <Ionicons name="barbell-outline" size={20} color="#22C55E" />
+                      <Ionicons name="barbell-outline" size={20} color={macroColors.protein} />
                       <Text style={[styles.summaryValue, styles.proteinValue]}>
                         {averages.protein}g
                       </Text>
                       <Text style={styles.summaryLabel}>protein</Text>
                     </View>
                     <View style={[styles.summaryCard, styles.carbsCard]}>
-                      <Ionicons name="restaurant-outline" size={20} color="#3B82F6" />
+                      <Ionicons name="restaurant-outline" size={20} color={macroColors.carbs} />
                       <Text style={[styles.summaryValue, styles.carbsValue]}>
                         {averages.carbs}g
                       </Text>
                       <Text style={styles.summaryLabel}>carbs</Text>
                     </View>
                     <View style={[styles.summaryCard, styles.fatCard]}>
-                      <Ionicons name="water-outline" size={20} color="#A855F7" />
+                      <Ionicons name="water-outline" size={20} color={macroColors.fat} />
                       <Text style={[styles.summaryValue, styles.fatValue]}>
                         {averages.fat}g
                       </Text>

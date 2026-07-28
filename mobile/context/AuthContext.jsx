@@ -7,9 +7,35 @@ import React, {
   useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../../shared/lib/supabase.native';
+import { identify as identifyPostHog, reset as resetPostHog } from '../lib/analytics';
 
 const AuthContext = createContext(undefined);
+
+const toAnalyticsPersona = (role) =>
+  role === 'nutritionist' ? 'nutritionist' : 'athlete';
+
+const getAnalyticsPersona = async (authedUser) => {
+  if (!authedUser) return null;
+
+  try {
+    const { data: prof, error } = await supabase
+      .from('profiles')
+      .select('type')
+      .eq('id', authedUser.id)
+      .maybeSingle();
+
+    if (!error && prof?.type) {
+      return toAnalyticsPersona(prof.type);
+    }
+  } catch (e) {
+    console.warn('getAnalyticsPersona: profiles query failed', e);
+  }
+
+  return toAnalyticsPersona(authedUser.user_metadata?.role);
+};
 
 /**
  * Seed / ensure base profile data for any authenticated user.
@@ -84,6 +110,7 @@ const ensureProfile = async (authedUser) => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const posthog = usePostHog();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
@@ -94,6 +121,35 @@ export const AuthProvider = ({ children }) => {
   userRef.current = user;
 
   const clearSessionExpired = () => setSessionExpired(false);
+
+  const identifyMonitoringUser = async (authedUser) => {
+    if (!authedUser?.id) return;
+
+    try {
+      const persona = await getAnalyticsPersona(authedUser);
+      identifyPostHog(posthog, authedUser.id, {
+        email: authedUser.email,
+        persona,
+      });
+    } catch (e) {
+      console.warn('AuthContext: analytics identify failed', e);
+    }
+
+    try {
+      Sentry.setUser({ id: authedUser.id });
+    } catch (e) {
+      console.warn('AuthContext: Sentry setUser failed', e);
+    }
+  };
+
+  const resetMonitoringUser = () => {
+    resetPostHog(posthog);
+    try {
+      Sentry.setUser(null);
+    } catch (e) {
+      console.warn('AuthContext: Sentry clear user failed', e);
+    }
+  };
 
   // ---------- Initial session restore + listener ----------
   useEffect(() => {
@@ -123,8 +179,12 @@ export const AuthProvider = ({ children }) => {
           ensureProfile(session.user).catch((e) =>
             console.warn('ensureProfile on init failed:', e)
           );
+          identifyMonitoringUser(session.user).catch((e) =>
+            console.warn('monitoring identify on init failed:', e)
+          );
         } else {
           setUser(null);
+          resetMonitoringUser();
         }
       } catch (e) {
         console.error('AuthContext: init crashed', e);
@@ -155,9 +215,13 @@ export const AuthProvider = ({ children }) => {
           ensureProfile(session.user).catch((e) =>
             console.warn('ensureProfile on auth change failed:', e)
           );
+          identifyMonitoringUser(session.user).catch((e) =>
+            console.warn('monitoring identify on auth change failed:', e)
+          );
         } else {
           const hadUser = userRef.current !== null;
           setUser(null);
+          resetMonitoringUser();
 
           // Unexpected sign out (e.g. token refresh failed) - show session expired message
           if (event === 'SIGNED_OUT' && hadUser && !signOutIntentionalRef.current) {
@@ -282,6 +346,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsGuest(false);
       await AsyncStorage.removeItem('guestMode');
+      resetMonitoringUser();
       console.log('AuthContext: signOut finished, user cleared');
     }
   };
@@ -292,6 +357,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('guestMode', 'true');
       setIsGuest(true);
       setUser(null);
+      resetMonitoringUser();
     } catch (e) {
       console.warn('AuthContext: failed to enable guest mode', e);
     }

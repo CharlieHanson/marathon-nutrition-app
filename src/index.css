@@ -94,17 +94,17 @@
   border-radius: 3px;
   background: linear-gradient(
     to right,
-    #FED7AA 0%,
-    #FDBA74 10%,
-    #FB923C 20%,
-    #F6921D 30%,
-    #F6921D 40%,
-    #F6921D 50%,
-    #F6921D 60%,
-    #EA580C 70%,
-    #EA580C 80%,
-    #C2410C 90%,
-    #C2410C 100%
+    #D5EBE3 0%,
+    #A8C9BA 10%,
+    #7AA994 20%,
+    #3D7C65 30%,
+    #3D7C65 40%,
+    #3D7C65 50%,
+    #3D7C65 60%,
+    #326654 70%,
+    #326654 80%,
+    #285043 90%,
+    #285043 100%
   );
   outline: none;
 }
@@ -115,7 +115,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #F6921D;
+  background: #3D7C65;
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -123,7 +123,7 @@
 }
 
 .intensity-slider::-webkit-slider-thumb:hover {
-  background: #EA580C;
+  background: #326654;
   transform: scale(1.1);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
@@ -132,7 +132,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #F6921D;
+  background: #3D7C65;
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -140,7 +140,7 @@
 }
 
 .intensity-slider::-moz-range-thumb:hover {
-  background: #EA580C;
+  background: #326654;
   transform: scale(1.1);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
@@ -150,16 +150,16 @@
   border-radius: 3px;
   background: linear-gradient(
     to right,
-    #FED7AA 0%,
-    #FDBA74 10%,
-    #FB923C 20%,
-    #F6921D 30%,
-    #F6921D 40%,
-    #F6921D 50%,
-    #F6921D 60%,
-    #EA580C 70%,
-    #EA580C 80%,
-    #C2410C 90%,
-    #C2410C 100%
+    #D5EBE3 0%,
+    #A8C9BA 10%,
+    #7AA994 20%,
+    #3D7C65 30%,
+    #3D7C65 40%,
+    #3D7C65 50%,
+    #3D7C65 60%,
+    #326654 70%,
+    #326654 80%,
+    #285043 90%,
+    #285043 100%
   );
 }

@@ -54,7 +54,7 @@ export const ServingsPickerModal = ({ isOpen, onClose, onConfirm, mealName }) =>
           </button>
           <button
             onClick={handleConfirm}
-            className="flex-1 px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors shadow-md hover:shadow-lg"
+            className="flex-1 px-4 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary-600 transition-colors shadow-md hover:shadow-lg"
           >
             Generate Recipe
           </button>

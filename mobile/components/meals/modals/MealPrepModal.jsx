@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNetwork } from '../../../context/NetworkContext';
 import { apiClient } from '../../../../shared/services/api';
+import { macroColors } from '../../../../shared/lib/macroColors';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -298,20 +299,20 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
   },
   macroBadgeCalories: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#D97706',
+    backgroundColor: macroColors.calories,
+    borderColor: macroColors.calories,
   },
   macroBadgeProtein: {
-    backgroundColor: '#10B981',
-    borderColor: '#059669',
+    backgroundColor: macroColors.protein,
+    borderColor: macroColors.protein,
   },
   macroBadgeCarbs: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#2563EB',
+    backgroundColor: macroColors.carbs,
+    borderColor: macroColors.carbs,
   },
   macroBadgeFat: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#7C3AED',
+    backgroundColor: macroColors.fat,
+    borderColor: macroColors.fat,
   },
   macroBadgeText: {
     fontSize: 11,

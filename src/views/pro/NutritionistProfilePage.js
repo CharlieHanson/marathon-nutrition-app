@@ -173,7 +173,7 @@ export const NutritionistProfile = ({ currentUser }) => {
       </div>
 
       {/* Invite Code Card */}
-      <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border-2 border-primary-200">
+      <Card className="bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Your Client Invite Code

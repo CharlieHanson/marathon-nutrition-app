@@ -38,7 +38,10 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
             {/* Logo */}
             <Link href="/pro/dashboard">
               <div className="flex items-center gap-2 cursor-pointer">
-                <img src="/alimenta_logo.png" alt="Alimenta" className="h-8" />
+                <span className="text-3xl font-bold tracking-tight" aria-label="Alimenta">
+                  <span className="text-primary">Al</span>
+                  <span className="text-gray-800">imenta</span>
+                </span>
                 <span className="text-sm font-medium text-gray-500">Pro</span>
               </div>
             </Link>
@@ -55,7 +58,7 @@ export const ProLayout = ({ children, userName, onSignOut }) => {
                     <button
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                         isActive
-                          ? 'bg-orange-50 text-primary font-medium'
+                          ? 'bg-primary-50 text-primary font-medium'
                           : 'text-gray-600 hover:bg-gray-50'
                       }`}
                     >

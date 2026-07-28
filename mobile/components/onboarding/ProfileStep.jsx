@@ -12,12 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { parseHeightCm } from '../../../shared/lib/tdeeCalc.js';
-
-const PRIMARY = '#F6921D';
-const GRAY = '#E5E7EB';
-const GRAY_TEXT = '#9CA3AF';
-const TEXT = '#111827';
-const TEXT_SECONDARY = '#4B5563';
+import { useTheme } from '../../context/ThemeContext';
 
 const GOAL_OPTIONS = [
   { value: 'lose', label: 'Lose weight' },
@@ -101,6 +96,8 @@ function parseHeightForDisplay(raw) {
 }
 
 export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
@@ -178,7 +175,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             value={profile.name}
             onChangeText={(v) => onUpdate('name', v)}
             placeholder="Your name"
-            placeholderTextColor={GRAY_TEXT}
+            placeholderTextColor={colors.placeholderColor}
             returnKeyType="done"
           />
         </View>
@@ -192,7 +189,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             >
               {isValidAge ? String(profile.age) : 'Select age'}
             </Text>
-            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+            <Ionicons name="chevron-down" size={18} color={colors.placeholderColor} />
           </TouchableOpacity>
         </View>
 
@@ -207,7 +204,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 ? GENDER_OPTIONS.find((o) => o.value === profile.gender)?.label ?? profile.gender
                 : 'Select gender'}
             </Text>
-            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+            <Ionicons name="chevron-down" size={18} color={colors.placeholderColor} />
           </TouchableOpacity>
         </View>
 
@@ -218,7 +215,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
               <TextInput
                 style={styles.inputFlex}
                 placeholder="e.g., 1.73"
-                placeholderTextColor={GRAY_TEXT}
+                placeholderTextColor={colors.placeholderColor}
                 value={heightMeters}
                 onChangeText={setHeightMeters}
                 onBlur={syncHeightToProfile}
@@ -230,7 +227,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 onPress={() => setShowHeightUnitPicker(true)}
               >
                 <Text style={styles.unitButtonText}>m</Text>
-                <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+                <Ionicons name="chevron-down" size={16} color={colors.placeholderColor} />
               </TouchableOpacity>
             </View>
           ) : (
@@ -238,7 +235,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
               <TextInput
                 style={styles.inputSmall}
                 placeholder="0"
-                placeholderTextColor={GRAY_TEXT}
+                placeholderTextColor={colors.placeholderColor}
                 value={heightFeet}
                 onChangeText={(text) => setHeightFeet(text.replace(/\D/g, '').slice(0, 2))}
                 onBlur={syncHeightToProfile}
@@ -249,7 +246,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
               <TextInput
                 style={styles.inputSmall}
                 placeholder="0"
-                placeholderTextColor={GRAY_TEXT}
+                placeholderTextColor={colors.placeholderColor}
                 value={heightInches}
                 onChangeText={(text) => setHeightInches(text.replace(/[^\d.]/g, '').slice(0, 5))}
                 onBlur={syncHeightToProfile}
@@ -262,7 +259,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 onPress={() => setShowHeightUnitPicker(true)}
               >
                 <Text style={styles.unitButtonText}>ft / in</Text>
-                <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+                <Ionicons name="chevron-down" size={16} color={colors.placeholderColor} />
               </TouchableOpacity>
             </View>
           )}
@@ -274,7 +271,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <TextInput
               style={styles.inputFlex}
               placeholder="e.g., 150 or 68"
-              placeholderTextColor={GRAY_TEXT}
+              placeholderTextColor={colors.placeholderColor}
               value={weightValue}
               onChangeText={setWeightValue}
               onBlur={syncWeightToProfile}
@@ -286,7 +283,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
               onPress={() => setShowWeightUnitPicker(true)}
             >
               <Text style={styles.unitButtonText}>{weightUnit}</Text>
-              <Ionicons name="chevron-down" size={16} color={GRAY_TEXT} />
+              <Ionicons name="chevron-down" size={16} color={colors.placeholderColor} />
             </TouchableOpacity>
           </View>
         </View>
@@ -305,7 +302,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 ? GOAL_OPTIONS.find((o) => o.value === profile.goal)?.label ?? profile.goal
                 : 'Select goal'}
             </Text>
-            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+            <Ionicons name="chevron-down" size={18} color={colors.placeholderColor} />
           </TouchableOpacity>
         </View>
 
@@ -327,7 +324,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     ?.label ?? profile.activityLevel
                 : 'Select level'}
             </Text>
-            <Ionicons name="chevron-down" size={18} color={GRAY_TEXT} />
+            <Ionicons name="chevron-down" size={18} color={colors.placeholderColor} />
           </TouchableOpacity>
         </View>
 
@@ -338,7 +335,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             value={profile.objective}
             onChangeText={(v) => onUpdate('objective', v)}
             placeholder="e.g., Training for first marathon, improve 5K time..."
-            placeholderTextColor={GRAY_TEXT}
+            placeholderTextColor={colors.placeholderColor}
             multiline
             numberOfLines={3}
             returnKeyType="done"
@@ -353,7 +350,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             value={profile.dietaryRestrictions}
             onChangeText={(v) => onUpdate('dietaryRestrictions', v)}
             placeholder="e.g., vegetarian, gluten-free, nut allergies..."
-            placeholderTextColor={GRAY_TEXT}
+            placeholderTextColor={colors.placeholderColor}
             multiline
             numberOfLines={3}
             returnKeyType="done"
@@ -390,7 +387,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Age</Text>
               <TouchableOpacity onPress={() => setShowAgePicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -415,7 +412,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {String(profile.age) === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -435,7 +432,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Weight Goal</Text>
               <TouchableOpacity onPress={() => setShowGoalPicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -457,7 +454,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {profile.goal === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -477,7 +474,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Activity Level</Text>
               <TouchableOpacity onPress={() => setShowActivityPicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -503,7 +500,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {profile.activityLevel === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -523,7 +520,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Gender</Text>
               <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -545,7 +542,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {profile.gender === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -565,7 +562,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Weight Unit</Text>
               <TouchableOpacity onPress={() => setShowWeightUnitPicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -588,7 +585,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {weightUnit === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -608,7 +605,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Height Unit</Text>
               <TouchableOpacity onPress={() => setShowHeightUnitPicker(false)}>
-                <Ionicons name="close" size={24} color={TEXT_SECONDARY} />
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerOptions}>
@@ -654,7 +651,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                     {opt.label}
                   </Text>
                   {heightUnit === opt.value && (
-                    <Ionicons name="checkmark" size={20} color={PRIMARY} />
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -666,224 +663,226 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    maxHeight: '85%',
-  },
-  header: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: TEXT,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: TEXT_SECONDARY,
-  },
-  scroll: {
-    flex: 1,
-    maxHeight: 400,
-  },
-  scrollContent: {
-    paddingBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: TEXT,
-    backgroundColor: '#FFF',
-    minHeight: 44,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  inputFlex: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: TEXT,
-    backgroundColor: '#FFF',
-    minHeight: 44,
-  },
-  inputSmall: {
-    width: 56,
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: TEXT,
-    backgroundColor: '#FFF',
-    minHeight: 44,
-    textAlign: 'center',
-  },
-  unitLabel: {
-    fontSize: 14,
-    color: TEXT_SECONDARY,
-    fontWeight: '500',
-  },
-  unitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    minHeight: 44,
-    backgroundColor: '#FFF',
-  },
-  unitButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: TEXT,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: TEXT,
-    backgroundColor: '#FFF',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: GRAY,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    minHeight: 44,
-    backgroundColor: '#FFF',
-  },
-  pickerText: {
-    fontSize: 15,
-    color: TEXT,
-    flex: 1,
-  },
-  pickerPlaceholder: {
-    color: GRAY_TEXT,
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  backButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT_SECONDARY,
-  },
-  primaryButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '70%',
-  },
-  pickerModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY,
-  },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: TEXT,
-  },
-  pickerOptions: {
-    maxHeight: 400,
-    padding: 8,
-  },
-  pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 10,
-  },
-  pickerOptionSelected: {
-    backgroundColor: 'rgba(246, 146, 29, 0.12)',
-  },
-  pickerOptionText: {
-    fontSize: 15,
-    color: TEXT,
-    flex: 1,
-  },
-  pickerOptionTextSelected: {
-    fontWeight: '600',
-    color: PRIMARY,
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      marginHorizontal: 16,
+      padding: 20,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+      maxHeight: '85%',
+    },
+    header: {
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    scroll: {
+      flex: 1,
+      maxHeight: 400,
+    },
+    scrollContent: {
+      paddingBottom: 16,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.gray700,
+      marginBottom: 6,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.text,
+      backgroundColor: colors.inputBackground,
+      minHeight: 44,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    inputFlex: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.text,
+      backgroundColor: colors.inputBackground,
+      minHeight: 44,
+    },
+    inputSmall: {
+      width: 56,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.text,
+      backgroundColor: colors.inputBackground,
+      minHeight: 44,
+      textAlign: 'center',
+    },
+    unitLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    unitButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      minHeight: 44,
+      backgroundColor: colors.inputBackground,
+    },
+    unitButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.text,
+      backgroundColor: colors.inputBackground,
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    pickerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      minHeight: 44,
+      backgroundColor: colors.inputBackground,
+    },
+    pickerText: {
+      fontSize: 15,
+      color: colors.text,
+      flex: 1,
+    },
+    pickerPlaceholder: {
+      color: colors.placeholderColor,
+    },
+    buttons: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 8,
+    },
+    backButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    backButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    primaryButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 48,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.6,
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFF',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: colors.modalOverlay,
+      justifyContent: 'flex-end',
+    },
+    pickerModal: {
+      backgroundColor: colors.cardBackground,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      maxHeight: '70%',
+    },
+    pickerModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerModalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    pickerOptions: {
+      maxHeight: 400,
+      padding: 8,
+    },
+    pickerOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 14,
+      borderRadius: 10,
+    },
+    pickerOptionSelected: {
+      backgroundColor: colors.primaryLight,
+    },
+    pickerOptionText: {
+      fontSize: 15,
+      color: colors.text,
+      flex: 1,
+    },
+    pickerOptionTextSelected: {
+      fontWeight: '600',
+      color: colors.primary,
+    },
+  });
+}

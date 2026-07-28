@@ -12,7 +12,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "SENTRY_ORG": "alimenta-nutrition",
+        "SENTRY_PROJECT": "alimenta-mobile"
+      }
     }
   },
   "submit": {

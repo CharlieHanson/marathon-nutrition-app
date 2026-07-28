@@ -10,16 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const PRIMARY = '#F6921D';
-const GRAY = '#E5E7EB';
-const GRAY_TEXT = '#9CA3AF';
-const TEXT = '#111827';
-const TEXT_SECONDARY = '#6B7280';
-const SUCCESS = '#10B981';
-const SUCCESS_LIGHT = 'rgba(16, 185, 129, 0.15)';
-const ERROR = '#EF4444';
-const ERROR_LIGHT = 'rgba(239, 68, 68, 0.15)';
+import { useTheme } from '../../context/ThemeContext';
 
 const FOOD_CATEGORIES = [
   { id: 'proteins', name: 'Proteins', foods: ['Chicken', 'Salmon', 'Beef', 'Turkey', 'Pork', 'Shrimp', 'Tuna', 'Cod', 'Tofu'] },
@@ -50,6 +41,8 @@ export function PreferencesStep({
   onBack,
   isSaving,
 }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [foodStates, setFoodStates] = useState({});
   const [expandedCategories, setExpandedCategories] = useState(new Set(['proteins']));
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,18 +160,18 @@ export function PreferencesStep({
 
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={18} color={GRAY_TEXT} style={styles.searchIcon} />
+          <Ionicons name="search" size={18} color={colors.placeholderColor} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search foods…"
-            placeholderTextColor={GRAY_TEXT}
+            placeholderTextColor={colors.placeholderColor}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="done"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={18} color={GRAY_TEXT} />
+              <Ionicons name="close-circle" size={18} color={colors.placeholderColor} />
             </TouchableOpacity>
           )}
         </View>
@@ -210,7 +203,7 @@ export function PreferencesStep({
             <View key={category.id} style={styles.categoryContainer}>
               <TouchableOpacity style={styles.categoryHeader} onPress={() => toggleCategory(category.id)} activeOpacity={0.7}>
                 <Text style={styles.categoryTitle}>{category.name}</Text>
-                <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={TEXT_SECONDARY} />
+                <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.textSecondary} />
               </TouchableOpacity>
               {isExpanded && (
                 <View style={styles.foodsGrid}>
@@ -238,8 +231,8 @@ export function PreferencesStep({
                         >
                           {food}
                         </Text>
-                        {state === 'liked' && <Ionicons name="thumbs-up" size={12} color={SUCCESS} style={styles.foodTileIcon} />}
-                        {state === 'disliked' && <Ionicons name="thumbs-down" size={12} color={ERROR} style={styles.foodTileIcon} />}
+                        {state === 'liked' && <Ionicons name="thumbs-up" size={12} color={colors.success} style={styles.foodTileIcon} />}
+                        {state === 'disliked' && <Ionicons name="thumbs-down" size={12} color={colors.error} style={styles.foodTileIcon} />}
                       </TouchableOpacity>
                     );
                   })}
@@ -257,7 +250,7 @@ export function PreferencesStep({
             <TextInput
               style={styles.textArea}
               placeholder="Separated by commas"
-              placeholderTextColor={GRAY_TEXT}
+              placeholderTextColor={colors.placeholderColor}
               value={otherLikes}
               onChangeText={setOtherLikes}
               multiline
@@ -271,7 +264,7 @@ export function PreferencesStep({
             <TextInput
               style={styles.textArea}
               placeholder="Separated by commas"
-              placeholderTextColor={GRAY_TEXT}
+              placeholderTextColor={colors.placeholderColor}
               value={otherDislikes}
               onChangeText={setOtherDislikes}
               multiline
@@ -296,7 +289,7 @@ export function PreferencesStep({
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.cuisineChipText, isFavorite && styles.cuisineChipTextActive]} numberOfLines={1}>{cuisine}</Text>
-                  <Ionicons name={isFavorite ? 'thumbs-up' : 'thumbs-up-outline'} size={14} color={isFavorite ? PRIMARY : GRAY_TEXT} />
+                  <Ionicons name={isFavorite ? 'thumbs-up' : 'thumbs-up-outline'} size={14} color={isFavorite ? colors.primary : colors.placeholderColor} />
                 </TouchableOpacity>
               );
             })}
@@ -306,7 +299,7 @@ export function PreferencesStep({
             <TextInput
               style={styles.textArea}
               placeholder="Separated by commas"
-              placeholderTextColor={GRAY_TEXT}
+              placeholderTextColor={colors.placeholderColor}
               value={otherCuisines}
               onChangeText={setOtherCuisines}
               multiline
@@ -334,226 +327,228 @@ export function PreferencesStep({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    maxHeight: '92%',
-  },
-  header: {
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: TEXT,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: TEXT_SECONDARY,
-  },
-  searchRow: {
-    marginBottom: 8,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: GRAY,
-  },
-  searchIcon: { marginRight: 8 },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: TEXT,
-    padding: 0,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: GRAY,
-  },
-  filterChipActive: {
-    backgroundColor: PRIMARY,
-    borderColor: PRIMARY,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: TEXT_SECONDARY,
-  },
-  filterChipTextActive: {
-    color: '#FFF',
-  },
-  scroll: {
-    flex: 1,
-    maxHeight: 340,
-  },
-  scrollContent: {
-    paddingBottom: 16,
-  },
-  categoryContainer: { marginBottom: 12 },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  categoryTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: TEXT,
-  },
-  foodsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: 4,
-  },
-  foodTile: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1.5,
-    borderColor: GRAY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  foodTileLiked: {
-    backgroundColor: SUCCESS_LIGHT,
-    borderColor: SUCCESS,
-  },
-  foodTileDisliked: {
-    backgroundColor: ERROR_LIGHT,
-    borderColor: ERROR,
-  },
-  foodTileText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: TEXT_SECONDARY,
-    textAlign: 'center',
-  },
-  foodTileTextLiked: { color: SUCCESS },
-  foodTileTextDisliked: { color: ERROR },
-  foodTileIcon: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-  },
-  section: { marginTop: 8, marginBottom: 12 },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: GRAY,
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: TEXT,
-    marginBottom: 10,
-  },
-  inputGroup: { marginBottom: 14 },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: TEXT_SECONDARY,
-    marginBottom: 6,
-  },
-  textArea: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: GRAY,
-    fontSize: 13,
-    color: TEXT,
-    minHeight: 56,
-    textAlignVertical: 'top',
-  },
-  cuisinesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
-  },
-  cuisineChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1.5,
-    borderColor: GRAY,
-    gap: 4,
-  },
-  cuisineChipActive: {
-    backgroundColor: 'rgba(246, 146, 29, 0.15)',
-    borderColor: PRIMARY,
-  },
-  cuisineChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: TEXT_SECONDARY,
-  },
-  cuisineChipTextActive: { color: PRIMARY },
-  buttons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  backButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT_SECONDARY,
-  },
-  primaryButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-});
+function getStyles(colors) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      marginHorizontal: 16,
+      padding: 16,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+      maxHeight: '92%',
+    },
+    header: {
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    searchRow: {
+      marginBottom: 8,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.inputBackground,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchIcon: { marginRight: 8 },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.text,
+      padding: 0,
+    },
+    filterContainer: {
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: 12,
+    },
+    filterChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    filterChipTextActive: {
+      color: '#FFF',
+    },
+    scroll: {
+      flex: 1,
+      maxHeight: 340,
+    },
+    scrollContent: {
+      paddingBottom: 16,
+    },
+    categoryContainer: { marginBottom: 12 },
+    categoryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    categoryTitle: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.text,
+    },
+    foodsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingTop: 4,
+    },
+    foodTile: {
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+    },
+    foodTileLiked: {
+      backgroundColor: colors.successLight,
+      borderColor: colors.success,
+    },
+    foodTileDisliked: {
+      backgroundColor: colors.errorLight,
+      borderColor: colors.error,
+    },
+    foodTileText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    foodTileTextLiked: { color: colors.success },
+    foodTileTextDisliked: { color: colors.error },
+    foodTileIcon: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+    },
+    section: { marginTop: 8, marginBottom: 12 },
+    sectionDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 12,
+      marginTop: 4,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 10,
+    },
+    inputGroup: { marginBottom: 14 },
+    inputLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      marginBottom: 6,
+    },
+    textArea: {
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      backgroundColor: colors.inputBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontSize: 13,
+      color: colors.text,
+      minHeight: 56,
+      textAlignVertical: 'top',
+    },
+    cuisinesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 12,
+    },
+    cuisineChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      gap: 4,
+    },
+    cuisineChipActive: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+    cuisineChipText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    cuisineChipTextActive: { color: colors.primary },
+    buttons: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 8,
+    },
+    backButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    backButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    primaryButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 48,
+    },
+    primaryButtonDisabled: { opacity: 0.6 },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFF',
+    },
+  });
+}

@@ -100,7 +100,7 @@ export const parseMeal = (mealString) => {
 export const calculateDayMacros = (dayMeals) => {
   const total = { calories: 0, protein: 0, carbs: 0, fat: 0 };
   const toggles = getDayMealToggles(dayMeals);
-  const activeTypes = getActiveMealTypes(toggles);
+  const activeTypes = getActiveMealTypes(toggles, dayMeals);
 
   activeTypes.forEach((mealType) => {
     const meal = dayMeals?.[mealType];
@@ -123,7 +123,7 @@ export const countMeals = (mealPlan) => {
   DAYS.forEach((day) => {
     const dayMeals = mealPlan?.[day];
     const toggles = getDayMealToggles(dayMeals);
-    const activeTypes = getActiveMealTypes(toggles);
+    const activeTypes = getActiveMealTypes(toggles, dayMeals);
     activeTypes.forEach((mt) => {
       total++;
       const meal = dayMeals?.[mt];
@@ -135,25 +135,30 @@ export const countMeals = (mealPlan) => {
 };
 
 /**
- * Read include_snacks / include_dessert from a day object, defaulting both to
- * true when absent for backward compatibility with existing meal plans.
+ * Read include_dessert from a day object (default true).
+ * include_snacks is ignored — snacks are manual-log only, not an AI toggle.
  * @param {object} [dayMeals]
- * @returns {{ includeSnacks: boolean, includeDessert: boolean }}
+ * @returns {{ includeSnacks: false, includeDessert: boolean }}
  */
 export const getDayMealToggles = (dayMeals) => ({
-  includeSnacks: dayMeals?.include_snacks !== false,
+  includeSnacks: false,
   includeDessert: dayMeals?.include_dessert !== false,
 });
 
 /**
- * Return the ordered array of UI-key meal types that are currently active
- * given a set of day toggles.
- * @param {{ includeSnacks: boolean, includeDessert: boolean }} toggles
- * @returns {string[]}  e.g. ['breakfast','lunch','dinner','snacks','dessert']
+ * Return the ordered array of UI-key meal types that are currently active.
+ * Snacks appear only when the day has a manually logged snack (`snacks_user_logged`).
+ * Legacy AI-filled snacks without `snacks_user_logged` are hidden.
+ *
+ * @param {{ includeDessert?: boolean }} [toggles]
+ * @param {object} [dayMeals] - day object; used to detect snacks_user_logged snacks
+ * @returns {string[]}  e.g. ['breakfast','lunch','dinner','dessert']
  */
-export const getActiveMealTypes = ({ includeSnacks = true, includeDessert = true } = {}) => {
+export const getActiveMealTypes = ({ includeDessert = true } = {}, dayMeals = null) => {
   const types = ['breakfast', 'lunch', 'dinner'];
-  if (includeSnacks !== false) types.push('snacks');
+  if (dayMeals?.snacks_user_logged === true) {
+    types.push('snacks');
+  }
   if (includeDessert !== false) types.push('dessert');
   return types;
 };
