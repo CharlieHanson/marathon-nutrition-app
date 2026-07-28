@@ -18,8 +18,8 @@ const getStyles = (colors) =>
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       padding: 20,
-      paddingBottom: 34,
-      maxHeight: '80%',
+      paddingBottom: 52,
+      maxHeight: '90%',
     },
     bottomSheetHandle: {
       width: 42,
@@ -67,6 +67,7 @@ const getStyles = (colors) =>
       marginLeft: 12,
     },
     bottomSheetOptionDanger: {
+      backgroundColor: colors.errorLight,
       borderColor: colors.errorBorder,
     },
     bottomSheetOptionTextDanger: {
@@ -74,6 +75,7 @@ const getStyles = (colors) =>
     },
     bottomSheetCancel: {
       backgroundColor: colors.cardBackground,
+      marginBottom: 0,
     },
     bottomSheetCancelText: {
       fontSize: 16,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { DAY_LABELS } from '../../utils/mealHelpers';
+import {
+  DAY_LABELS,
+  getMondayOfCurrentWeek,
+  getNextWeek,
+  getPreviousWeek,
+  getWeekDateNumbers,
+} from '../../utils/mealHelpers';
 import { macroColors } from '../../../shared/lib/macroColors';
 
 const ARROW_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 4 };
@@ -86,7 +92,6 @@ export const QuickActionsRow = ({
   onGroceryList,
   onMealPrep,
   onLogMeal,
-  onLogSnack,
   loadingGroceryList,
   groceryRemaining,
   canGenerate = true,
@@ -95,18 +100,6 @@ export const QuickActionsRow = ({
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const groceryLimitReached = groceryRemaining === 0;
-
-  const logSnackBtn = (
-    <TouchableOpacity
-      style={styles.quickActionBtn}
-      onPress={onLogSnack}
-      accessibilityLabel="Log snack"
-      accessibilityRole="button"
-    >
-      <Ionicons name="nutrition-outline" size={18} color={colors.primary} />
-      <Text style={styles.quickActionText}>Log Snack</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <Animated.View style={[styles.quickActionsRow, animatedStyle]}>
@@ -150,8 +143,6 @@ export const QuickActionsRow = ({
               Grocery List
             </Text>
           </TouchableOpacity>
-
-          {logSnackBtn}
         </>
       ) : (
         <>
@@ -176,8 +167,6 @@ export const QuickActionsRow = ({
             <Ionicons name="create-outline" size={18} color={colors.primary} />
             <Text style={styles.quickActionText}>Log Meal</Text>
           </TouchableOpacity>
-
-          {logSnackBtn}
         </>
       )}
     </Animated.View>
@@ -187,6 +176,7 @@ export const QuickActionsRow = ({
 export const DaySelector = ({
   days,
   weekDateNumbers,
+  weekStarting,
   selectedDay,
   onSelectDay,
   animatedStyle,
@@ -195,38 +185,83 @@ export const DaySelector = ({
   onPreviousWeek,
   onNextWeek,
   weekNavDisabled = false,
+  showWeekNav = true,
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
+  // Local selection / week so the header strip updates on press immediately.
+  // Parent screens are heavy; waiting for setHeaderSlot recreation feels laggy.
+  const [visualSelected, setVisualSelected] = useState(selectedDay);
+  const [visualWeekStarting, setVisualWeekStarting] = useState(weekStarting);
+
+  useEffect(() => {
+    setVisualSelected(selectedDay);
+  }, [selectedDay]);
+
+  useEffect(() => {
+    setVisualWeekStarting(weekStarting);
+  }, [weekStarting]);
+
+  const visualDates = useMemo(() => {
+    if (visualWeekStarting) return getWeekDateNumbers(visualWeekStarting);
+    return weekDateNumbers;
+  }, [visualWeekStarting, weekDateNumbers]);
+
+  const visualIsCurrentWeek =
+    visualWeekStarting != null
+      ? visualWeekStarting === getMondayOfCurrentWeek()
+      : isCurrentWeek;
+
+  const handleSelectDay = (day) => {
+    setVisualSelected(day);
+    onSelectDay?.(day);
+  };
+
+  const handlePreviousWeek = () => {
+    if (weekNavDisabled || !onPreviousWeek) return;
+    const prev = getPreviousWeek(visualWeekStarting);
+    if (prev) setVisualWeekStarting(prev);
+    onPreviousWeek();
+  };
+
+  const handleNextWeek = () => {
+    if (weekNavDisabled || !onNextWeek) return;
+    const next = getNextWeek(visualWeekStarting);
+    if (next) setVisualWeekStarting(next);
+    onNextWeek();
+  };
+
   return (
     <Animated.View style={[styles.calendarRow, animatedStyle]}>
-      <TouchableOpacity
-        onPress={onPreviousWeek}
-        style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
-        disabled={weekNavDisabled || !onPreviousWeek}
-        accessibilityLabel="Previous week"
-        accessibilityRole="button"
-        hitSlop={ARROW_HIT_SLOP}
-      >
-        <Ionicons
-          name="chevron-back"
-          size={20}
-          color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
-        />
-      </TouchableOpacity>
+      {showWeekNav ? (
+        <TouchableOpacity
+          onPress={handlePreviousWeek}
+          style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+          disabled={weekNavDisabled || !onPreviousWeek}
+          accessibilityLabel="Previous week"
+          accessibilityRole="button"
+          hitSlop={ARROW_HIT_SLOP}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={20}
+            color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+      ) : null}
 
       {days.map((day, index) => {
-        const isSelected = selectedDay === day;
-        const isToday = isCurrentWeek && day === todayDayOfWeek;
+        const isSelected = visualSelected === day;
+        const isToday = visualIsCurrentWeek && day === todayDayOfWeek;
 
         return (
           <TouchableOpacity
             key={day}
             style={styles.calendarDay}
-            onPress={() => onSelectDay(day)}
+            onPress={() => handleSelectDay(day)}
             activeOpacity={0.7}
-            accessibilityLabel={`${DAY_LABELS[index]}, ${weekDateNumbers[index]}`}
+            accessibilityLabel={`${DAY_LABELS[index]}, ${visualDates[index]}`}
             accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
           >
@@ -252,28 +287,29 @@ export const DaySelector = ({
                   isToday && !isSelected && styles.calendarDateTextToday,
                 ]}
               >
-                {weekDateNumbers[index]}
+                {visualDates[index]}
               </Text>
             </View>
-            {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
           </TouchableOpacity>
         );
       })}
 
-      <TouchableOpacity
-        onPress={onNextWeek}
-        style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
-        disabled={weekNavDisabled || !onNextWeek}
-        accessibilityLabel="Next week"
-        accessibilityRole="button"
-        hitSlop={ARROW_HIT_SLOP}
-      >
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
-        />
-      </TouchableOpacity>
+      {showWeekNav ? (
+        <TouchableOpacity
+          onPress={handleNextWeek}
+          style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+          disabled={weekNavDisabled || !onNextWeek}
+          accessibilityLabel="Next week"
+          accessibilityRole="button"
+          hitSlop={ARROW_HIT_SLOP}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 };
@@ -445,13 +481,6 @@ const getStyles = (colors) => StyleSheet.create({
   calendarDateTextToday: {
     color: colors.text,
     fontWeight: '700',
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 2,
   },
 
   macrosRow: {

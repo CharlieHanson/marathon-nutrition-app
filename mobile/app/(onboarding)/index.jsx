@@ -8,7 +8,7 @@ import { WelcomeStep } from '../../components/onboarding/WelcomeStep';
 import { ProfileStep } from '../../components/onboarding/ProfileStep';
 import { PreferencesStep } from '../../components/onboarding/PreferencesStep';
 import { ProgressIndicator } from '../../components/onboarding/ProgressIndicator';
-import { saveUserProfile, saveFoodPreferences } from '../../../shared/lib/dataClient';
+import { saveUserProfile, saveFoodPreferences, fetchBaseProfile } from '../../../shared/lib/dataClient';
 import { usePostHog } from 'posthog-react-native';
 import { capture } from '../../lib/analytics';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,6 +22,11 @@ const daysSinceSignup = (user) => {
   if (!Number.isFinite(createdAt)) return 0;
   return Math.max(0, Math.ceil((Date.now() - createdAt) / 86400000));
 };
+
+function signupDisplayName(user) {
+  const meta = user?.user_metadata || {};
+  return String(meta.name || meta.full_name || '').trim();
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -52,16 +57,41 @@ export default function OnboardingScreen() {
   });
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadProgress = async () => {
       const savedStep = await AsyncStorage.getItem(ONBOARDING_STEP_KEY);
       const savedProfile = await AsyncStorage.getItem(ONBOARDING_PROFILE_KEY);
       const savedPreferences = await AsyncStorage.getItem(ONBOARDING_PREFERENCES_KEY);
+      if (cancelled) return;
+
       if (savedStep) setCurrentStep(parseInt(savedStep, 10));
-      if (savedProfile) setProfile(JSON.parse(savedProfile));
       if (savedPreferences) setPreferences(JSON.parse(savedPreferences));
+
+      const draft = savedProfile ? JSON.parse(savedProfile) : null;
+      let name = String(draft?.name || '').trim();
+
+      if (!name) {
+        name = signupDisplayName(user);
+      }
+      if (!name && user?.id) {
+        const base = await fetchBaseProfile(user.id);
+        if (cancelled) return;
+        name = String(base?.name || '').trim();
+      }
+
+      if (draft) {
+        setProfile({ ...draft, name: String(draft.name || '').trim() || name });
+      } else if (name) {
+        setProfile((prev) => (prev.name?.trim() ? prev : { ...prev, name }));
+      }
     };
+
     loadProgress();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     AsyncStorage.setItem(ONBOARDING_STEP_KEY, currentStep.toString());

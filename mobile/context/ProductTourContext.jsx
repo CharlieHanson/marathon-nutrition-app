@@ -225,6 +225,16 @@ export function ProductTourProvider({ children }) {
 
       track('product_tour_step', { stepId: step.id, stepIndex: nextIndex });
 
+      // Optional pause (e.g. tour_done after profile nav) before revealing UI.
+      if (step.revealDelayMs > 0) {
+        setAwaitingTarget(true);
+        setCurrentTarget(null);
+        await sleep(step.revealDelayMs);
+        if (generation !== pollGenerationRef.current || !isActiveRef.current) {
+          return;
+        }
+      }
+
       const result = await resolveStepTarget(step, generation);
       if (result.status === 'missing') {
         // Auto-advance so we never hang on a blank overlay
@@ -263,9 +273,27 @@ export function ProductTourProvider({ children }) {
     [activateStep, track]
   );
 
+  const patchStep = useCallback((stepId, patch) => {
+    if (!stepId || !patch) return;
+    setSteps((prev) => {
+      const nextSteps = prev.map((step) =>
+        step.id === stepId ? { ...step, ...patch } : step
+      );
+      stepsRef.current = nextSteps;
+      return nextSteps;
+    });
+  }, []);
+
   const next = useCallback(async () => {
     if (!isActiveRef.current) return;
-    const following = stepIndexRef.current + 1;
+    let following = stepIndexRef.current + 1;
+    // Jump over steps marked skip (e.g. meals_generate when breakfast already exists)
+    while (
+      following < stepsRef.current.length &&
+      stepsRef.current[following]?.skip
+    ) {
+      following += 1;
+    }
     if (following >= stepsRef.current.length) {
       await stopTour({ analyticsEvent: 'product_tour_completed' });
       return;
@@ -462,6 +490,7 @@ export function ProductTourProvider({ children }) {
       back,
       skip,
       finish,
+      patchStep,
       registerTarget,
       unregisterTarget,
       getTargetLayout,
@@ -482,6 +511,7 @@ export function ProductTourProvider({ children }) {
       back,
       skip,
       finish,
+      patchStep,
       registerTarget,
       unregisterTarget,
       getTargetLayout,

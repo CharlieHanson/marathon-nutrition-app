@@ -182,30 +182,48 @@ export const LogSnackModal = ({
 
             <View style={styles.footer}>
               {snacksUserLogged ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.footerBtn, styles.deleteBtn, submitting && styles.submitBtnDisabled]}
+                    onPress={handleDelete}
+                    disabled={submitting}
+                  >
+                    <Text style={styles.deleteBtnText}>Remove</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.footerBtn,
+                      styles.submitBtn,
+                      (!name.trim() || submitting) && styles.submitBtnDisabled,
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={!name.trim() || submitting}
+                  >
+                    {submitting ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Update Snack</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
                 <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={handleDelete}
-                  disabled={submitting}
+                  style={[
+                    styles.footerBtn,
+                    styles.submitBtn,
+                    styles.submitBtnSingle,
+                    (!name.trim() || submitting) && styles.submitBtnDisabled,
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={!name.trim() || submitting}
                 >
-                  <Text style={styles.deleteBtnText}>Remove</Text>
+                  {submitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Log Snack</Text>
+                  )}
                 </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                style={[
-                  styles.submitBtn,
-                  (!name.trim() || submitting) && styles.submitBtnDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={!name.trim() || submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitBtnText}>
-                    {snacksUserLogged ? 'Update Snack' : 'Log Snack'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              )}
             </View>
           </Pressable>
         </Pressable>
@@ -323,25 +341,28 @@ const getStyles = (colors) =>
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
-    deleteBtn: {
-      position: 'absolute',
-      left: 16,
-      paddingVertical: 14,
-      paddingHorizontal: 8,
-      zIndex: 1,
-    },
-    deleteBtnText: {
-      color: colors.error || '#c0392b',
-      fontWeight: '700',
-      fontSize: 15,
-    },
-    submitBtn: {
-      minWidth: 180,
-      backgroundColor: colors.primary,
+    footerBtn: {
+      flex: 1,
       borderRadius: 12,
       paddingVertical: 14,
-      paddingHorizontal: 28,
+      paddingHorizontal: 16,
       alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteBtn: {
+      backgroundColor: colors.error || '#c0392b',
+    },
+    deleteBtnText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 16,
+    },
+    submitBtn: {
+      backgroundColor: colors.primary,
+    },
+    submitBtnSingle: {
+      flex: 0,
+      minWidth: 180,
     },
     submitBtnDisabled: {
       opacity: 0.45,

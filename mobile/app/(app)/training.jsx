@@ -22,9 +22,10 @@ import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
 import { ErrorState } from '../../components/ErrorState';
 import { TourTarget } from '../../components/tour/TourTarget';
+import { DaySelector } from '../../components/meals/MealsHeader';
+import { getMondayOfCurrentWeek } from '../../utils/mealHelpers';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const WORKOUT_TYPES = [
   'Rest',
@@ -294,56 +295,27 @@ export default function TrainingScreen() {
     }
 
     setHeaderSlot(
-      <View style={styles.calendarRow}>
-        {DAYS.map((day, index) => {
-          const isSelected = selectedDay === day;
-          const isToday = day === todayDay;
-
-          return (
-            <TouchableOpacity
-              key={day}
-              style={styles.calendarDay}
-              onPress={() => setSelectedDay(day)}
-              activeOpacity={0.7}
-              accessibilityLabel={`${DAY_LABELS[index]}, ${weekDates[index]}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text
-                style={[
-                  styles.calendarWeekday,
-                  isSelected && styles.calendarWeekdaySelected,
-                ]}
-              >
-                {DAY_LABELS[index].toUpperCase()}
-              </Text>
-              <View
-                style={[
-                  styles.calendarDateCircle,
-                  isSelected && styles.calendarDateCircleSelected,
-                  isToday && !isSelected && styles.calendarDateCircleToday,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.calendarDateText,
-                    isSelected && styles.calendarDateTextSelected,
-                    isToday && !isSelected && styles.calendarDateTextToday,
-                  ]}
-                >
-                  {weekDates[index]}
-                </Text>
-              </View>
-              {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
-            </TouchableOpacity>
-          );
-        })}
-      </View>,
+      <DaySelector
+        days={DAYS}
+        weekDateNumbers={weekDates}
+        weekStarting={getMondayOfCurrentWeek()}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+        todayDayOfWeek={todayDay}
+        isCurrentWeek
+        showWeekNav={false}
+        animatedStyle={{
+          paddingHorizontal: 12,
+          paddingTop: 4,
+          paddingBottom: 10,
+          marginBottom: 0,
+        }}
+      />,
       'training'
     );
 
     return () => clearHeaderSlot('training');
-  }, [clearHeaderSlot, isFocused, selectedDay, setHeaderSlot, styles, todayDay, weekDates]);
+  }, [clearHeaderSlot, isFocused, selectedDay, setHeaderSlot, todayDay, weekDates]);
 
   const handleSave = async () => {
     if (isConnected === false) {
@@ -836,12 +808,14 @@ const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    paddingHorizontal: 16,
   },
   loadingText: {
     marginTop: 16,
@@ -928,64 +902,6 @@ const getStyles = (colors) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontWeight: '500',
-  },
-  calendarRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 10,
-  },
-  calendarDay: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 0,
-  },
-  calendarWeekday: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textTertiary,
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
-  calendarWeekdaySelected: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  calendarDateCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDateCircleSelected: {
-    backgroundColor: colors.primary,
-  },
-  calendarDateCircleToday: {
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-  },
-  calendarDateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  calendarDateTextSelected: {
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  calendarDateTextToday: {
-    color: colors.text,
-    fontWeight: '700',
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginTop: 2,
   },
   activeBadgeSmall: {
     paddingHorizontal: 6,

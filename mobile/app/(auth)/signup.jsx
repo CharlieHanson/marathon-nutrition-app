@@ -11,6 +11,8 @@ import {
   Platform,
   Image,
   Linking,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,10 @@ import { capture } from '../../lib/analytics';
 import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '../../context/ThemeContext';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,6 +34,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -37,6 +44,12 @@ export default function SignupScreen() {
   const { signUp } = useAuth();
   const { promptAsync: signInWithGoogle, loading: googleLoading, error: googleError } = useGoogleAuth();
   const { signInWithApple, loading: appleLoading, error: appleError } = useAppleAuth();
+
+  const handleToggleEmailForm = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowEmailForm((prev) => !prev);
+    setError('');
+  };
 
   const handleSignUp = async () => {
     setError('');
@@ -147,10 +160,15 @@ export default function SignupScreen() {
               </>
             ) : (
               <>
-                {/* Header */}
-                <View style={styles.header}>
-                  <Text style={styles.title}>Create Account</Text>
-                  <Text style={styles.subtitle}>Sign up to get started</Text>
+                {/* Logo and Heading */}
+                <View style={styles.logoContainer}>
+                  <View style={styles.logoRow}>
+                    <Text style={styles.logoOrange}>Al</Text>
+                    <Text style={styles.logoGray}>imenta</Text>
+                  </View>
+                  <Text style={styles.subtitle}>
+                    Welcome! Create your account to get started
+                  </Text>
                 </View>
 
                 {/* Error Message */}
@@ -160,90 +178,9 @@ export default function SignupScreen() {
                   </View>
                 ) : null}
 
-                {/* Name Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your name"
-                    placeholderTextColor={colors.placeholderColor}
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    autoCorrect={false}
-                    editable={!authBusy}
-                  />
-                </View>
-
-                {/* Email Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your email"
-                    placeholderTextColor={colors.placeholderColor}
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="email-address"
-                    editable={!authBusy}
-                  />
-                </View>
-
-                {/* Password Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your password (min. 6 characters)"
-                    placeholderTextColor={colors.placeholderColor}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!authBusy}
-                  />
-                  <Text style={styles.helperText}>Password must be at least 6 characters</Text>
-                </View>
-
-                {/* Sign Up Button */}
+                {/* Sign up with Google */}
                 <TouchableOpacity
-                  style={[styles.primaryButton, authBusy && styles.primaryButtonDisabled]}
-                  onPress={handleSignUp}
-                  disabled={authBusy}
-                >
-                  {loading ? (
-                    <View style={styles.buttonContent}>
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                      <Text style={[styles.buttonText, { marginLeft: 8 }]}>Creating account...</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.buttonText}>Sign Up</Text>
-                  )}
-                </TouchableOpacity>
-
-                {/* Login Link */}
-                <View style={styles.signInContainer}>
-                  <Text style={styles.signInText}>Already have an account? </Text>
-                  <Link href="/(auth)/login" asChild>
-                    <TouchableOpacity>
-                      <Text style={styles.signInLink}>Sign In</Text>
-                    </TouchableOpacity>
-                  </Link>
-                </View>
-
-                {/* Divider: or */}
-                <View style={styles.orDivider}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>or</Text>
-                  <View style={styles.orLine} />
-                </View>
-
-                {/* Continue with Google */}
-                <TouchableOpacity
-                  style={[styles.googleButton, authBusy && styles.googleButtonDisabled]}
+                  style={[styles.outlineButton, authBusy && styles.outlineButtonDisabled]}
                   onPress={signInWithGoogle}
                   disabled={authBusy}
                   activeOpacity={0.8}
@@ -251,30 +188,106 @@ export default function SignupScreen() {
                   {googleLoading ? (
                     <View style={styles.buttonContent}>
                       <ActivityIndicator size="small" color={colors.gray700} />
-                      <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
+                      <Text style={[styles.outlineButtonText, { marginLeft: 8 }]}>Signing up...</Text>
                     </View>
                   ) : (
                     <>
                       <Image source={require('../../assets/images/google_icon.jpg')} style={styles.googleIcon} resizeMode="contain" />
-                      <Text style={styles.googleButtonText}>Continue with Google</Text>
+                      <Text style={styles.outlineButtonText}>Sign up with Google</Text>
                     </>
                   )}
                 </TouchableOpacity>
 
-                {/* Continue with Apple (iOS only) */}
+                {/* Sign up with Apple (iOS only) */}
                 <View style={styles.appleButtonContainer}>
                   {appleLoading ? (
-                    <View style={[styles.googleButton, styles.googleButtonDisabled]}>
+                    <View style={[styles.outlineButton, styles.outlineButtonDisabled]}>
                       <ActivityIndicator size="small" color={colors.gray700} />
-                      <Text style={[styles.googleButtonText, { marginLeft: 8 }]}>Signing in...</Text>
+                      <Text style={[styles.outlineButtonText, { marginLeft: 8 }]}>Signing up...</Text>
                     </View>
                   ) : (
                     <AppleSignInButton
                       onPress={signInWithApple}
                       disabled={authBusy}
+                      label="Sign up with Apple"
                     />
                   )}
                 </View>
+
+                {/* Sign up with Email */}
+                <TouchableOpacity
+                  style={[styles.outlineButton, authBusy && styles.outlineButtonDisabled]}
+                  onPress={handleToggleEmailForm}
+                  disabled={authBusy}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.outlineButtonText}>Sign up with Email</Text>
+                </TouchableOpacity>
+
+                {/* Expanded name / email / password form */}
+                {showEmailForm ? (
+                  <View style={styles.emailForm}>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Name</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your name"
+                        placeholderTextColor={colors.placeholderColor}
+                        value={name}
+                        onChangeText={setName}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                        editable={!authBusy}
+                      />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Email</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your email"
+                        placeholderTextColor={colors.placeholderColor}
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="email-address"
+                        editable={!authBusy}
+                      />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Password</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your password (min. 6 characters)"
+                        placeholderTextColor={colors.placeholderColor}
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!authBusy}
+                      />
+                      <Text style={styles.helperText}>Password must be at least 6 characters</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.primaryButton, authBusy && styles.primaryButtonDisabled]}
+                      onPress={handleSignUp}
+                      disabled={authBusy}
+                    >
+                      {loading ? (
+                        <View style={styles.buttonContent}>
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                          <Text style={[styles.buttonText, { marginLeft: 8 }]}>Creating account...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.buttonText}>Sign Up</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
 
                 <Text style={styles.legalText}>
                   By continuing, you agree to our{' '}
@@ -293,6 +306,19 @@ export default function SignupScreen() {
                   </Text>
                   .
                 </Text>
+
+                {/* Divider */}
+                <View style={styles.divider} />
+
+                {/* Login Link */}
+                <View style={styles.signInContainer}>
+                  <Text style={styles.signInText}>Already have an account? </Text>
+                  <Link href="/(auth)/login" asChild>
+                    <TouchableOpacity disabled={authBusy}>
+                      <Text style={styles.signInLink}>Sign In</Text>
+                    </TouchableOpacity>
+                  </Link>
+                </View>
               </>
             )}
           </View>
@@ -324,26 +350,38 @@ function getStyles(colors) {
     },
     card: {
       backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      padding: 28,
+      borderRadius: 8,
+      padding: 32,
       shadowColor: colors.shadowColor,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 8,
     },
-    header: {
+    logoContainer: {
+      alignItems: 'center',
       marginBottom: 24,
     },
-    title: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: colors.text,
+    logoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
       marginBottom: 8,
     },
+    logoOrange: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.primary,
+    },
+    logoGray: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
     subtitle: {
-      fontSize: 15,
+      fontSize: 16,
       color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
     },
     errorContainer: {
       marginBottom: 16,
@@ -351,11 +389,47 @@ function getStyles(colors) {
       backgroundColor: colors.errorLight,
       borderWidth: 1,
       borderColor: colors.errorBorder,
-      borderRadius: 8,
+      borderRadius: 6,
     },
     errorText: {
       color: colors.error,
       fontSize: 14,
+    },
+    outlineButton: {
+      width: '100%',
+      minHeight: 44,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.borderDark,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      marginBottom: 12,
+    },
+    outlineButtonDisabled: {
+      opacity: 0.7,
+    },
+    outlineButtonText: {
+      color: colors.gray700,
+      fontSize: 15,
+      fontWeight: '600',
+      includeFontPadding: false,
+    },
+    googleIcon: {
+      width: 20,
+      height: 20,
+    },
+    appleButtonContainer: {
+      width: '100%',
+      marginBottom: 12,
+    },
+    emailForm: {
+      marginTop: 4,
+      marginBottom: 4,
     },
     inputGroup: {
       marginBottom: 16,
@@ -368,11 +442,11 @@ function getStyles(colors) {
     },
     input: {
       width: '100%',
-      paddingHorizontal: 14,
-      paddingVertical: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 8,
+      borderColor: colors.borderDark,
+      borderRadius: 6,
       backgroundColor: colors.inputBackground,
       color: colors.text,
       fontSize: 16,
@@ -384,10 +458,11 @@ function getStyles(colors) {
     },
     primaryButton: {
       width: '100%',
-      paddingVertical: 14,
-      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 6,
       backgroundColor: colors.primary,
-      marginBottom: 16,
+      marginBottom: 8,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -404,6 +479,23 @@ function getStyles(colors) {
       fontSize: 16,
       fontWeight: '600',
     },
+    legalText: {
+      marginTop: 8,
+      marginBottom: 16,
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    legalLink: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginBottom: 16,
+    },
     signInContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -417,62 +509,6 @@ function getStyles(colors) {
       fontSize: 14,
       fontWeight: '600',
       color: colors.primary,
-    },
-    orDivider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginVertical: 16,
-    },
-    orLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: colors.border,
-    },
-    orText: {
-      marginHorizontal: 12,
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontWeight: '500',
-    },
-    googleButton: {
-      width: '100%',
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      backgroundColor: colors.cardBackground,
-      borderWidth: 1,
-      borderColor: colors.border,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-    },
-    googleButtonDisabled: {
-      opacity: 0.7,
-    },
-    googleIcon: {
-      width: 20,
-      height: 20,
-    },
-    googleButtonText: {
-      color: colors.gray700,
-      fontSize: 15,
-      fontWeight: '600',
-    },
-    appleButtonContainer: {
-      width: '100%',
-      marginTop: 12,
-    },
-    legalText: {
-      marginTop: 16,
-      fontSize: 12,
-      lineHeight: 18,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-    legalLink: {
-      color: colors.primary,
-      fontWeight: '600',
     },
     successIconWrap: {
       alignItems: 'center',

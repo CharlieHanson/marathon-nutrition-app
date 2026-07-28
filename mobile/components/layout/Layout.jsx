@@ -38,9 +38,6 @@ const LayoutInner = ({
           styles.main,
           (currentView === 'training' || currentView === 'profile' || currentView === 'meals') &&
             styles.mainCompact,
-          // Meals manages its own horizontal inset (ScrollView) so in-tree
-          // bottom sheets can span edge-to-edge without negative-margin hacks.
-          currentView === 'meals' && styles.mainNoHorizontalPad,
         ]}
       >
         {children}
@@ -65,16 +62,17 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  // No horizontal padding here — Stack keeps inactive screens mounted, so
+  // view-dependent pad (e.g. meals edge-to-edge vs other screens) would
+  // resize every mounted screen when switching tabs and cause width flicker.
+  // Each screen owns its own horizontal inset.
   main: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingTop: 16,
     overflow: 'visible',
   },
   mainCompact: {
     paddingTop: 12,
-  },
-  mainNoHorizontalPad: {
-    paddingHorizontal: 0,
   },
 });

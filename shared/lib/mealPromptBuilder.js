@@ -15,6 +15,12 @@ const TYPE_DESCRIPTIONS = `Ingredient types (use exactly these labels):
 - "vegetable": broccoli, spinach, peppers, onions, tomatoes, salad greens, mushrooms
 - "fat": oils, butter, ghee, avocado oil (pure added fats only)`;
 
+/** Shared across all generation prompts — keep meals approachable. */
+const COOKING_SIMPLICITY = `COOKING COMPLEXITY: An average home cook should be able to make these meals easily.
+- Prefer common supermarket ingredients and everyday techniques (grill, bake, sauté, boil, assemble)
+- Avoid overly complicated, multi-step, or restaurant-chef dishes
+- Keep prep realistic for a normal weeknight (roughly 30 minutes or less when practical)`;
+
 // ─── Response Format ─────────────────────────────────────────────────────────
 
 const SINGLE_MEAL_FORMAT = `Respond with ONLY valid JSON, no other text:
@@ -226,6 +232,9 @@ export function buildSingleMealPrompt({
   lines.push(`3. Follow the MEAL ROLE guidance above — the dish format must match this meal type`);
   lines.push(`4. Meal name should be short and descriptive`);
   lines.push(`5. Do not state the cuisine name, just the meal name.`);
+  lines.push(`6. Keep meals easy for an average home cook — nothing overly complicated`);
+  lines.push('');
+  lines.push(COOKING_SIMPLICITY);
   lines.push('');
   lines.push(TYPE_DESCRIPTIONS);
   lines.push('');
@@ -303,6 +312,9 @@ export function buildDayPrompt({
     '2. Use COOKED weights for grains, pasta, potatoes',
     '3. Meal names should be short and descriptive',
     '4. Match dish format to meal role (dessert ≠ savory bowl)',
+    '5. Keep meals easy for an average home cook — nothing overly complicated',
+    '',
+    COOKING_SIMPLICITY,
     '',
     TYPE_DESCRIPTIONS,
     '',
@@ -385,6 +397,9 @@ export function buildWeekPrompt({
     '6. Do NOT include snacks — snacks are logged manually by the user',
     '7. Respect dietary restrictions absolutely',
     '8. Never use disliked foods',
+    '9. Keep meals easy for an average home cook — nothing overly complicated',
+    '',
+    COOKING_SIMPLICITY,
     '',
     TYPE_DESCRIPTIONS,
     '',
@@ -440,6 +455,9 @@ export function buildMealPrepPrompt({
     '2. Ingredients should reheat well',
     '3. Return PER-SERVING ingredient amounts',
     '4. Suggest 2-3 different options',
+    '5. Keep recipes easy for an average home cook — nothing overly complicated',
+    '',
+    COOKING_SIMPLICITY,
     '',
     TYPE_DESCRIPTIONS,
     '',

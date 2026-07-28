@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../shared/lib/supabase.native';
@@ -23,12 +25,32 @@ const getSiteUrl = () => {
   return String(siteUrl).trim().replace(/\/$/, '');
 };
 
+const KEYBOARD_LIFT = 56;
+
 export const ForgotPasswordModal = ({ visible, onClose }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardOpen(false);
+      return undefined;
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
@@ -67,6 +89,7 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
   const handleClose = () => {
     setEmail('');
     setMessage('');
+    setKeyboardOpen(false);
     onClose();
   };
 
@@ -79,7 +102,12 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
     >
       <View style={styles.modalOverlay}>
         <Pressable onPress={handleClose} style={styles.overlayPressable} />
-        <View style={styles.modalContent}>
+        <View
+          style={[
+            styles.modalContent,
+            keyboardOpen && { transform: [{ translateY: -KEYBOARD_LIFT }] },
+          ]}
+        >
           <View style={styles.modalInner}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Reset Password</Text>
@@ -268,7 +296,7 @@ function getStyles(colors) {
       backgroundColor: colors.gray100,
     },
     cancelButtonText: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.gray700,
     },
@@ -281,7 +309,7 @@ function getStyles(colors) {
       opacity: 0.6,
     },
     sendButtonText: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: '600',
       color: '#FFFFFF',
     },

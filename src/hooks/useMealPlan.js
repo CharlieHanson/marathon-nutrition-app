@@ -160,11 +160,14 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }));
   };
 
+  /** Replace a full day object from the server (e.g. log-snack response).
+   *  Must replace (not shallow-merge) so cleared keys like over_budget /
+   *  original_targets from restore don't stick around from the previous day. */
   const applyDayMeals = (day, dayMeals) => {
     if (!day || !dayMeals || typeof dayMeals !== 'object') return;
     setMealPlan((prev) => ({
       ...prev,
-      [day]: { ...(prev[day] || {}), ...dayMeals },
+      [day]: dayMeals,
     }));
   };
 

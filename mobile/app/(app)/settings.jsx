@@ -293,6 +293,7 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   contentContainer: {
+    paddingHorizontal: 16,
     paddingBottom: 20,
   },
   title: {

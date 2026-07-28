@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -74,10 +75,12 @@ const OFFLINE_ALERT = () =>
 
 export default function MealsScreen() {
   const posthog = usePostHog();
+  const router = useRouter();
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
   const { colors } = useTheme();
-  const { notifyTargetDismissed, notifyTargetPress, isActive, currentStep, next } = useProductTour();
+  const { notifyTargetDismissed, notifyTargetPress, isActive, currentStep, next, patchStep } =
+    useProductTour();
   const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
   const isFocused = useIsFocused();
 
@@ -170,6 +173,21 @@ export default function MealsScreen() {
     // intentionally omit mealPlan — avoid double-advancing after a fresh generate
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, currentStep?.id, selectedDay, next]);
+
+  // Filled breakfast: show Next on overview and skip the generate step entirely
+  // (its target lives in a sheet that won't open when the slot is already filled).
+  useEffect(() => {
+    if (!isActive) return;
+    const breakfast = mealPlanHook.mealPlan?.[selectedDay]?.breakfast;
+    const hasBreakfast =
+      typeof breakfast === 'string' &&
+      breakfast.trim().length > 0 &&
+      breakfast !== '__generating__';
+    if (currentStep?.id === 'meals_overview') {
+      patchStep('meals_overview', { showNext: hasBreakfast });
+    }
+    patchStep('meals_generate', { skip: hasBreakfast });
+  }, [isActive, currentStep?.id, selectedDay, mealPlanHook.mealPlan, patchStep]);
 
   // Get current day of week for showing checkboxes only on today
   const todayDayOfWeek = getCurrentDayOfWeek();
@@ -311,8 +329,9 @@ export default function MealsScreen() {
         refetchLimits();
         capture(posthog, 'recipe_viewed', { meal_type: selectedMeal.mealType });
       } else {
+        console.error('Error getting recipe:', result.error);
         setShowRecipeModal(false); // Close modal on error
-        Alert.alert('Error', result.error || 'Failed to get recipe');
+        Alert.alert('Error', "Couldn't load the recipe. Please try again.");
       }
     } catch (error) {
       console.error('Error getting recipe:', error);
@@ -347,13 +366,14 @@ export default function MealsScreen() {
       });
       setShowMealOptions(false);
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to save meal.');
+        console.error('Save meal error:', error);
+        Alert.alert('Error', "Couldn't save this meal. Please try again.");
       } else {
         Alert.alert('Success', 'Meal saved!');
       }
     } catch (err) {
       console.error('Save meal error:', err);
-      Alert.alert('Error', err.message || 'Failed to save meal.');
+      Alert.alert('Error', "Couldn't save this meal. Please try again.");
     } finally {
       setSavingMeal(false);
     }
@@ -478,7 +498,7 @@ export default function MealsScreen() {
       }
     } catch (error) {
       console.error('log snack error:', error);
-      Alert.alert('Error', error.message || 'Failed to log snack');
+      Alert.alert('Error', "Couldn't log that snack. Please try again.");
     } finally {
       setLogSnackSubmitting(false);
     }
@@ -502,7 +522,7 @@ export default function MealsScreen() {
       Alert.alert('Snack removed', 'Meal targets restored.');
     } catch (error) {
       console.error('delete snack error:', error);
-      Alert.alert('Error', error.message || 'Failed to remove snack');
+      Alert.alert('Error', "Couldn't remove that snack. Please try again.");
     } finally {
       setLogSnackSubmitting(false);
     }
@@ -788,6 +808,7 @@ export default function MealsScreen() {
       <DaySelector
         days={DAYS}
         weekDateNumbers={weekDateNumbers}
+        weekStarting={mealPlanHook.currentWeekStarting}
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
         todayDayOfWeek={todayDayOfWeek}
@@ -811,6 +832,7 @@ export default function MealsScreen() {
     isCurrentWeek,
     isFocused,
     isGuest,
+    mealPlanHook.currentWeekStarting,
     selectedDay,
     setHeaderSlot,
     todayDayOfWeek,
@@ -876,21 +898,20 @@ export default function MealsScreen() {
           onGroceryList={generateGroceryList}
           onMealPrep={() => setShowMealPrepModal(true)}
           onLogMeal={() => setShowLogMealModal(true)}
-          onLogSnack={() => setShowLogSnackModal(true)}
           loadingGroceryList={loadingGroceryList}
           groceryRemaining={remaining('grocery_list')}
           canGenerate={canDo('meal_generation')}
           animatedStyle={styles.quickActionsInScroll}
         />
 
-        {!isPastDay(selectedDay, mealPlanHook.currentWeekStarting) && (
-          <MealTypeToggles
-            includeDessert={dayToggles.includeDessert}
-            onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeDessert: val })}
-            disabled={mealPlanHook.isGenerating || isGuest}
-            dayMeals={selectedDayMeals}
-          />
-        )}
+        <MealTypeToggles
+          includeDessert={dayToggles.includeDessert}
+          onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeDessert: val })}
+          disabled={mealPlanHook.isGenerating || isGuest}
+          dayMeals={selectedDayMeals}
+          onLogSnack={() => setShowLogSnackModal(true)}
+          showDessert={!isPastDay(selectedDay, mealPlanHook.currentWeekStarting)}
+        />
         {selectedDayMeals?.over_budget ? (
           <View style={styles.overBudgetBanner}>
             <Text style={styles.overBudgetText}>
@@ -946,6 +967,16 @@ export default function MealsScreen() {
 
           return <React.Fragment key={`${selectedDay}-${mealType}`}>{card}</React.Fragment>;
         })}
+        <Text style={styles.preferencesHint}>
+          Don't like the meals being generated? Update your preferences in{' '}
+          <Text
+            style={styles.preferencesHintLink}
+            onPress={() => router.push('/(app)/profile?tab=preferences')}
+          >
+            your profile
+          </Text>
+          .
+        </Text>
         <Text style={styles.medicalDisclaimer}>
           AI-generated meals and recipes are suggestions and for informational purposes only - not
           professional or medical advice.
@@ -1166,18 +1197,18 @@ const getStyles = (colors) => StyleSheet.create({
     marginBottom: 10,
   },
   overBudgetBanner: {
-    backgroundColor: colors.errorLight || '#fdecea',
+    backgroundColor: colors.infoLight,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.errorBorder || '#f5c6cb',
+    borderColor: colors.info,
   },
   overBudgetText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.error || '#c0392b',
+    color: colors.info,
     textAlign: 'center',
   },
   emptyState: {
@@ -1203,8 +1234,21 @@ const getStyles = (colors) => StyleSheet.create({
   mealsScroll: {
     flex: 1,
   },
+  preferencesHint: {
+    marginTop: 16,
+    marginBottom: 8,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  preferencesHintLink: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
   medicalDisclaimer: {
-    marginTop: 8,
+    marginTop: 0,
     marginBottom: 16,
     fontSize: 11,
     lineHeight: 16,

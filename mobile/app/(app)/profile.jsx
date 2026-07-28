@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -113,6 +114,7 @@ export default function ProfileScreen() {
   const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
   const profileHook = useUserProfile(user, isGuest);
   const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
+  const params = useLocalSearchParams();
 
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
   const [showMacrosModal, setShowMacrosModal] = useState(false);
@@ -123,7 +125,14 @@ export default function ProfileScreen() {
   const [showAgePicker, setShowAgePicker] = useState(false);
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
   const [showHeightUnitPicker, setShowHeightUnitPicker] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(
+    params.tab === 'preferences' ? 'preferences' : 'profile'
+  );
+
+  useEffect(() => {
+    if (params.tab === 'preferences') setActiveTab('preferences');
+    else if (params.tab === 'profile') setActiveTab('profile');
+  }, [params.tab]);
 
   const [heightUnit, setHeightUnit] = useState(() => parseHeightForDisplay(profileHook.profile.height).unit);
   const [heightMeters, setHeightMeters] = useState(() => parseHeightForDisplay(profileHook.profile.height).meters);
@@ -955,6 +964,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingHorizontal: 16,
   },
   tabBar: {
     flexDirection: 'row',

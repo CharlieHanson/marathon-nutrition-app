@@ -91,14 +91,15 @@ export const PRODUCT_TOUR_STEPS = [
     title: 'Your profile',
     body: 'Update body metrics here, and switch to the Preferences tab to set likes, dislikes, and cuisines — they steer every meal we generate.',
     placement: 'bottom',
-    allowTargetPress: false,
+    allowTargetPress: true,
+    advanceOn: 'targetPress',
     showSkip: true,
     showBack: true,
-    showNext: true,
+    showNext: false,
   },
   {
     id: 'tour_done',
-    route: 'meals',
+    route: 'profile',
     targetId: null,
     title: "You're set",
     body: 'Replay this anytime from Settings.',
@@ -107,6 +108,8 @@ export const PRODUCT_TOUR_STEPS = [
     showSkip: false,
     showBack: false,
     showNext: false,
+    // Let the profile screen settle after the avatar tap before showing Done.
+    revealDelayMs: 450,
     isLast: true,
   },
 ];

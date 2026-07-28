@@ -547,6 +547,7 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
+    paddingHorizontal: 16,
     paddingBottom: 20,
   },
   statusStrip: {

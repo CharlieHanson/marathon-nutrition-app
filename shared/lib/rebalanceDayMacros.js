@@ -110,9 +110,9 @@ export function restoreDayFromOriginalTargets(dayMeals) {
   }
 
   delete next.original_targets;
-  delete next.over_budget;
-  delete next.adjusted_meal_types;
-  delete next.targets_adjusted;
+  next.over_budget = false;
+  next.adjusted_meal_types = [];
+  next.targets_adjusted = false;
   next.snacks = '';
   next.snacks_user_logged = false;
   next.snacks_rating = next.snacks_rating || 0;

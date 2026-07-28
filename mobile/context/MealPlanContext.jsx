@@ -275,12 +275,14 @@ export function MealPlanProvider({ children }) {
     }));
   };
 
-  /** Merge a full day object from the server (e.g. log-snack response). */
+  /** Replace a full day object from the server (e.g. log-snack response).
+   *  Must replace (not shallow-merge) so cleared keys like over_budget /
+   *  original_targets from restore don't stick around from the previous day. */
   const applyDayMeals = useCallback((day, dayMeals) => {
     if (!day || !dayMeals || typeof dayMeals !== 'object') return;
     setMealPlan((prev) => ({
       ...prev,
-      [day]: { ...(prev[day] || {}), ...dayMeals },
+      [day]: dayMeals,
     }));
   }, []);
 
@@ -377,7 +379,7 @@ export function MealPlanProvider({ children }) {
             updateMeal(day, event.mealType, event.meal);
           } else if (event.type === 'error') {
             console.error('Generation error:', event.message);
-            setStatusMessage(`❌ Error: ${event.message}`);
+            setStatusMessage("❌ Couldn't generate meals. Please try again.");
             setTimeout(() => setStatusMessage(''), 5000);
           }
         }
@@ -416,7 +418,7 @@ export function MealPlanProvider({ children }) {
       }
     } catch (error) {
       console.error('generateDay error:', error);
-      setStatusMessage(`❌ Error: ${error.message}`);
+      setStatusMessage("❌ Couldn't generate meals. Please try again.");
       setTimeout(() => setStatusMessage(''), 5000);
       // Restore any slots left as '__generating__' from the pre-stream snapshot
       setMealPlan((prev) => {
@@ -477,8 +479,9 @@ export function MealPlanProvider({ children }) {
       }
       throw new Error(result.error || 'Unknown error');
     } catch (error) {
+      console.error('regenerateMeal error:', error);
       updateMeal(day, mealType, previousMeal === '__generating__' ? '' : previousMeal);
-      setStatusMessage(`❌ Error: ${error.message}`);
+      setStatusMessage("❌ Couldn't regenerate that meal. Please try again.");
       setTimeout(() => setStatusMessage(''), 5000);
       return { success: false, error: error.message };
     }
@@ -526,7 +529,7 @@ export function MealPlanProvider({ children }) {
     } catch (error) {
       console.error('generateSingleMeal error:', error);
       updateMeal(day, mealType, previousMeal === '__generating__' ? '' : previousMeal);
-      setStatusMessage(`❌ Error: ${error.message}`);
+      setStatusMessage("❌ Couldn't generate that meal. Please try again.");
       setTimeout(() => setStatusMessage(''), 5000);
       return { success: false, error: error.message };
     }
@@ -592,7 +595,7 @@ export function MealPlanProvider({ children }) {
               updateMeal(day, event.mealType, event.meal);
             } else if (event.type === 'error') {
               console.error('Generation error:', event.message);
-              setStatusMessage(`❌ Error: ${event.message}`);
+              setStatusMessage("❌ Couldn't regenerate meals. Please try again.");
               setTimeout(() => setStatusMessage(''), 5000);
             }
           }
@@ -619,7 +622,7 @@ export function MealPlanProvider({ children }) {
       return { success: true };
     } catch (error) {
       console.error('regenerateAllMeals error:', error);
-      setStatusMessage(`❌ Error: ${error.message}`);
+      setStatusMessage("❌ Couldn't regenerate meals. Please try again.");
       setTimeout(() => setStatusMessage(''), 5000);
       // Restore any '__generating__' slots from the pre-regeneration snapshot.
       // Keep successfully generated meals already written to state.
@@ -670,33 +673,40 @@ export function MealPlanProvider({ children }) {
   const clearMeal = async (day, mealType) => {
     if (!day || !(day in mealPlan)) return { success: false, error: 'Invalid day' };
     if (!MEAL_TYPES.includes(mealType)) return { success: false, error: 'Invalid meal type' };
-    
+
+    const patchDay = (dayData) => {
+      const remainingAdjusted = (dayData?.adjusted_meal_types || []).filter((mt) => mt !== mealType);
+      const next = {
+        ...dayData,
+        [mealType]: '',
+        [`${mealType}_rating`]: 0,
+        adjusted_meal_types: remainingAdjusted,
+        targets_adjusted: remainingAdjusted.length > 0,
+      };
+      if (remainingAdjusted.length === 0) {
+        next.over_budget = false;
+      }
+      return next;
+    };
+
     setMealPlan((prev) => ({
       ...prev,
-      [day]: { 
-        ...prev[day], 
-        [mealType]: '',
-        [`${mealType}_rating`]: 0 
-      },
+      [day]: patchDay(prev[day]),
     }));
-    
+
     // Save to database
     if (user && !isGuest) {
       try {
-        const updatedPlan = { 
-          ...mealPlan, 
-          [day]: { 
-            ...mealPlan[day], 
-            [mealType]: '',
-            [`${mealType}_rating`]: 0 
-          } 
+        const updatedPlan = {
+          ...mealPlan,
+          [day]: patchDay(mealPlan[day]),
         };
         await saveMealPlan(user.id, updatedPlan, currentWeekStarting);
       } catch (error) {
         console.error('Error clearing meal from database:', error);
       }
     }
-    
+
     return { success: true };
   };
 

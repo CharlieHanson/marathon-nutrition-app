@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '../../shared/lib/supabase.native';
 
@@ -158,20 +159,51 @@ export function useAppleAuth() {
 }
 
 /**
- * Native "Continue with Apple" button. Returns null on non-iOS platforms.
+ * "Continue/Sign up with Apple" button. Returns null on non-iOS platforms.
+ * Custom button so label size matches Google/Email auth buttons.
  */
-export function AppleSignInButton({ onPress, disabled }) {
+export function AppleSignInButton({
+  onPress,
+  disabled,
+  label = 'Continue with Apple',
+}) {
   if (Platform.OS !== 'ios') {
     return null;
   }
 
   return (
-    <AppleAuthentication.AppleAuthenticationButton
-      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-      cornerRadius={6}
-      style={{ width: '100%', height: 48 }}
-      onPress={disabled ? () => {} : onPress}
-    />
+    <TouchableOpacity
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+      style={[appleButtonStyles.button, disabled && appleButtonStyles.disabled]}
+    >
+      <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+      <Text style={appleButtonStyles.label}>{label}</Text>
+    </TouchableOpacity>
   );
 }
+
+const appleButtonStyles = StyleSheet.create({
+  button: {
+    width: '100%',
+    minHeight: 44,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: '#000000',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  disabled: {
+    opacity: 0.7,
+  },
+  label: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    includeFontPadding: false,
+  },
+});
