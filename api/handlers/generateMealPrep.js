@@ -51,6 +51,7 @@ RULES:
 4. Include a brief prep description and estimated prep time
 5. Ingredient types must be: protein, carb, vegetable, or fat
 6. NEVER include any disliked foods — double check each ingredient
+7. Keep recipes easy for an average home cook — common ingredients, straightforward techniques, nothing overly complicated
 
 Respond with ONLY valid JSON:
 {

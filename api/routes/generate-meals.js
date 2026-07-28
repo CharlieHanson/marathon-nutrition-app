@@ -344,6 +344,7 @@ CRITICAL REQUIREMENTS:
 8) Do not repeat meals from the week so far (vary the meals each day, especially dessert).
 9) Dessert must clearly fit the category "${dessertCategory}" and differ from earlier days until all categories are covered.
 10) Ensure that dinners contain a balance of all the types of protein that the user likes. If the user only likes one or two, have a few dinners each plus a couple that aren't on their list of likes. NONE on the list of dislikes though.
+11) Keep meals easy for an average home cook — common ingredients, straightforward techniques, nothing overly complicated.
 
 Return a JSON object that matches the required schema, with:
 - "day" equal to "${day}"
@@ -473,7 +474,8 @@ CRITICAL REQUIREMENTS:
 3) Avoid all foods and ingredients that are not suitable for the user's dietary restrictions
 4) Strictly avoid disliked foods
 5) Return concise meal descriptions (no macros text)
-${dessertCategory ? `6) Dessert must clearly fit the category "${dessertCategory}"` : ''}
+6) Keep meals easy for an average home cook — common ingredients, straightforward techniques, nothing overly complicated
+${dessertCategory ? `7) Dessert must clearly fit the category "${dessertCategory}"` : ''}
 
 Return a JSON object with:
 - "day" equal to "${day}"
