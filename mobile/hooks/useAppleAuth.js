@@ -2,7 +2,10 @@ import { useState, useCallback } from 'react';
 import { Platform, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../../shared/lib/supabase.native';
+import { isNewlyCreatedUser } from '../../shared/lib/analyticsUser';
+import { capture } from '../lib/analytics';
 
 /** Write Apple-provided name to profiles without overwriting an existing name. */
 async function seedAppleProfileName(userId, fullName) {
@@ -72,6 +75,7 @@ async function seedAppleProfileName(userId, fullName) {
  * iOS only. On success, AuthContext picks up the session and the app can redirect.
  */
 export function useAppleAuth() {
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -102,6 +106,13 @@ export function useAppleAuth() {
       if (signInError) {
         setError(signInError.message ?? 'Failed to sign in with Apple');
         return;
+      }
+
+      if (isNewlyCreatedUser(signInData?.user)) {
+        capture(posthog, 'signup_completed', {
+          persona: 'athlete',
+          method: 'apple',
+        });
       }
 
       // Store Apple refresh token for account-deletion revocation (best-effort).
@@ -153,7 +164,7 @@ export function useAppleAuth() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [posthog]);
 
   return { signInWithApple, loading, error };
 }

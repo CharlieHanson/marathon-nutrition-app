@@ -82,7 +82,8 @@ export const darkColors = {
   // Borders
   border: '#374151',
   borderLight: '#4B5563',
-  borderDark: '#1F2937',
+  // Emphasized outline (must contrast with cardBackground #1F2937)
+  borderDark: '#6B7280',
   
   // Primary/Accent
   primary: '#3D7C65',

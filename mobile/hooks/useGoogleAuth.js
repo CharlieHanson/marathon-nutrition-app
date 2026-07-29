@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import * as Google from 'expo-auth-session/providers/google';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../../shared/lib/supabase.native';
+import { isNewlyCreatedUser } from '../../shared/lib/analyticsUser';
+import { capture } from '../lib/analytics';
 
 const SCOPES = ['openid', 'profile', 'email'];
 
@@ -10,6 +13,7 @@ const SCOPES = ['openid', 'profile', 'email'];
  * On success, AuthContext picks up the session and the app can redirect.
  */
 export function useGoogleAuth() {
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const exchangingRef = useRef(false);
@@ -50,6 +54,11 @@ export function useGoogleAuth() {
           });
           if (signInError) {
             setError(signInError.message ?? 'Failed to sign in with Google');
+          } else if (isNewlyCreatedUser(data?.user)) {
+            capture(posthog, 'signup_completed', {
+              persona: 'athlete',
+              method: 'google',
+            });
           }
           // On success, AuthContext.onAuthStateChange will update user; caller can redirect
         } catch (err) {
@@ -63,7 +72,7 @@ export function useGoogleAuth() {
     }
 
     setLoading(false);
-  }, [response]);
+  }, [response, posthog]);
 
   const handlePress = async () => {
     setError(null);

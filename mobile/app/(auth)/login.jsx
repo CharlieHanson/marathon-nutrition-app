@@ -358,7 +358,7 @@ function getStyles(colors) {
       paddingVertical: 10,
       paddingHorizontal: 16,
       borderRadius: 6,
-      backgroundColor: colors.cardBackground,
+      backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.borderDark,
       flexDirection: 'row',

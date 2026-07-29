@@ -158,21 +158,26 @@ export default function OnboardingScreen() {
     try {
       const { error } = await saveFoodPreferences(user.id, preferences);
       if (error) {
-        Alert.alert('Error', 'Something went wrong. Please try again.', [
-          { text: 'OK', onPress: handleErrorReset },
-        ]);
-      } else {
-        await AsyncStorage.multiRemove([ONBOARDING_STEP_KEY, ONBOARDING_PROFILE_KEY, ONBOARDING_PREFERENCES_KEY]);
-        capture(posthog, 'onboarding_completed', {
-          persona: 'athlete',
-          days_to_complete: daysSinceSignup(user),
-        });
-        router.replace('/(app)/dashboard');
+        console.warn('Onboarding: saveFoodPreferences failed', error);
+        Alert.alert(
+          'Preferences not saved',
+          'Your setup is complete. You can update food preferences later in settings.'
+        );
       }
+      await AsyncStorage.multiRemove([ONBOARDING_STEP_KEY, ONBOARDING_PROFILE_KEY, ONBOARDING_PREFERENCES_KEY]);
+      capture(posthog, 'onboarding_completed', {
+        persona: 'athlete',
+        days_to_complete: daysSinceSignup(user),
+      });
+      router.replace('/(app)/dashboard');
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong. Please try again.', [
-        { text: 'OK', onPress: handleErrorReset },
-      ]);
+      console.warn('Onboarding: handleComplete error', err);
+      await AsyncStorage.multiRemove([ONBOARDING_STEP_KEY, ONBOARDING_PROFILE_KEY, ONBOARDING_PREFERENCES_KEY]);
+      capture(posthog, 'onboarding_completed', {
+        persona: 'athlete',
+        days_to_complete: daysSinceSignup(user),
+      });
+      router.replace('/(app)/dashboard');
     } finally {
       setIsSaving(false);
     }

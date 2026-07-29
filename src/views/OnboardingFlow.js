@@ -65,17 +65,21 @@ export const OnboardingFlow = ({ user, onComplete }) => {
     try {
       const { error } = await saveFoodPreferences(user.id, preferences);
       if (error) {
-        alert('Failed to save preferences. Please try again.');
-      } else {
-        capture('onboarding_completed', {
-          persona: 'athlete',
-          days_to_complete: daysSinceSignup(user),
-        });
-        // Mark onboarding as complete
-        onComplete();
+        console.warn('OnboardingFlow: saveFoodPreferences failed', error);
+        alert('Preferences could not be saved, but your setup is complete. You can update them later in settings.');
       }
+      capture('onboarding_completed', {
+        persona: 'athlete',
+        days_to_complete: daysSinceSignup(user),
+      });
+      onComplete();
     } catch (error) {
-      alert('An error occurred. Please try again.');
+      console.warn('OnboardingFlow: handleComplete error', error);
+      capture('onboarding_completed', {
+        persona: 'athlete',
+        days_to_complete: daysSinceSignup(user),
+      });
+      onComplete();
     } finally {
       setIsSaving(false);
     }

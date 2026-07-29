@@ -198,7 +198,7 @@ function getPeekStyles(colors) {
       left: 0,
       right: 0,
       height: 40,
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.background,
     },
   });
 }

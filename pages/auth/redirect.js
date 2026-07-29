@@ -1,16 +1,52 @@
 // pages/auth/redirect.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
 import { checkOnboardingStatus } from '../../src/dataClient';
+import { capture } from '../../src/lib/posthog';
+import { isNewlyCreatedUser, getAuthProvider } from '../../shared/lib/analyticsUser';
 
 export default function AuthRedirect() {
   const router = useRouter();
   const { user, loading, getUserRole } = useAuth();
   const [showMobileChoice, setShowMobileChoice] = useState(false);
+  const signupCapturedRef = useRef(false);
+
+  const maybeCaptureOAuthSignup = async () => {
+    if (!user?.id || signupCapturedRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    const dedupeKey = `ph_signup_${user.id}`;
+    if (sessionStorage.getItem(dedupeKey)) {
+      signupCapturedRef.current = true;
+      return;
+    }
+
+    if (!isNewlyCreatedUser(user)) return;
+    if (getAuthProvider(user) !== 'google') return;
+
+    signupCapturedRef.current = true;
+    sessionStorage.setItem(dedupeKey, '1');
+
+    try {
+      const role = await getUserRole();
+      capture('signup_completed', {
+        persona: role === 'nutritionist' ? 'nutritionist' : 'athlete',
+        method: 'google',
+      });
+    } catch (e) {
+      console.warn('AuthRedirect: signup_completed capture failed', e);
+      capture('signup_completed', {
+        persona: 'athlete',
+        method: 'google',
+      });
+    }
+  };
 
   const routeUser = async () => {
     try {
+      await maybeCaptureOAuthSignup();
+
       const role = await getUserRole();
 
       if (role === 'nutritionist') {
@@ -42,6 +78,7 @@ export default function AuthRedirect() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (isMobile) {
+      maybeCaptureOAuthSignup();
       setShowMobileChoice(true);
     } else {
       routeUser();
