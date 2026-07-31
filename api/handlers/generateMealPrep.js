@@ -10,6 +10,7 @@ import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCom
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -83,6 +84,7 @@ export function createGenerateMealPrepHandler(provider) {
         userProfile,
         foodPreferences,
         trainingPlan,
+        localDate,
       } = req.body;
 
       if (!userProfile || !rawMealType) {
@@ -222,6 +224,8 @@ export function createGenerateMealPrepHandler(provider) {
       });
 
       console.log(`✅ Generated ${options.length} meal prep options (${provider})`);
+
+      await recordUserStreak(supabase, userId, localDate);
 
       res.status(200).json({
         success: true,

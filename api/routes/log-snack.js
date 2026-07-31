@@ -17,6 +17,7 @@ import {
   restoreDayFromOriginalTargets,
   parseMealMacros,
 } from '../../shared/lib/rebalanceDayMacros.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -262,6 +263,8 @@ export default async function handler(req, res) {
 
     weekMeals[day] = resultDay;
     await saveWeekMeals(userId, weekStarting, weekMeals, existing?.id);
+
+    await recordUserStreak(supabase, userId, localDate);
 
     return res.status(200).json({
       success: true,

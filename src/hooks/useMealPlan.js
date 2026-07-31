@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient, authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { capture } from '../lib/posthog';
+import { getLocalDateString } from '../dataClient';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
@@ -423,6 +424,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           mealType,
           reason,
           currentMeal: mealPlan[day]?.[mealType] || '',
+          localDate: getLocalDateString(),
         }),
       });
 

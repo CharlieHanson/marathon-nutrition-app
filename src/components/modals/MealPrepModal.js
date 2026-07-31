@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
 import { authenticatedFetch, getMealGenApiUrl } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
+import { getLocalDateString } from '../../dataClient';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -78,6 +79,7 @@ export const MealPrepModal = ({
           days: selectedDays,
           userProfile,
           foodPreferences,
+          localDate: getLocalDateString(),
         }),
       }, 120000);
 

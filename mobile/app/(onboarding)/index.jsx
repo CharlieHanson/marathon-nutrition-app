@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -193,40 +202,51 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {currentStep > 1 && (
-          <ProgressIndicator currentStep={currentStep} totalSteps={3} />
-        )}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.scrollContent,
+            currentStep === 2 && styles.scrollContentFill,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
+        >
+          {currentStep > 1 && (
+            <ProgressIndicator currentStep={currentStep} totalSteps={3} />
+          )}
 
-        {currentStep === 1 && (
-          <WelcomeStep onNext={() => setCurrentStep(2)} />
-        )}
+          {currentStep === 1 && (
+            <WelcomeStep onNext={() => setCurrentStep(2)} />
+          )}
 
-        {currentStep === 2 && (
-          <ProfileStep
-            profile={profile}
-            onUpdate={updateProfile}
-            onNext={handleProfileNext}
-            onBack={() => setCurrentStep(1)}
-            isSaving={isSaving}
-          />
-        )}
+          {currentStep === 2 && (
+            <ProfileStep
+              profile={profile}
+              onUpdate={updateProfile}
+              onNext={handleProfileNext}
+              onBack={() => setCurrentStep(1)}
+              isSaving={isSaving}
+            />
+          )}
 
-        {currentStep === 3 && (
-          <PreferencesStep
-            preferences={preferences}
-            onUpdate={updatePreferences}
-            onComplete={handleComplete}
-            onBack={() => setCurrentStep(2)}
-            isSaving={isSaving}
-          />
-        )}
-      </ScrollView>
+          {currentStep === 3 && (
+            <PreferencesStep
+              preferences={preferences}
+              onUpdate={updatePreferences}
+              onComplete={handleComplete}
+              onBack={() => setCurrentStep(2)}
+              isSaving={isSaving}
+            />
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -244,6 +264,9 @@ function getStyles(colors) {
       paddingTop: 32,
       paddingBottom: 48,
       paddingHorizontal: 0,
+    },
+    scrollContentFill: {
+      flexGrow: 1,
     },
   });
 }

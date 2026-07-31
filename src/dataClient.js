@@ -4,6 +4,41 @@ import { supabase } from './supabaseClient';
 // Helpers
 // ================================================
 
+/** Local calendar YYYY-MM-DD. Optional dayOffset: 0 = today, -1 = yesterday. */
+export function getLocalDateString(dayOffset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Record a qualifying streak activity for the user's local calendar day.
+ * @returns {{ streak: number, max_streak: number } | null}
+ */
+export async function recordStreakActivity(userId, localDate) {
+  if (!userId) return null;
+  try {
+    const date = localDate || getLocalDateString();
+    const { data, error } = await supabase.rpc('record_user_streak', {
+      p_user_id: userId,
+      p_local_date: date,
+    });
+    if (error) {
+      console.warn('recordStreakActivity:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    if (!row) return null;
+    return { streak: row.streak, max_streak: row.max_streak };
+  } catch (e) {
+    console.warn('recordStreakActivity:', e?.message || e);
+    return null;
+  }
+}
+
 /* ✅ NEW: fetch a user's base profile (name + type) from public.profiles */
 async function fetchBaseProfile(userId) {
   const { data, error } = await supabase
@@ -162,6 +197,7 @@ export async function saveTrainingPlan(userId, planData, name, planId = null) {
         .single();
 
       if (error) throw error;
+      void recordStreakActivity(userId);
       return { data, error: null };
     }
 
@@ -185,6 +221,7 @@ export async function saveTrainingPlan(userId, planData, name, planId = null) {
 
     if (error) throw error;
     console.log('✅ Training plan saved:', data);
+    void recordStreakActivity(userId);
     return { data, error: null };
   } catch (error) {
     console.error('❌ Save training plan error:', error);

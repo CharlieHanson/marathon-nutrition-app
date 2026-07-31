@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
@@ -30,6 +31,7 @@ import {
 } from '../../utils/mealHelpers';
 import { apiClient } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
+import { getLocalDateString } from '../../../shared/lib/dataClient';
 import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 
 const { width } = Dimensions.get('window');
@@ -75,8 +77,17 @@ export default function DashboardScreen() {
   const mealPlanHook = useMealPlan(user, isGuest);
   const trainingPlanHook = useTrainingPlan(user, isGuest);
   const profileHook = useUserProfile(user, isGuest);
+  const { refreshProfile } = profileHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
   const { canDo, refetch: refetchLimits } = useUsageLimits(user, isGuest);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && !isGuest) {
+        refreshProfile?.();
+      }
+    }, [user?.id, isGuest, refreshProfile])
+  );
 
   const styles = getStyles(colors);
 
@@ -313,6 +324,17 @@ export default function DashboardScreen() {
 
   const nextAction = getNextAction();
 
+  const displayStreak = (() => {
+    const raw = profileHook.rawUserProfile?.streak ?? 0;
+    const last = profileHook.rawUserProfile?.last_streak_date;
+    if (!last || raw === 0) return raw;
+    const today = getLocalDateString();
+    const yesterday = getLocalDateString(-1);
+    if (last === today || last === yesterday) return raw;
+    return 0;
+  })();
+  const maxStreak = profileHook.rawUserProfile?.max_streak ?? 0;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Top Status Strip */}
@@ -323,6 +345,22 @@ export default function DashboardScreen() {
         </View>
         <View style={styles.statusPill}>
           <Text style={styles.statusPillText}>On Track</Text>
+        </View>
+      </View>
+
+      {/* Streak card */}
+      <View style={styles.primaryTile}>
+        <View style={[styles.tileHeader, styles.streakHeader]}>
+          <Ionicons name="flame" size={24} color="#FFFFFF" />
+          <Text style={styles.tileTitle}>Streak</Text>
+        </View>
+        <View style={styles.tileContent}>
+          <Text style={styles.streakValue}>
+            {displayStreak} day{displayStreak === 1 ? '' : 's'} streak
+          </Text>
+          {maxStreak > 0 ? (
+            <Text style={styles.streakBest}>Best: {maxStreak} day{maxStreak === 1 ? '' : 's'}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -606,6 +644,9 @@ const getStyles = (colors) => StyleSheet.create({
   trainingHeader: {
     backgroundColor: colors.info,
   },
+  streakHeader: {
+    backgroundColor: colors.warning,
+  },
   tileTitle: {
     fontSize: 18,
     fontWeight: '800',
@@ -613,6 +654,17 @@ const getStyles = (colors) => StyleSheet.create({
   },
   tileContent: {
     padding: 14,
+  },
+  streakValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  streakBest: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
 
   // ---- Calories Row ----

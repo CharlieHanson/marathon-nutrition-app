@@ -18,6 +18,7 @@ import {
   resolveMealToggles,
   getInactiveMealTypeError,
 } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -65,6 +66,7 @@ export function createGenerateSingleMealHandler(provider) {
         userPrompt,
         ragContext,
         includeDessert,
+        localDate,
       } = req.body;
 
       if (!userProfile || !day || !rawMealType) {
@@ -224,6 +226,8 @@ export function createGenerateSingleMealHandler(provider) {
       }
 
       console.log(`✅ ${mealString}`);
+
+      await recordUserStreak(supabase, userId, localDate);
 
       res.status(200).json({
         success: true,

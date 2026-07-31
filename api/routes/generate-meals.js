@@ -7,6 +7,7 @@ import { getTopMealsByVector } from '../lib/rag.js'; // adjust path if needed
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey =
@@ -497,6 +498,7 @@ export default async function handler(req, res) {
     trainingPlan: clientTrainingPlan,
     weekStarting,
     existingMeals,
+    localDate,
   } = req.body || {};
 
   // Rate limit check must happen BEFORE sseHeaders() writes Content-Type
@@ -721,6 +723,7 @@ Return ONLY JSON with the same shape for this day:
     }
 
     sendEvent(res, 'done', { success: true, weekStarting, userSaved: Boolean(userId) });
+    await recordUserStreak(supabase, userId, localDate);
     clearInterval(keepAlive);
     res.end();
   } catch (error) {

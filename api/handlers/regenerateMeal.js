@@ -17,6 +17,7 @@ import {
   resolveMealToggles,
   getInactiveMealTypeError,
 } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -52,6 +53,7 @@ export function createRegenerateMealHandler(provider) {
         reason,
         currentMeal,
         includeDessert,
+        localDate,
       } = req.body;
 
       if (!userProfile || !mealType || !day) {
@@ -134,6 +136,7 @@ export function createRegenerateMealHandler(provider) {
       ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
 
       if (ingredients.length === 0) {
+        await recordUserStreak(supabase, userId, localDate);
         return res.status(200).json({
           success: true,
           meal: mealData.meal_name || 'Generated meal',
@@ -152,6 +155,8 @@ export function createRegenerateMealHandler(provider) {
       const mealName = mealData.meal_name || 'Regenerated meal';
 
       console.log(`✅ ${mealName}: ${macros.calories} kcal (target: ${budget.calories}), scaled: ${result.scaled}`);
+
+      await recordUserStreak(supabase, userId, localDate);
 
       res.status(200).json({
         success: true,

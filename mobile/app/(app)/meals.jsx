@@ -24,7 +24,7 @@ import { useMealPlan } from '../../hooks/useMealPlan';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useMealCompletions, getCurrentDayOfWeek, getTodayDate } from '../../hooks/useMealCompletions';
-import { saveMeal } from '../../../shared/lib/dataClient';
+import { saveMeal, recordStreakActivity } from '../../../shared/lib/dataClient';
 import { apiClient } from '../../../shared/services/api';
 
 // Import components
@@ -445,6 +445,9 @@ export default function MealsScreen() {
 
   const handleLogMeal = (day, mealType, mealDescription) => {
     mealPlanHook.updateMeal(day, mealType, mealDescription);
+    if (user?.id && !isGuest) {
+      void recordStreakActivity(user.id);
+    }
   };
 
   const handleLogSnack = async ({ day, name, calories, protein, carbs, fat }) => {

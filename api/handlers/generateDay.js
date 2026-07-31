@@ -13,6 +13,7 @@ import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { buildGenerationMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -51,6 +52,7 @@ export function createGenerateDayHandler(provider) {
       debug = false,
       forceRegenerate = false,
       includeDessert,
+      localDate,
     } = req.body;
 
     if (!userProfile || !day) {
@@ -300,6 +302,8 @@ export function createGenerateDayHandler(provider) {
           console.warn('Failed to save meals to DB:', e.message);
         }
       }
+
+      await recordUserStreak(supabase, userId, localDate);
 
       send('done', {
         success: true,

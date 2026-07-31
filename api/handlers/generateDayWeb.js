@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { buildGenerationMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -31,7 +32,7 @@ export function createGenerateDayWebHandler(provider) {
     }
 
     const userId = getRequestUserId(req);
-    const { userProfile, foodPreferences, trainingPlan, day, includeDessert } = req.body;
+    const { userProfile, foodPreferences, trainingPlan, day, includeDessert, localDate } = req.body;
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
@@ -169,6 +170,10 @@ export function createGenerateDayWebHandler(provider) {
         mealsGenerated: generatedMeals.length,
         provider,
       });
+
+      if (generatedMeals.length > 0) {
+        await recordUserStreak(supabase, userId, localDate);
+      }
     } catch (err) {
       console.error(`generate-day-web (${provider}) error:`, err);
       if (isHighDemandError(err.message)) {
