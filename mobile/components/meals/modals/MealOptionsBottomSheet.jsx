@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { StarRating } from '../StarRating';
 
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFillObject,
@@ -14,32 +14,36 @@ const getStyles = (colors) =>
       elevation: 200,
     },
     bottomSheet: {
-      backgroundColor: colors.cardBackground,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       padding: 20,
       paddingBottom: 52,
       maxHeight: '90%',
+      borderWidth: isDarkMode ? 0 : 1,
+      borderColor: colors.border,
     },
     bottomSheetHandle: {
-      width: 42,
+      width: 40,
       height: 4,
-      backgroundColor: colors.border,
+      backgroundColor: colors.borderDark,
       borderRadius: 2,
       alignSelf: 'center',
       marginBottom: 14,
+      opacity: 0.7,
     },
     bottomSheetTitle: {
-      fontSize: 18,
-      fontWeight: '900',
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 20,
       color: colors.text,
       marginBottom: 16,
       textAlign: 'center',
+      letterSpacing: -0.2,
     },
     bottomSheetRating: {
       alignItems: 'center',
-      marginBottom: 16,
-      paddingBottom: 16,
+      marginBottom: 14,
+      paddingBottom: 14,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
@@ -54,15 +58,20 @@ const getStyles = (colors) =>
       alignItems: 'center',
       paddingVertical: 14,
       paddingHorizontal: 14,
-      borderRadius: 12,
-      backgroundColor: colors.inputBackground,
+      borderRadius: 16,
+      backgroundColor: colors.cardBackground,
       borderWidth: 1,
       borderColor: colors.border,
       marginBottom: 10,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDarkMode ? 0 : 0.04,
+      shadowRadius: 4,
+      elevation: isDarkMode ? 0 : 1,
     },
     bottomSheetOptionText: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '700',
       color: colors.text,
       marginLeft: 12,
     },
@@ -74,12 +83,15 @@ const getStyles = (colors) =>
       color: colors.error,
     },
     bottomSheetCancel: {
-      backgroundColor: colors.cardBackground,
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      shadowOpacity: 0,
+      elevation: 0,
       marginBottom: 0,
     },
     bottomSheetCancelText: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '700',
       color: colors.textSecondary,
       textAlign: 'center',
       width: '100%',
@@ -104,8 +116,8 @@ export const MealOptionsBottomSheet = ({
   savingMeal,
   canRegenerate = true,
 }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   if (!visible) return null;
 
@@ -129,12 +141,12 @@ export const MealOptionsBottomSheet = ({
             onPress={onSaveMeal}
             disabled={savingMeal}
           >
-            <Ionicons name="bookmark-outline" size={22} color={colors.textSecondary} />
+            <Ionicons name="bookmark-outline" size={22} color={colors.primary} />
             <Text style={styles.bottomSheetOptionText}>Save meal</Text>
             {savingMeal ? (
               <ActivityIndicator
                 size="small"
-                color={colors.textSecondary}
+                color={colors.primary}
                 style={{ marginLeft: 10 }}
               />
             ) : null}
@@ -146,12 +158,12 @@ export const MealOptionsBottomSheet = ({
           onPress={onGetRecipe}
           disabled={loadingRecipe}
         >
-          <Ionicons name="book-outline" size={22} color={colors.textSecondary} />
+          <Ionicons name="book-outline" size={22} color={colors.primary} />
           <Text style={styles.bottomSheetOptionText}>Get Recipe</Text>
           {loadingRecipe ? (
             <ActivityIndicator
               size="small"
-              color={colors.textSecondary}
+              color={colors.primary}
               style={{ marginLeft: 10 }}
             />
           ) : null}
@@ -159,7 +171,7 @@ export const MealOptionsBottomSheet = ({
 
         {canRegenerate ? (
           <TouchableOpacity style={styles.bottomSheetOption} onPress={onRegenerate}>
-            <Ionicons name="refresh-outline" size={22} color={colors.textSecondary} />
+            <Ionicons name="refresh-outline" size={22} color={colors.primary} />
             <Text style={styles.bottomSheetOptionText}>Regenerate</Text>
           </TouchableOpacity>
         ) : null}

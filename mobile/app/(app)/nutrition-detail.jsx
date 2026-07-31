@@ -36,9 +36,9 @@ const getMealConfig = (mealType) =>
   MEAL_CONFIG[mealType] ?? { label: mealType.charAt(0).toUpperCase() + mealType.slice(1), color: '#6b7280' };
 
 const MACRO_CONFIG = [
-  { key: 'carbs',   label: 'Carbs',   color: macroColors.carbs, calsPerGram: 4 },
   { key: 'protein', label: 'Protein', color: macroColors.protein, calsPerGram: 4 },
-  { key: 'fat',     label: 'Lipids',  color: macroColors.fat, calsPerGram: 9 },
+  { key: 'carbs',   label: 'Carbs',   color: macroColors.carbs, calsPerGram: 4 },
+  { key: 'fat',     label: 'Fats',    color: macroColors.fat, calsPerGram: 9 },
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -104,7 +104,8 @@ const PieChart = ({ data, size = 220 }) => {
 
 // ─── Horizontal progress bar row ────────────────────────────────────────────
 const MacroBar = ({ label, eaten, total, color, unit = 'g', colors }) => {
-  const pct = total > 0 ? Math.min((eaten / total) * 100, 100) : 0;
+  const pct = total > 0 ? Math.round((eaten / total) * 100) : 0;
+  const fillPct = Math.min(pct, 100);
   return (
     <View style={barStyles.row}>
       <View style={barStyles.labelRow}>
@@ -115,8 +116,11 @@ const MacroBar = ({ label, eaten, total, color, unit = 'g', colors }) => {
           <Text style={barStyles.valuesOf}> / {total}{unit}</Text>
         </Text>
       </View>
+      <Text style={[barStyles.meta, { color: colors.textTertiary }]}>
+        {pct}% of goal · {total}{unit} target
+      </Text>
       <View style={[barStyles.track, { backgroundColor: colors.border }]}>
-        <View style={[barStyles.fill, { width: `${pct}%`, backgroundColor: color }]} />
+        <View style={[barStyles.fill, { width: `${fillPct}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
@@ -124,11 +128,12 @@ const MacroBar = ({ label, eaten, total, color, unit = 'g', colors }) => {
 
 const barStyles = StyleSheet.create({
   row:      { marginBottom: 18 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
   dot:      { width: 10, height: 10, borderRadius: 5 },
   label:    { fontSize: 15, fontWeight: '700', flex: 1 },
   values:   { fontSize: 14, fontWeight: '800' },
   valuesOf: { fontWeight: '500', opacity: 0.6 },
+  meta:     { fontSize: 12, fontWeight: '500', marginBottom: 8, paddingLeft: 18 },
   track:    { height: 10, borderRadius: 5, overflow: 'hidden' },
   fill:     { height: '100%', borderRadius: 5 },
 });

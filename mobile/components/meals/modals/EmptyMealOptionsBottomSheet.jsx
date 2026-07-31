@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { TourTarget } from '../../tour/TourTarget';
 
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFillObject,
@@ -14,51 +14,64 @@ const getStyles = (colors) =>
       elevation: 200,
     },
     bottomSheet: {
-      backgroundColor: colors.cardBackground,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       padding: 20,
       paddingBottom: 34,
       maxHeight: '80%',
+      borderWidth: isDarkMode ? 0 : 1,
+      borderColor: colors.border,
     },
     bottomSheetHandle: {
-      width: 42,
+      width: 40,
       height: 4,
-      backgroundColor: colors.border,
+      backgroundColor: colors.borderDark,
       borderRadius: 2,
       alignSelf: 'center',
       marginBottom: 14,
+      opacity: 0.7,
     },
     bottomSheetTitle: {
-      fontSize: 18,
-      fontWeight: '900',
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 20,
       color: colors.text,
       marginBottom: 16,
       textAlign: 'center',
+      letterSpacing: -0.2,
     },
     bottomSheetOption: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 14,
       paddingHorizontal: 14,
-      borderRadius: 12,
-      backgroundColor: colors.inputBackground,
+      borderRadius: 16,
+      backgroundColor: colors.cardBackground,
       borderWidth: 1,
       borderColor: colors.border,
       marginBottom: 10,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDarkMode ? 0 : 0.04,
+      shadowRadius: 4,
+      elevation: isDarkMode ? 0 : 1,
     },
     bottomSheetOptionText: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '700',
       color: colors.text,
       marginLeft: 12,
     },
     bottomSheetCancel: {
-      backgroundColor: colors.cardBackground,
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      shadowOpacity: 0,
+      elevation: 0,
+      marginBottom: 0,
     },
     bottomSheetCancelText: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '700',
       color: colors.textSecondary,
       textAlign: 'center',
       width: '100%',
@@ -79,8 +92,8 @@ export function EmptyMealOptionsBottomSheet({
   canGenerate = true,
   showMealPrep = false,
 }) {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   if (!visible) return null;
 
@@ -103,13 +116,13 @@ export function EmptyMealOptionsBottomSheet({
         ) : null}
 
         <TouchableOpacity style={styles.bottomSheetOption} onPress={onLogMeal}>
-          <Ionicons name="create-outline" size={22} color={colors.textSecondary} />
+          <Ionicons name="create-outline" size={22} color={colors.primary} />
           <Text style={styles.bottomSheetOptionText}>Log Meal</Text>
         </TouchableOpacity>
 
         {showMealPrep ? (
           <TouchableOpacity style={styles.bottomSheetOption} onPress={onMealPrep}>
-            <Ionicons name="restaurant-outline" size={22} color={colors.textSecondary} />
+            <Ionicons name="restaurant-outline" size={22} color={colors.primary} />
             <Text style={styles.bottomSheetOptionText}>Meal Prep</Text>
           </TouchableOpacity>
         ) : null}

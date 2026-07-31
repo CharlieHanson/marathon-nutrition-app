@@ -6,7 +6,7 @@ export const PRODUCT_TOUR_STEPS = [
     route: 'dashboard',
     targetId: null,
     title: 'Welcome to Alimenta',
-    body: 'This is your home base — your daily macros, meals, and training all in one place.',
+    body: 'This is your home base — streak, today’s nutrition, and a daily focus to keep you moving.',
     placement: 'center',
     allowTargetPress: false,
     showSkip: true,

@@ -17,6 +17,7 @@ import { useProductTour } from '../../context/ProductTourContext';
 import { supabase } from '../../../shared/lib/supabase.native';
 import { apiClient } from '../../../shared/services/api';
 import { useRouter } from 'expo-router';
+import { ShareFeedbackModal } from '../../components/modals/ShareFeedbackModal';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -31,6 +32,9 @@ export default function SettingsScreen() {
 
   // Delete account state
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Share feedback state
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
   const handleChangePassword = async () => {
     setPasswordMessage('');
@@ -153,9 +157,9 @@ export default function SettingsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Account Settings</Text>
 
-      {/* Appearance Settings */}
+      {/* General Settings */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Appearance</Text>
+        <Text style={styles.cardTitle}>General</Text>
         <View style={styles.settingRow}>
           <View style={styles.settingLeft}>
             <Ionicons name="moon" size={20} color={colors.textSecondary} />
@@ -191,6 +195,23 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         ) : null}
+
+        <TouchableOpacity
+          style={[styles.settingRow, styles.tutorialRow]}
+          onPress={() => setFeedbackModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.settingLeft}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textSecondary} />
+            <View style={styles.settingText}>
+              <Text style={styles.settingLabel}>Share Feedback</Text>
+              <Text style={styles.settingDescription}>
+                Send feedback or report a bug
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Change Password */}
@@ -253,7 +274,7 @@ export default function SettingsScreen() {
             style={styles.legalButton}
             onPress={handleOpenPrivacyPolicy}
           >
-            <Ionicons name="shield-outline" size={20} color={colors.primary} />
+            <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.legalButtonText}>Privacy Policy</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -262,12 +283,17 @@ export default function SettingsScreen() {
             style={styles.legalButton}
             onPress={handleOpenTermsOfService}
           >
-            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.legalButtonText}>Terms of Service</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
+
+      <ShareFeedbackModal
+        visible={feedbackModalVisible}
+        onClose={() => setFeedbackModalVisible(false)}
+      />
 
       {/* Delete Account Section */}
       <View style={styles.dangerSection}>

@@ -1,19 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  Modal,
-  Pressable,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Keyboard,
-  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../shared/lib/supabase.native';
 import { useTheme } from '../../context/ThemeContext';
+import { AestheticDialog } from '../ui/AestheticSheet';
 
 const getSiteUrl = () => {
   const siteUrl = process.env.EXPO_PUBLIC_SITE_URL;
@@ -25,32 +21,12 @@ const getSiteUrl = () => {
   return String(siteUrl).trim().replace(/\/$/, '');
 };
 
-const KEYBOARD_LIFT = 56;
-
 export const ForgotPasswordModal = ({ visible, onClose }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    if (!visible) {
-      setKeyboardOpen(false);
-      return undefined;
-    }
-
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [visible]);
 
   const handleSendResetLink = async () => {
     if (!email.trim()) {
@@ -89,176 +65,119 @@ export const ForgotPasswordModal = ({ visible, onClose }) => {
   const handleClose = () => {
     setEmail('');
     setMessage('');
-    setKeyboardOpen(false);
     onClose();
   };
 
+  const footer = (
+    <View style={styles.buttonRow}>
+      <TouchableOpacity
+        style={[styles.button, styles.cancelButton]}
+        onPress={handleClose}
+        disabled={loading}
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, styles.sendButton, loading && styles.sendButtonDisabled]}
+        onPress={handleSendResetLink}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={styles.sendButtonText}>Sending...</Text>
+          </>
+        ) : (
+          <Text style={styles.sendButtonText}>Send Reset Link</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <Modal
+    <AestheticDialog
       visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
+      onClose={handleClose}
+      icon="lock-closed-outline"
+      eyebrow="ACCOUNT"
+      title="Reset Password"
+      footer={footer}
     >
-      <View style={styles.modalOverlay}>
-        <Pressable onPress={handleClose} style={styles.overlayPressable} />
+      <Text style={styles.description}>
+        Enter your email address and we'll send you a link to reset your password.
+      </Text>
+
+      <Text style={styles.label}>Email Address</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="you@example.com"
+        placeholderTextColor={colors.textTertiary}
+        value={email}
+        onChangeText={(text) => {
+          setEmail(text);
+          setMessage('');
+        }}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        editable={!loading}
+        returnKeyType="done"
+        blurOnSubmit={true}
+      />
+
+      {message ? (
         <View
           style={[
-            styles.modalContent,
-            keyboardOpen && { transform: [{ translateY: -KEYBOARD_LIFT }] },
+            styles.messageContainer,
+            message.includes('✅')
+              ? styles.messageContainerSuccess
+              : styles.messageContainerError,
           ]}
         >
-          <View style={styles.modalInner}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Reset Password</Text>
-              <TouchableOpacity
-                onPress={handleClose}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.description}>
-              Enter your email address and we'll send you a link to reset your password.
-            </Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.placeholderColor}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  setMessage('');
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                editable={!loading}
-                returnKeyType="done"
-                blurOnSubmit={true}
-              />
-            </View>
-
-            {message ? (
-              <View
-                style={[
-                  styles.messageContainer,
-                  message.includes('✅')
-                    ? styles.messageContainerSuccess
-                    : styles.messageContainerError,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.messageText,
-                    message.includes('✅')
-                      ? styles.messageTextSuccess
-                      : styles.messageTextError,
-                  ]}
-                >
-                  {message}
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={handleClose}
-                disabled={loading}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.sendButton, loading && styles.sendButtonDisabled]}
-                onPress={handleSendResetLink}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.sendButtonText}>Sending...</Text>
-                  </>
-                ) : (
-                  <Text style={styles.sendButtonText}>Send Reset Link</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Text
+            style={[
+              styles.messageText,
+              message.includes('✅') ? styles.messageTextSuccess : styles.messageTextError,
+            ]}
+          >
+            {message}
+          </Text>
         </View>
-      </View>
-    </Modal>
+      ) : null}
+    </AestheticDialog>
   );
 };
 
 function getStyles(colors) {
   return StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: colors.modalOverlay,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    overlayPressable: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 0,
-    },
-    modalContent: {
-      width: '90%',
-      maxWidth: 400,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      overflow: 'hidden',
-      zIndex: 1,
-    },
-    modalInner: {
-      padding: 20,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
-    },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: '900',
-      color: colors.text,
-    },
     description: {
       fontSize: 14,
       color: colors.textSecondary,
       lineHeight: 20,
-      marginBottom: 20,
-    },
-    inputGroup: {
       marginBottom: 16,
     },
     label: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.gray700,
+      color: colors.textSecondary,
       marginBottom: 8,
     },
     input: {
       width: '100%',
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderWidth: 1,
-      borderColor: colors.borderDark,
-      borderRadius: 8,
+      borderColor: colors.border,
+      borderRadius: 12,
       backgroundColor: colors.inputBackground,
       color: colors.text,
       fontSize: 16,
+      marginBottom: 8,
     },
     messageContainer: {
       padding: 12,
-      borderRadius: 8,
-      marginBottom: 16,
+      borderRadius: 12,
+      marginTop: 8,
     },
     messageContainerSuccess: {
       backgroundColor: colors.successLight,
@@ -286,19 +205,21 @@ function getStyles(colors) {
     },
     button: {
       flex: 1,
-      paddingVertical: 12,
+      paddingVertical: 13,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
     },
     cancelButton: {
-      backgroundColor: colors.gray100,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     cancelButtonText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.gray700,
+      color: colors.textSecondary,
     },
     sendButton: {
       backgroundColor: colors.primary,

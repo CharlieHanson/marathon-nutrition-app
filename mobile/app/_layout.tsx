@@ -19,7 +19,7 @@ import { ProductTourProvider } from '../context/ProductTourContext';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../context/ThemeContext';
 import { shouldEnablePostHog } from '../lib/analytics';
-import { applyQuicksandFont, quicksandFonts } from '../lib/fonts';
+import { applyQuicksandFont, quicksandFonts, playfairFonts, questrialFonts } from '../lib/fonts';
 
 const sentryDsn =
   Constants.expoConfig?.extra?.sentryDsn ||
@@ -76,6 +76,8 @@ function AppProviders({ children }: { children: ReactNode }) {
 function RootLayout() {
   const [loaded, error] = useFonts({
     ...quicksandFonts,
+    ...playfairFonts,
+    ...questrialFonts,
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });

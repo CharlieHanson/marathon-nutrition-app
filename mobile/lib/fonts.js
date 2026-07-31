@@ -7,6 +7,13 @@ import {
   Quicksand_600SemiBold,
   Quicksand_700Bold,
 } from '@expo-google-fonts/quicksand';
+import {
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_400Regular_Italic,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+} from '@expo-google-fonts/playfair-display';
+import { Questrial_400Regular } from '@expo-google-fonts/questrial';
 
 export const quicksandFonts = {
   Quicksand_300Light,
@@ -14,6 +21,17 @@ export const quicksandFonts = {
   Quicksand_500Medium,
   Quicksand_600SemiBold,
   Quicksand_700Bold,
+};
+
+export const playfairFonts = {
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_400Regular_Italic,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+};
+
+export const questrialFonts = {
+  Questrial_400Regular,
 };
 
 const WEIGHT_TO_FAMILY = {

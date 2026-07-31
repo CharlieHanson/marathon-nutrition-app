@@ -1,22 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Alert,
-  Modal,
-  Pressable,
   ScrollView,
-  Share,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
-import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
 import { useTrainingPlan } from '../../hooks/useTrainingPlan';
@@ -24,34 +19,58 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import { useMealCompletions } from '../../hooks/useMealCompletions';
 import {
   calculateDayMacros,
-  countMeals,
   getDayMealToggles,
   getActiveMealTypes,
   parseMeal,
 } from '../../utils/mealHelpers';
-import { apiClient } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
 import { getLocalDateString } from '../../../shared/lib/dataClient';
-import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 
 const { width } = Dimensions.get('window');
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+const MEAL_CHIP_ORDER = ['breakfast', 'lunch', 'dinner', 'dessert'];
+const MEAL_LABELS = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snacks: 'Snack',
+  dessert: 'Dessert',
+};
+
+const MACRO_ROWS = [
+  { key: 'protein', label: 'Protein', color: macroColors.protein, calsPerGram: 4 },
+  { key: 'carbs', label: 'Carbs', color: macroColors.carbs, calsPerGram: 4 },
+  { key: 'fat', label: 'Fats', color: macroColors.fat, calsPerGram: 9 },
+];
 
 const getTodayDayName = () => {
-  const today = new Date();
-  const day = today.getDay(); // 0=Sun, 1=Mon,...
-  // Map to app's day keys: monday..sunday
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  return dayNames[day];
+  return dayNames[new Date().getDay()];
 };
 
-const formatTodayDate = () => {
+const formatFullDate = () => {
   const today = new Date();
-  return today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 };
 
-// Returns ALL planned workouts for today (not just the first)
+const formatNumber = (n) => {
+  if (n == null || Number.isNaN(n)) return '0';
+  return Math.round(n).toLocaleString('en-US');
+};
+
+const getFirstName = (profile, rawProfile, isGuest) => {
+  const full =
+    profile?.name ||
+    rawProfile?.name ||
+    '';
+  if (!full.trim()) return isGuest ? 'there' : 'friend';
+  return full.trim().split(/\s+/)[0];
+};
+
 const getTodayWorkouts = (trainingPlan) => {
   if (!trainingPlan) return [];
   const todayDay = getTodayDayName();
@@ -66,20 +85,158 @@ const getTodayWorkouts = (trainingPlan) => {
   });
 };
 
-const OFFLINE_ALERT = () =>
-  Alert.alert('No Connection', 'Please check your internet connection and try again.');
+const getWorkoutIcon = (type) => {
+  switch (type) {
+    case 'Rest':
+      return 'bed-outline';
+    case 'Distance Run':
+      return 'walk-outline';
+    case 'Speed or Agility Training':
+      return 'flash-outline';
+    case 'Bike Ride':
+      return 'bicycle-outline';
+    case 'Walk/Hike':
+      return 'trail-sign-outline';
+    case 'Swim':
+      return 'water-outline';
+    case 'Strength Training':
+      return 'barbell-outline';
+    case 'Sport Practice':
+      return 'football-outline';
+    default:
+      return 'fitness-outline';
+  }
+};
+
+const getTodaysTraining = (trainingPlan, workouts, isGuest, trainingLoading) => {
+  if (isGuest || !trainingPlan || trainingLoading) {
+    return {
+      quote: 'Start where you are.',
+      caption: 'Set up a training plan to guide your week.',
+      icon: 'fitness-outline',
+    };
+  }
+  if (workouts.length > 0) {
+    const first = workouts[0];
+    const captionParts = [first.distance, first.intensity].filter(Boolean);
+    return {
+      quote: first.type || 'Workout day',
+      caption: captionParts.length > 0
+        ? captionParts.join(' · ')
+        : 'Your session is ready when you are.',
+      icon: getWorkoutIcon(first.type),
+    };
+  }
+  return {
+    quote: 'Rest day',
+    caption: 'Recovery is part of the plan.',
+    icon: 'bed-outline',
+  };
+};
+
+/** Donut chart with optional center slot via absolute overlay in parent */
+const MacroDonut = ({ data, size = 140, strokeWidth = 18, trackColor = '#E8E2D6' }) => {
+  const total = data.reduce((sum, d) => sum + Math.max(0, d.value), 0);
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = (size - strokeWidth) / 2;
+  const innerR = r - strokeWidth;
+
+  if (total <= 0) {
+    return (
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={(r + innerR) / 2}
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+      </Svg>
+    );
+  }
+
+  let angle = -Math.PI / 2;
+  const slices = data.map((d) => {
+    const value = Math.max(0, d.value);
+    const sweep = (value / total) * 2 * Math.PI;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+
+    const cos0 = Math.cos(start);
+    const sin0 = Math.sin(start);
+    const cos1 = Math.cos(end);
+    const sin1 = Math.sin(end);
+    const large = sweep > Math.PI ? 1 : 0;
+
+    const path = [
+      `M ${cx + r * cos0} ${cy + r * sin0}`,
+      `A ${r} ${r} 0 ${large} 1 ${cx + r * cos1} ${cy + r * sin1}`,
+      `L ${cx + innerR * cos1} ${cy + innerR * sin1}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${cx + innerR * cos0} ${cy + innerR * sin0}`,
+      'Z',
+    ].join(' ');
+
+    const mid = start + sweep / 2;
+    const labelR = r + 13;
+    return {
+      ...d,
+      path,
+      labelX: cx + labelR * Math.cos(mid),
+      labelY: cy + labelR * Math.sin(mid),
+      pct: d.goalPct,
+    };
+  });
+
+  return (
+    <View style={{ width: size + 28, height: size + 28, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {slices.map((s, i) => (
+          <Path key={i} d={s.path} fill={s.color} />
+        ))}
+      </Svg>
+      {slices.map((s, i) =>
+        s.pct != null ? (
+          <Text
+            key={`pct-${i}`}
+            style={[
+              donutLabelStyles.pct,
+              {
+                left: s.labelX + 14 - 14,
+                top: s.labelY + 14 - 8,
+                color: s.color,
+              },
+            ]}
+          >
+            {s.pct}%
+          </Text>
+        ) : null
+      )}
+    </View>
+  );
+};
+
+const donutLabelStyles = StyleSheet.create({
+  pct: {
+    position: 'absolute',
+    fontSize: 11,
+    fontWeight: '700',
+    width: 28,
+    textAlign: 'center',
+  },
+});
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, isGuest } = useAuth();
-  const { isConnected } = useNetwork();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const mealPlanHook = useMealPlan(user, isGuest);
   const trainingPlanHook = useTrainingPlan(user, isGuest);
   const profileHook = useUserProfile(user, isGuest);
   const { refreshProfile } = profileHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
-  const { canDo, refetch: refetchLimits } = useUsageLimits(user, isGuest);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,42 +246,25 @@ export default function DashboardScreen() {
     }, [user?.id, isGuest, refreshProfile])
   );
 
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDarkMode);
 
-  // Prefer DB-shaped profile for generation APIs; fall back to mapped form fields.
-  const userProfile =
-    profileHook.rawUserProfile ||
-    (profileHook.profile
-      ? {
-          name: profileHook.profile.name,
-          age: profileHook.profile.age,
-          gender: profileHook.profile.gender,
-          height: profileHook.profile.height,
-          weight: profileHook.profile.weight,
-          goal: profileHook.profile.goal,
-          activity_level: profileHook.profile.activityLevel,
-          objective: profileHook.profile.objective,
-          dietary_restrictions: profileHook.profile.dietaryRestrictions,
-        }
-      : null);
-  const foodPreferences = profileHook.foodPreferences;
-  const trainingPlan = trainingPlanHook.plan;
-
-  const [showGroceryModal, setShowGroceryModal] = useState(false);
-  const [groceryList, setGroceryList] = useState([]);
-  const [loadingGroceryList, setLoadingGroceryList] = useState(false);
-
-  // Get today's data
   const todayDay = getTodayDayName();
-  const todayDate = formatTodayDate();
+  const todayDate = formatFullDate();
+  const firstName = getFirstName(profileHook.profile, profileHook.rawUserProfile, isGuest);
   const todayMeals = mealPlanHook.mealPlan?.[todayDay];
   const todayToggles = getDayMealToggles(todayMeals);
   const todayActiveTypes = getActiveMealTypes(todayToggles, todayMeals);
-  const todayMacros = todayMeals ? calculateDayMacros(todayMeals) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  const todayMacros = todayMeals
+    ? calculateDayMacros(todayMeals)
+    : { calories: 0, protein: 0, carbs: 0, fat: 0 };
   const todayWorkouts = getTodayWorkouts(trainingPlanHook.plan);
-  const weekProgress = countMeals(mealPlanHook.mealPlan);
+  const todaysTraining = getTodaysTraining(
+    trainingPlanHook.plan,
+    todayWorkouts,
+    isGuest,
+    trainingPlanHook.isLoading
+  );
 
-  // Calculate eaten macros from completed meals (active types only)
   const calculateEatenMacros = () => {
     if (!todayMeals) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
     const eaten = { calories: 0, protein: 0, carbs: 0, fat: 0 };
@@ -149,180 +289,30 @@ export default function DashboardScreen() {
   };
 
   const eatenMacros = calculateEatenMacros();
-  const remainingCalories = Math.max(0, todayMacros.calories - eatenMacros.calories);
-  const progressPercentage = todayMacros.calories > 0 ? (eatenMacros.calories / todayMacros.calories) * 100 : 0;
+  const displayCalories =
+    eatenMacros.calories > 0 ? eatenMacros.calories : todayMacros.calories;
 
-  // Calculate macro percentages of total calories
-  const macroCalPercent = (grams, calsPerGram) => {
-    if (!todayMacros.calories || todayMacros.calories === 0) return 0;
-    return Math.round((grams * calsPerGram / todayMacros.calories) * 100);
+  const goalPct = (eaten, target) => {
+    if (!target || target <= 0) return 0;
+    return Math.round((eaten / target) * 100);
   };
 
-  const generateGroceryList = async () => {
-    if (isConnected === false) {
-      OFFLINE_ALERT();
-      return;
-    }
-    if (!canDo('grocery_list')) {
-      Alert.alert(
-        'Daily Limit Reached',
-        `You've used all ${DAILY_LIMITS.grocery_list} grocery list generations for today. Limits reset at midnight.`
-      );
-      return;
-    }
-    try {
-      setLoadingGroceryList(true);
-      const allMeals = [];
-
-      Object.entries(mealPlanHook.mealPlan || {}).forEach(([day, meals]) => {
-        Object.entries(meals || {}).forEach(([mealType, meal]) => {
-          if (
-            !meal ||
-            typeof meal !== 'string' ||
-            mealType.includes('_rating') ||
-            meal.trim() === ''
-          ) {
-            return;
-          }
-          allMeals.push(meal);
-        });
-      });
-
-      if (allMeals.length === 0) {
-        Alert.alert('No Meals', 'No meals found. Generate a meal plan first!');
-        setLoadingGroceryList(false);
-        return;
-      }
-
-      const result = await apiClient.generateGroceryList({
-        userId: user?.id,
-        meals: allMeals,
-        userProfile,
-      });
-
-      if (result.success && result.groceryList) {
-        setGroceryList(result.groceryList);
-        setShowGroceryModal(true);
-        refetchLimits();
-      } else {
-        throw new Error(result.error || 'Failed to generate grocery list');
-      }
-    } catch (error) {
-      console.error('Error generating grocery list:', error);
-      Alert.alert('Error', error.message || 'Failed to generate grocery list');
-    } finally {
-      setLoadingGroceryList(false);
-    }
-  };
-
-  const handleShareGroceryList = async () => {
-    try {
-      // Flatten the category/items structure for sharing
-      const listItems = [];
-      (groceryList || []).forEach((category) => {
-        if (category.category) {
-          listItems.push(`\n${category.category}:`);
-          (category.items || []).forEach((item) => {
-            listItems.push(`  • ${item}`);
-          });
-        }
-      });
-      const listText = listItems.join('\n');
-      await Share.share({
-        message: `Grocery List:\n${listText}`,
-        title: 'Grocery List',
-      });
-    } catch (error) {
-      console.error('Error sharing grocery list:', error);
-    }
-  };
-
-  const hasMealPlanData = weekProgress.filled > 0;
-  const mealPlanFetchFailed = !!mealPlanHook.fetchError && !hasMealPlanData;
-  const trainingFetchFailed = !!trainingPlanHook.fetchError;
-
-  // Determine next action based on priority
-  const getNextAction = () => {
-    // A) No training plan
-    const hasTrainingPlan = trainingPlanHook.plan && Object.keys(trainingPlanHook.plan).length > 0;
-    if (isGuest || !hasTrainingPlan) {
-      return {
-        title: 'Create training plan',
-        subtitle: 'Set up your week',
-        onPress: () => router.push('/(app)/training'),
-      };
-    }
-
-    // B) Meal plan fetch failed with no data — do not show generate CTA
-    if (mealPlanFetchFailed) {
-      return {
-        title: "Couldn't load your meal plan",
-        subtitle: 'Pull to refresh.',
-        onPress: () => mealPlanHook.refetchCurrentWeek(),
-        isError: true,
-      };
-    }
-
-    // C) No meal plan (check if any meals exist) — only after a successful fetch
-    const hasMealPlan = mealPlanHook.mealPlan && hasMealPlanData;
-    if (!hasMealPlan) {
-      return {
-        title: 'Generate meal plan',
-        subtitle: 'Generate meals for the week',
-        onPress: async () => {
-          if (!user || isGuest) {
-            router.push('/(app)/meals');
-            return;
-          }
-          if (isConnected === false) {
-            OFFLINE_ALERT();
-            return;
-          }
-          if (!canDo('meal_generation')) {
-            Alert.alert(
-              'Daily Limit Reached',
-              `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
-            );
-            return;
-          }
-          try {
-            const todayDay = getTodayDayName();
-            await mealPlanHook.generateDay(todayDay, userProfile, foodPreferences, trainingPlan);
-            refetchLimits();
-            Alert.alert('Success', 'Meal generation started! Check the Meals tab for progress.');
-          } catch (error) {
-            Alert.alert('Error', 'Failed to generate meals. Please try again.');
-          }
-        },
-      };
-    }
-
-    // D) Training plan exists AND meal plan is fully filled
-    if (weekProgress.filled === weekProgress.total) {
-      return {
-        title: 'View grocery list',
-        subtitle: "Everything's ready",
-        onPress: () => {
-          if (!loadingGroceryList) {
-            if (isConnected === false) {
-              OFFLINE_ALERT();
-              return;
-            }
-            generateGroceryList();
-          }
-        },
-      };
-    }
-
-    // E) Otherwise (partial meal plan)
+  const macroGoalRows = MACRO_ROWS.map((m) => {
+    const eaten = eatenMacros[m.key] || 0;
+    const target = todayMacros[m.key] || 0;
     return {
-      title: 'Finish meal plan',
-      subtitle: 'Complete your meals',
-      onPress: () => router.push('/(app)/meals'),
+      ...m,
+      eaten,
+      target,
+      pct: goalPct(eaten, target),
+      donutValue: target > 0 ? target * m.calsPerGram : 1,
     };
-  };
+  });
 
-  const nextAction = getNextAction();
+  const isOnTrack =
+    todayMacros.calories <= 0 ||
+    eatenMacros.calories === 0 ||
+    eatenMacros.calories <= todayMacros.calories * 1.08;
 
   const displayStreak = (() => {
     const raw = profileHook.rawUserProfile?.streak ?? 0;
@@ -335,656 +325,476 @@ export default function DashboardScreen() {
   })();
   const maxStreak = profileHook.rawUserProfile?.max_streak ?? 0;
 
+  const mealPlanFetchFailed =
+    !!mealPlanHook.fetchError && !(mealPlanHook.mealPlan && Object.keys(mealPlanHook.mealPlan).length);
+
+  const chipTypes = MEAL_CHIP_ORDER.filter(
+    (t) => t !== 'dessert' || todayActiveTypes.includes('dessert')
+  );
+
+  const handleMealChipPress = async (mealType) => {
+    const meal = todayMeals?.[mealType];
+    const hasMeal = meal && typeof meal === 'string' && meal.trim();
+    if (hasMeal && !isGuest) {
+      try {
+        await mealCompletionsHook.toggleMealCompletion(todayDay, mealType);
+      } catch {
+        router.push('/(app)/meals');
+      }
+      return;
+    }
+    router.push('/(app)/meals');
+  };
+
+  const donutSize = Math.min(148, width * 0.38);
+
+  const streakSubtext = (() => {
+    if (displayStreak > 0 && maxStreak > 0 && displayStreak >= maxStreak) {
+      return 'This is your best streak! Keep going.';
+    }
+    if (maxStreak > 0) {
+      return `Your best is ${maxStreak}. Keep going.`;
+    }
+    return 'Log today to keep it alive.';
+  })();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Top Status Strip */}
-      <View style={styles.statusStrip}>
-        <View style={styles.statusLeft}>
-          <Text style={styles.statusLabel}>Today</Text>
-          <Text style={styles.statusDate}>{todayDate}</Text>
-        </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>On Track</Text>
-        </View>
+    <View style={styles.container}>
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
       </View>
 
-      {/* Streak card */}
-      <View style={styles.primaryTile}>
-        <View style={[styles.tileHeader, styles.streakHeader]}>
-          <Ionicons name="flame" size={24} color="#FFFFFF" />
-          <Text style={styles.tileTitle}>Streak</Text>
-        </View>
-        <View style={styles.tileContent}>
-          <Text style={styles.streakValue}>
-            {displayStreak} day{displayStreak === 1 ? '' : 's'} streak
-          </Text>
-          {maxStreak > 0 ? (
-            <Text style={styles.streakBest}>Best: {maxStreak} day{maxStreak === 1 ? '' : 's'}</Text>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Tile 1: Today's Nutrition */}
-      <TouchableOpacity
-        style={styles.primaryTile}
-        onPress={() => router.push('/(app)/nutrition-detail')}
-        activeOpacity={0.9}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.tileHeader, styles.nutritionHeader]}>
-          <Ionicons name="restaurant" size={24} color="#FFFFFF" />
-          <Text style={styles.tileTitle}>Today's Nutrition</Text>
+      {/* Greeting */}
+      <View style={styles.greetingBlock}>
+        <Text style={styles.greetingLine}>
+          <Text style={styles.greetingHey}>Hey </Text>
+          <Text style={styles.greetingName}>{firstName},</Text>
+        </Text>
+        <Text style={styles.greetingDate}>{todayDate}</Text>
+      </View>
+
+      {/* Streak */}
+      <View style={styles.streakCard}>
+        <View style={styles.streakFlameWrap}>
+          <Ionicons name="flame" size={28} color="#F0A03A" />
         </View>
-        <View style={styles.tileContent}>
+        <View style={styles.streakTextBlock}>
+          <Text style={styles.streakTitle}>
+            {displayStreak} day streak!
+          </Text>
+          <Text style={styles.streakSub}>{streakSubtext}</Text>
+        </View>
+      </View>
+
+      {/* Today's Nutrition */}
+      <View style={styles.nutritionCard}>
+        <TouchableOpacity
+          onPress={() => router.push('/(app)/nutrition-detail')}
+          activeOpacity={0.92}
+        >
+          <View style={styles.nutritionHeader}>
+            <Text style={styles.nutritionTitle}>{"TODAY'S NUTRITION"}</Text>
+            {todayMacros.calories > 0 ? (
+              <View style={styles.onTrackBadge}>
+                <Text style={styles.onTrackText}>{isOnTrack ? 'ON TRACK' : 'OVER'}</Text>
+              </View>
+            ) : null}
+          </View>
+
           {mealPlanFetchFailed ? (
             <Text style={styles.fetchErrorText}>
               Couldn't load your meal plan. Pull to refresh.
             </Text>
           ) : null}
 
-          {/* Calories: eaten / out of total */}
-          <View style={styles.caloriesRow}>
-            <View style={styles.caloriesEatenBlock}>
-              <Text style={styles.caloriesEatenValue}>
-                {todayMacros.calories > 0 ? eatenMacros.calories : '—'}
-              </Text>
+          <View style={styles.nutritionBody}>
+            <View style={styles.donutWrap}>
+              <MacroDonut
+                data={macroGoalRows.map((m) => ({
+                  value: todayMacros.calories > 0 ? m.donutValue : 0,
+                  color: m.color,
+                  goalPct: todayMacros.calories > 0 ? m.pct : null,
+                }))}
+                size={donutSize}
+                trackColor={colors.border}
+              />
+              <View style={styles.donutCenter} pointerEvents="none">
+                <Text style={styles.donutCalories}>
+                  {todayMacros.calories > 0 ? formatNumber(displayCalories) : '—'}
+                </Text>
+                <Text style={styles.donutKcal}>kcal</Text>
+              </View>
             </View>
-            {todayMacros.calories > 0 && (
-              <>
-                <Text style={styles.caloriesDivider}>out of</Text>
-                <View style={styles.caloriesTotalBlock}>
-                  <Text style={styles.caloriesTotalValue}>{todayMacros.calories}</Text>
-                  <Text style={styles.caloriesTotalLabel}>cal</Text>
-                </View>
-              </>
-            )}
-          </View>
 
-          {/* Progress bar + meal checkboxes */}
-          {todayMacros.calories > 0 && (
-            <View style={styles.progressSection}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressBarFill, { width: `${Math.min(progressPercentage, 100)}%` }]} />
-              </View>
-              <View style={styles.progressStats}>
-                <View style={styles.progressStatItem}>
-                  <View style={[styles.progressDot, { backgroundColor: '#22c55e' }]} />
-                  <Text style={styles.progressStatLabel}>Eaten</Text>
-                  <Text style={styles.progressStatValue}>{eatenMacros.calories}</Text>
-                </View>
-                <View style={styles.progressStatItem}>
-                  <View style={[styles.progressDot, { backgroundColor: colors.borderLight }]} />
-                  <Text style={styles.progressStatLabel}>Remaining</Text>
-                  <Text style={styles.progressStatValue}>{remainingCalories}</Text>
-                </View>
-              </View>
-              <View style={styles.mealCheckboxes}>
-                {todayActiveTypes.map((mealType) => {
-                  const isCompleted = mealCompletionsHook.completions.some(
-                    (c) => c.day_of_week === todayDay && c.meal_type === mealType
-                  );
-                  return (
-                    <View
-                      key={mealType}
-                      style={[
-                        styles.mealCheckbox,
-                        isCompleted && styles.mealCheckboxCompleted,
-                      ]}
-                    >
-                      {isCompleted && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+            <View style={styles.macroList}>
+              {macroGoalRows.map((m, index) => (
+                <View
+                  key={m.key}
+                  style={[
+                    styles.macroRow,
+                    index < macroGoalRows.length - 1 && styles.macroRowDivider,
+                  ]}
+                >
+                  <View style={styles.macroRowTop}>
+                    <View style={styles.macroRowLeft}>
+                      <View style={[styles.macroDot, { backgroundColor: m.color }]} />
+                      <Text style={styles.macroLabel}>{m.label}</Text>
                     </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Macro breakdown rows */}
-          <View style={styles.macroBreakdown}>
-            {/* Carbs */}
-            <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: macroColors.carbs }]} />
-              <Text style={styles.macroBreakdownLabel}>Carbs</Text>
-              <Text style={styles.macroBreakdownValue}>
-                {todayMacros.carbs > 0 ? `${todayMacros.carbs}g` : '—'}
-              </Text>
-              {todayMacros.carbs > 0 && (
-                <Text style={styles.macroBreakdownPercent}>
-                  {macroCalPercent(todayMacros.carbs, 4)}% of cal
-                </Text>
-              )}
-            </View>
-            {/* Protein */}
-            <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: macroColors.protein }]} />
-              <Text style={styles.macroBreakdownLabel}>Protein</Text>
-              <Text style={styles.macroBreakdownValue}>
-                {todayMacros.protein > 0 ? `${todayMacros.protein}g` : '—'}
-              </Text>
-              {todayMacros.protein > 0 && (
-                <Text style={styles.macroBreakdownPercent}>
-                  {macroCalPercent(todayMacros.protein, 4)}% of cal
-                </Text>
-              )}
-            </View>
-            {/* Fat */}
-            <View style={styles.macroBreakdownRow}>
-              <View style={[styles.macroDot, { backgroundColor: macroColors.fat }]} />
-              <Text style={styles.macroBreakdownLabel}>Fat</Text>
-              <Text style={styles.macroBreakdownValue}>
-                {todayMacros.fat > 0 ? `${todayMacros.fat}g` : '—'}
-              </Text>
-              {todayMacros.fat > 0 && (
-                <Text style={styles.macroBreakdownPercent}>
-                  {macroCalPercent(todayMacros.fat, 9)}% of cal
-                </Text>
-              )}
+                    <Text style={styles.macroGrams}>
+                      {todayMacros.calories > 0 ? `${Math.round(m.eaten)}g` : '—'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      {/* Tile 2: Today's Training */}
+        <View style={styles.mealChips}>
+          {chipTypes.map((mealType) => {
+            const meal = todayMeals?.[mealType];
+            const parsed = meal ? parseMeal(meal) : { calories: 0 };
+            const isCompleted = mealCompletionsHook.completions.some(
+              (c) => c.day_of_week === todayDay && c.meal_type === mealType
+            );
+            const hasMeal = meal && typeof meal === 'string' && meal.trim();
+            const logged = isCompleted && hasMeal;
+
+            return (
+              <TouchableOpacity
+                key={mealType}
+                style={[styles.mealChip, logged ? styles.mealChipLogged : styles.mealChipEmpty]}
+                onPress={() => handleMealChipPress(mealType)}
+                activeOpacity={0.85}
+              >
+                {logged ? (
+                  <Ionicons name="checkmark" size={14} color={colors.primary} />
+                ) : (
+                  <Ionicons name="add" size={16} color={colors.textSecondary} />
+                )}
+                <Text style={[styles.mealChipLabel, logged && styles.mealChipLabelLogged]}>
+                  {MEAL_LABELS[mealType] || mealType}
+                </Text>
+                {logged ? (
+                  <Text style={styles.mealChipCals}>{parsed.calories}</Text>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Daily Focus */}
       <TouchableOpacity
-        style={styles.primaryTile}
+        style={styles.focusCard}
         onPress={() => router.push('/(app)/training')}
         activeOpacity={0.9}
       >
-        <View style={[styles.tileHeader, styles.trainingHeader]}>
-          <Ionicons name="fitness" size={24} color="#FFFFFF" />
-          <Text style={styles.tileTitle}>Today's Training</Text>
+        <View style={styles.focusIconWrap}>
+          <Ionicons name={todaysTraining.icon} size={18} color={colors.brandMuted} />
         </View>
-        <View style={styles.tileContent}>
-          {trainingFetchFailed ? (
-            <Text style={styles.fetchErrorText}>Couldn't load training plan</Text>
-          ) : isGuest || !trainingPlanHook.plan || trainingPlanHook.isLoading ? (
-            <Text style={styles.noTrainingText}>No training plan yet</Text>
-          ) : todayWorkouts.length > 0 ? (
-            <View style={styles.workoutsList}>
-              {todayWorkouts.map((workout, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.workoutItem,
-                    index < todayWorkouts.length - 1 && styles.workoutItemDivider,
-                  ]}
-                >
-                  <Text style={styles.workoutType}>{workout.type || 'Workout'}</Text>
-                  {workout.distance && (
-                    <Text style={styles.workoutDetail}>{workout.distance}</Text>
-                  )}
-                  <View style={styles.workoutBadgeRow}>
-                    {workout.intensity && (
-                      <View style={styles.intensityBadge}>
-                        <Text style={styles.intensityText}>{workout.intensity}</Text>
-                      </View>
-                    )}
-                  </View>
-                  {workout.notes && (
-                    <Text style={styles.workoutNotes}>{workout.notes}</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.noTrainingText}>Rest</Text>
-          )}
+        <View style={styles.focusTextBlock}>
+          <Text style={styles.focusEyebrow}>{"TODAY'S TRAINING"}</Text>
+          <Text style={styles.focusQuote}>{todaysTraining.quote}</Text>
+          <Text style={styles.focusCaption}>{todaysTraining.caption}</Text>
         </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
       </TouchableOpacity>
-
-      {/* Grocery List Modal */}
-      <Modal
-        visible={showGroceryModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowGroceryModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowGroceryModal(false)}>
-          <Pressable style={styles.groceryModal} onPress={() => {}}>
-            <View style={styles.groceryModalHeader}>
-              <Text style={styles.groceryModalTitle}>Grocery List</Text>
-              <View style={styles.groceryModalActions}>
-                <TouchableOpacity
-                  onPress={handleShareGroceryList}
-                  style={styles.groceryModalAction}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="share-outline" size={22} color="#3D7C65" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowGroceryModal(false)}
-                  style={styles.groceryModalAction}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close" size={22} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView style={styles.groceryContent}>
-              {(groceryList || []).map((category, categoryIndex) => (
-                <View key={`category-${categoryIndex}`} style={styles.groceryCategory}>
-                  <Text style={styles.groceryCategoryTitle}>{category.category || 'Uncategorized'}</Text>
-                  {(category.items || []).map((item, itemIndex) => (
-                    <View key={`item-${categoryIndex}-${itemIndex}`} style={styles.groceryItem}>
-                      <Text style={styles.groceryItemText}>• {item}</Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  statusStrip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 11,
-    height: 30,
-  },
-  statusLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  statusDate: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  statusPill: {
-    backgroundColor: colors.successLight,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-  },
-  statusPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.successText,
-  },
-  primaryTile: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  tileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  nutritionHeader: {
-    backgroundColor: colors.primary,
-  },
-  trainingHeader: {
-    backgroundColor: colors.info,
-  },
-  streakHeader: {
-    backgroundColor: colors.warning,
-  },
-  tileTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  tileContent: {
-    padding: 14,
-  },
-  streakValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  streakBest: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
+const getStyles = (colors, isDarkMode) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      overflow: 'hidden',
+    },
+    bgDecor: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    bgCircle: {
+      position: 'absolute',
+      borderRadius: 9999,
+    },
+    bgCircleMint: {
+      width: width * 0.72,
+      height: width * 0.72,
+      backgroundColor: isDarkMode ? 'rgba(224,236,222,0.12)' : '#E0ECDE',
+      top: -width * 0.18,
+      right: -width * 0.28,
+    },
+    bgCirclePeach: {
+      width: width * 0.78,
+      height: width * 0.78,
+      backgroundColor: isDarkMode ? 'rgba(247,233,218,0.1)' : '#F7E9DA',
+      top: width * 0.22,
+      left: -width * 0.42,
+    },
+    scroll: {
+      flex: 1,
+      zIndex: 1,
+      backgroundColor: 'transparent',
+    },
+    scrollContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 28,
+    },
 
-  // ---- Calories Row ----
-  caloriesRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    marginBottom: 4,
-  },
-  caloriesEatenBlock: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  caloriesEatenValue: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: colors.text,
-    lineHeight: 42,
-  },
-  caloriesEatenLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  caloriesDivider: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  caloriesTotalBlock: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  caloriesTotalValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    lineHeight: 34,
-  },
-  caloriesTotalLabel: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
+    greetingBlock: {
+      marginBottom: 18,
+      marginTop: 2,
+    },
+    greetingLine: {
+      marginBottom: 4,
+    },
+    greetingHey: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 32,
+      color: colors.text,
+      letterSpacing: -0.3,
+    },
+    greetingName: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 32,
+      color: colors.brandMuted,
+      letterSpacing: -0.3,
+    },
+    greetingDate: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
 
-  // ---- Progress Section ----
-  progressSection: {
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: colors.borderLight,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#22c55e',
-    borderRadius: 4,
-  },
-  progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-  },
-  progressStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  progressStatLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  progressStatValue: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: '800',
-  },
-  mealCheckboxes: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  mealCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.borderLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mealCheckboxCompleted: {
-    backgroundColor: '#22c55e',
-  },
+    streakCard: {
+      backgroundColor: colors.streakBackground,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginBottom: 14,
+      borderWidth: isDarkMode ? 1 : 0,
+      borderColor: isDarkMode ? '#4A9B7A' : 'transparent',
+    },
+    streakFlameWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    streakTextBlock: {
+      flex: 1,
+    },
+    streakTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 2,
+    },
+    streakSub: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: 'rgba(255,255,255,0.78)',
+    },
 
-  // ---- Macro Breakdown ----
-  macroBreakdown: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: 12,
-  },
-  macroBreakdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  macroDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    flexShrink: 0,
-  },
-  macroBreakdownLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    width: 60,
-  },
-  macroBreakdownValue: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: colors.text,
-    minWidth: 56,
-  },
-  macroBreakdownPercent: {
-    fontSize: 14,
-    color: colors.textTertiary,
-    fontWeight: '500',
-    marginLeft: 4,
-  },
+    nutritionCard: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDarkMode ? 0 : 0.06,
+      shadowRadius: 8,
+      elevation: isDarkMode ? 0 : 2,
+    },
+    nutritionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    nutritionTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      letterSpacing: 1,
+    },
+    onTrackBadge: {
+      backgroundColor: colors.onTrackBackground,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10,
+    },
+    onTrackText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.onTrackText,
+      letterSpacing: 0.4,
+    },
+    nutritionBody: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      marginBottom: 12,
+    },
+    donutWrap: {
+      width: Math.min(172, width * 0.44),
+      height: Math.min(172, width * 0.44),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: -4,
+    },
+    donutCenter: {
+      position: 'absolute',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    donutCalories: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: colors.text,
+      lineHeight: 28,
+    },
+    donutKcal: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    macroList: {
+      flex: 1,
+      paddingLeft: 0,
+    },
+    macroRow: {
+      paddingVertical: 7,
+    },
+    macroRowDivider: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    macroRowTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 2,
+    },
+    macroRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    macroDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    macroLabel: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    macroGrams: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: colors.text,
+    },
 
-  // ---- Training ----
-  workoutsList: {
-    gap: 0,
-  },
-  workoutItem: {
-    paddingVertical: 10,
-  },
-  workoutItemDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  workoutType: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  workoutDetail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  workoutBadgeRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 4,
-  },
-  workoutNotes: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  intensityBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.infoLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  intensityText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.info,
-  },
-  noTrainingText: {
-    fontSize: 16,
-    color: colors.textTertiary,
-    fontWeight: '600',
-    fontStyle: 'italic',
-    paddingVertical: 8,
-  },
-  fetchErrorText: {
-    fontSize: 13,
-    color: colors.error || '#DC2626',
-    fontWeight: '600',
-    marginBottom: 10,
-    lineHeight: 18,
-  },
+    mealChips: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    mealChip: {
+      flex: 1,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      minHeight: 64,
+    },
+    mealChipEmpty: {
+      backgroundColor: colors.mealChipEmpty,
+    },
+    mealChipLogged: {
+      backgroundColor: colors.mealChipLogged,
+    },
+    mealChipLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    mealChipLabelLogged: {
+      color: colors.text,
+    },
+    mealChipCals: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.brandMuted,
+    },
 
-  // ---- Bottom Row ----
-  bottomRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  insightTile: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    borderLeftWidth: 4,
-    minHeight: 98,
-  },
-  progressTile: {
-    borderLeftColor: '#8B5CF6',
-  },
-  nextActionTile: {
-    borderLeftColor: colors.success,
-  },
-  nextActionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  nextActionLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  insightTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  insightValue: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  insightSubtext: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    fontWeight: '600',
-  },
+    focusCard: {
+      backgroundColor: colors.focusBackground,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 8,
+    },
+    focusIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: isDarkMode ? 'rgba(61,124,101,0.2)' : 'rgba(61,124,101,0.08)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    focusTextBlock: {
+      flex: 1,
+    },
+    focusEyebrow: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textTertiary,
+      letterSpacing: 0.8,
+      marginBottom: 2,
+    },
+    focusQuote: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 17,
+      color: colors.text,
+      marginBottom: 2,
+    },
+    focusCaption: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
 
-  // ---- Grocery Modal ----
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalOverlay,
-    justifyContent: 'flex-end',
-  },
-  groceryModal: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-    padding: 18,
-  },
-  groceryModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: 8,
-  },
-  groceryModalTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-  },
-  groceryModalActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  groceryModalAction: {
-    padding: 6,
-    marginLeft: 10,
-  },
-  groceryContent: {
-    maxHeight: 520,
-  },
-  groceryCategory: {
-    marginBottom: 16,
-  },
-  groceryCategoryTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-  },
-  groceryItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  groceryItemText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-});
+    fetchErrorText: {
+      fontSize: 13,
+      color: colors.error || '#DC2626',
+      fontWeight: '600',
+      marginBottom: 10,
+      lineHeight: 18,
+    },
+  });
