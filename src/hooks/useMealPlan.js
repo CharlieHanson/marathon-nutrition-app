@@ -202,7 +202,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  const generateMeals = async (userProfile, foodPreferences, trainingPlan) => {
+  const generateMeals = async (userProfile, foodPreferences, workoutsByDay = {}) => {
     if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -228,7 +228,7 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
       const data = {
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workoutsByDay,
         userId: user?.id,
         weekStarting: currentWeekStarting,
         existingMeals: mealPlan,
@@ -274,10 +274,18 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
 
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const generateDay = async (day, userProfile, foodPreferences, trainingPlan) => {
+  const generateDay = async (day, userProfile, foodPreferences, workoutsContext) => {
     if (!user && !isGuest) return { success: false, error: 'Not authenticated' };
 
     const MEAL_TYPES_LIST = ['breakfast', 'lunch', 'dinner', 'dessert'];
+    const workouts = Array.isArray(workoutsContext?.workouts)
+      ? workoutsContext.workouts
+      : Array.isArray(workoutsContext)
+        ? workoutsContext
+        : [];
+    const tomorrowWorkouts = Array.isArray(workoutsContext?.tomorrowWorkouts)
+      ? workoutsContext.tomorrowWorkouts
+      : [];
 
     // Immediately mark all empty slots as generating for instant visual feedback
     const markedSlots = [];
@@ -303,7 +311,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
           day,
           userProfile,
           foodPreferences,
-          trainingPlan,
+          workouts,
+          tomorrowWorkouts,
           weekStarting: currentWeekStarting,
         },
         (event) => {
@@ -370,8 +379,17 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
     }
   };
 
-  const generateSingleMeal = async (day, mealType, userProfile, foodPreferences, trainingPlan) => {
+  const generateSingleMeal = async (day, mealType, userProfile, foodPreferences, workoutsContext) => {
     if (!user && !isGuest) return { success: false, error: 'Not authenticated' };
+
+    const workouts = Array.isArray(workoutsContext?.workouts)
+      ? workoutsContext.workouts
+      : Array.isArray(workoutsContext)
+        ? workoutsContext
+        : [];
+    const tomorrowWorkouts = Array.isArray(workoutsContext?.tomorrowWorkouts)
+      ? workoutsContext.tomorrowWorkouts
+      : [];
 
     setStatusMessage(`🔄 Generating ${mealType} for ${capitalize(day)}...`);
     updateMeal(day, mealType, '__generating__');
@@ -383,7 +401,8 @@ export const useMealPlan = (user, isGuest, reloadKey = 0) => {
         mealType,
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workouts,
+        tomorrowWorkouts,
         weekStarting: currentWeekStarting,
         existingMeals: mealPlan,
       });

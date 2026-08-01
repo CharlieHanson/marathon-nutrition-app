@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { AppLayout } from '../../components/AppLayout';
 import { MealPlanProvider } from '../../context/MealPlanContext';
-import { TrainingPlanProvider } from '../../context/TrainingPlanContext';
+import { WorkoutLogProvider } from '../../context/WorkoutLogContext';
 import { UserProfileProvider } from '../../context/UserProfileContext';
 import { MealCompletionsProvider } from '../../context/MealCompletionsContext';
 
@@ -12,7 +12,7 @@ import { MealCompletionsProvider } from '../../context/MealCompletionsContext';
 export default function AppLayoutWrapper() {
   return (
     <MealPlanProvider>
-      <TrainingPlanProvider>
+      <WorkoutLogProvider>
         <UserProfileProvider>
           <MealCompletionsProvider>
             <AppLayout>
@@ -31,7 +31,7 @@ export default function AppLayoutWrapper() {
             </AppLayout>
           </MealCompletionsProvider>
         </UserProfileProvider>
-      </TrainingPlanProvider>
+      </WorkoutLogProvider>
     </MealPlanProvider>
   );
 }

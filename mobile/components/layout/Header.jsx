@@ -102,9 +102,9 @@ const getStyles = (colors) => StyleSheet.create({
     paddingBottom: 0,
     paddingTop: 0,
   },
-  // Matches DaySelector / training day strip (padding 4+10 + ~44px row).
+  // Matches DaySelector pill card (padding 4+10 + ~52px row).
   headerExtraReserve: {
-    minHeight: 58,
+    minHeight: 72,
   },
   avatarTarget: {
     zIndex: 1,

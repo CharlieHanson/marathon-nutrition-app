@@ -3,7 +3,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
@@ -83,7 +83,7 @@ export function createGenerateMealPrepHandler(provider) {
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workoutsByDay = {},
         localDate,
       } = req.body;
 
@@ -115,14 +115,15 @@ export function createGenerateMealPrepHandler(provider) {
 
       const budgets = [];
       for (const day of days) {
-        const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-        const dayTiming = trainingPlan?.[day]?.timing || null;
-        const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+        const dayWorkouts = Array.isArray(workoutsByDay?.[day])
+          ? workoutsByDay[day]
+          : [];
+        const numericWorkouts = withNumericIntensities(dayWorkouts);
 
         const nutrition = computeNutritionTargets({
           userProfile,
-          todayWorkouts: dayWorkouts,
-          workoutTiming: timingMap[dayTiming] || null,
+          todayWorkouts: numericWorkouts,
+          workoutTiming: deriveWorkoutTiming(dayWorkouts),
           mealSlots: ['breakfast', 'lunch', 'dinner', 'dessert'],
         });
 

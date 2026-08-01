@@ -148,7 +148,6 @@ export const MealPlanPage = ({
     await onRegenerate(day, mealType, reason, {
       userProfile,
       foodPreferences,
-      trainingPlan,
     });
   };
 
@@ -506,6 +505,11 @@ export const MealPlanPage = ({
     setTestResults(initialResults);
 
     try {
+      const dayWorkouts = trainingPlan?.[selectedTestDay]?.workouts || [];
+      const dayIdx = DAYS.indexOf(selectedTestDay);
+      const nextDay = DAYS[(dayIdx + 1) % 7];
+      const tomorrowWorkouts = trainingPlan?.[nextDay]?.workouts || [];
+
       const response = await authenticatedFetch(
         getMealGenApiUrl('/api/generate-day-web'),
         {
@@ -515,7 +519,8 @@ export const MealPlanPage = ({
             userId: user?.id,
             userProfile,
             foodPreferences,
-            trainingPlan,
+            workouts: dayWorkouts,
+            tomorrowWorkouts,
             day: selectedTestDay,
             localDate: getTodayDate(),
           }),
@@ -619,6 +624,11 @@ export const MealPlanPage = ({
     setDailyTargets(null);
 
     try {
+      const dayWorkouts = trainingPlan?.[selectedBuildDay]?.workouts || [];
+      const dayIdx = DAYS.indexOf(selectedBuildDay);
+      const nextDay = DAYS[(dayIdx + 1) % 7];
+      const tomorrowWorkouts = trainingPlan?.[nextDay]?.workouts || [];
+
       const response = await authenticatedFetch(
         getMealGenApiUrl('/api/generate-day'),
         {
@@ -628,7 +638,8 @@ export const MealPlanPage = ({
             day: selectedBuildDay,
             userProfile,
             foodPreferences,
-            trainingPlan,
+            workouts: dayWorkouts,
+            tomorrowWorkouts,
             weekStarting: currentWeekStarting,
             existingMeals: mealPlan, // Pass current meal plan for cross-day variety
             forceRegenerate: true, // Always regenerate all meals for testing

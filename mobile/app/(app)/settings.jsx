@@ -9,6 +9,7 @@ import {
   Alert,
   Switch,
   Linking,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,8 @@ import { supabase } from '../../../shared/lib/supabase.native';
 import { apiClient } from '../../../shared/services/api';
 import { useRouter } from 'expo-router';
 import { ShareFeedbackModal } from '../../components/modals/ShareFeedbackModal';
+
+const { width } = Dimensions.get('window');
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -151,10 +154,20 @@ export default function SettingsScreen() {
     }
   };
 
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDarkMode);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <View style={styles.container}>
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.title}>Account Settings</Text>
 
       {/* General Settings */}
@@ -309,14 +322,43 @@ export default function SettingsScreen() {
           This will permanently delete your account and all associated data.
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
+  bgDecor: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 9999,
+  },
+  bgCircleMint: {
+    width: width * 0.72,
+    height: width * 0.72,
+    backgroundColor: isDarkMode ? 'rgba(224,236,222,0.12)' : '#E0ECDE',
+    top: -width * 0.18,
+    right: -width * 0.28,
+  },
+  bgCirclePeach: {
+    width: width * 0.78,
+    height: width * 0.78,
+    backgroundColor: isDarkMode ? 'rgba(247,233,218,0.1)' : '#F7E9DA',
+    top: width * 0.22,
+    left: -width * 0.42,
+  },
+  scroll: {
+    flex: 1,
+    zIndex: 1,
+    backgroundColor: 'transparent',
   },
   contentContainer: {
     paddingHorizontal: 16,

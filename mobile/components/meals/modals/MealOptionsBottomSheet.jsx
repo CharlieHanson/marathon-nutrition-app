@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, Pressable, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+  Modal,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { StarRating } from '../StarRating';
@@ -7,11 +15,9 @@ import { StarRating } from '../StarRating';
 const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      flex: 1,
       backgroundColor: colors.modalOverlay,
       justifyContent: 'flex-end',
-      zIndex: 200,
-      elevation: 200,
     },
     bottomSheet: {
       backgroundColor: colors.background,
@@ -75,6 +81,12 @@ const getStyles = (colors, isDarkMode) =>
       color: colors.text,
       marginLeft: 12,
     },
+    bottomSheetOptionDisabled: {
+      opacity: 0.55,
+    },
+    bottomSheetOptionTextDisabled: {
+      color: colors.textTertiary,
+    },
     bottomSheetOptionDanger: {
       backgroundColor: colors.errorLight,
       borderColor: colors.errorBorder,
@@ -98,10 +110,6 @@ const getStyles = (colors, isDarkMode) =>
     },
   });
 
-/**
- * In-tree meal options sheet (not a native Modal) so the product tour
- * spotlight can cut out and pass presses through to Regenerate.
- */
 export const MealOptionsBottomSheet = ({
   visible,
   mealName,
@@ -115,35 +123,72 @@ export const MealOptionsBottomSheet = ({
   loadingRecipe,
   savingMeal,
   canRegenerate = true,
+  canGetRecipe = true,
 }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
 
-  if (!visible) return null;
-
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      <View style={styles.bottomSheet}>
-        <View style={styles.bottomSheetHandle} />
-        <Text style={styles.bottomSheetTitle} numberOfLines={2}>
-          {mealName || ''}
-        </Text>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.bottomSheet}>
+          <View style={styles.bottomSheetHandle} />
+          <Text style={styles.bottomSheetTitle} numberOfLines={2}>
+            {mealName || ''}
+          </Text>
 
-        <View style={styles.bottomSheetRating}>
-          <Text style={styles.bottomSheetRatingLabel}>Rate this meal:</Text>
-          <StarRating rating={rating || 0} onRate={onRate} />
-        </View>
+          <View style={styles.bottomSheetRating}>
+            <Text style={styles.bottomSheetRatingLabel}>Rate this meal:</Text>
+            <StarRating rating={rating || 0} onRate={onRate} />
+          </View>
 
-        {onSaveMeal ? (
+          {onSaveMeal ? (
+            <TouchableOpacity
+              style={styles.bottomSheetOption}
+              onPress={onSaveMeal}
+              disabled={savingMeal}
+            >
+              <Ionicons name="bookmark-outline" size={22} color={colors.primary} />
+              <Text style={styles.bottomSheetOptionText}>Save meal</Text>
+              {savingMeal ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginLeft: 10 }}
+                />
+              ) : null}
+            </TouchableOpacity>
+          ) : null}
+
           <TouchableOpacity
-            style={styles.bottomSheetOption}
-            onPress={onSaveMeal}
-            disabled={savingMeal}
+            style={[
+              styles.bottomSheetOption,
+              !canGetRecipe && styles.bottomSheetOptionDisabled,
+            ]}
+            onPress={onGetRecipe}
+            disabled={loadingRecipe}
           >
-            <Ionicons name="bookmark-outline" size={22} color={colors.primary} />
-            <Text style={styles.bottomSheetOptionText}>Save meal</Text>
-            {savingMeal ? (
+            <Ionicons
+              name="book-outline"
+              size={22}
+              color={!canGetRecipe ? colors.textTertiary : colors.primary}
+            />
+            <Text
+              style={[
+                styles.bottomSheetOptionText,
+                !canGetRecipe && styles.bottomSheetOptionTextDisabled,
+              ]}
+            >
+              Get Recipe
+            </Text>
+            {loadingRecipe ? (
               <ActivityIndicator
                 size="small"
                 color={colors.primary}
@@ -151,50 +196,49 @@ export const MealOptionsBottomSheet = ({
               />
             ) : null}
           </TouchableOpacity>
-        ) : null}
 
-        <TouchableOpacity
-          style={styles.bottomSheetOption}
-          onPress={onGetRecipe}
-          disabled={loadingRecipe}
-        >
-          <Ionicons name="book-outline" size={22} color={colors.primary} />
-          <Text style={styles.bottomSheetOptionText}>Get Recipe</Text>
-          {loadingRecipe ? (
-            <ActivityIndicator
-              size="small"
-              color={colors.primary}
-              style={{ marginLeft: 10 }}
-            />
-          ) : null}
-        </TouchableOpacity>
-
-        {canRegenerate ? (
-          <TouchableOpacity style={styles.bottomSheetOption} onPress={onRegenerate}>
-            <Ionicons name="refresh-outline" size={22} color={colors.primary} />
-            <Text style={styles.bottomSheetOptionText}>Regenerate</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {onDelete ? (
           <TouchableOpacity
-            style={[styles.bottomSheetOption, styles.bottomSheetOptionDanger]}
-            onPress={onDelete}
+            style={[
+              styles.bottomSheetOption,
+              !canRegenerate && styles.bottomSheetOptionDisabled,
+            ]}
+            onPress={onRegenerate}
           >
-            <Ionicons name="trash-outline" size={22} color={colors.error} />
-            <Text style={[styles.bottomSheetOptionText, styles.bottomSheetOptionTextDanger]}>
-              Delete meal
+            <Ionicons
+              name="refresh-outline"
+              size={22}
+              color={!canRegenerate ? colors.textTertiary : colors.primary}
+            />
+            <Text
+              style={[
+                styles.bottomSheetOptionText,
+                !canRegenerate && styles.bottomSheetOptionTextDisabled,
+              ]}
+            >
+              Regenerate
             </Text>
           </TouchableOpacity>
-        ) : null}
 
-        <TouchableOpacity
-          style={[styles.bottomSheetOption, styles.bottomSheetCancel]}
-          onPress={onClose}
-        >
-          <Text style={styles.bottomSheetCancelText}>Cancel</Text>
-        </TouchableOpacity>
+          {onDelete ? (
+            <TouchableOpacity
+              style={[styles.bottomSheetOption, styles.bottomSheetOptionDanger]}
+              onPress={onDelete}
+            >
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
+              <Text style={[styles.bottomSheetOptionText, styles.bottomSheetOptionTextDanger]}>
+                Delete meal
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.bottomSheetOption, styles.bottomSheetCancel]}
+            onPress={onClose}
+          >
+            <Text style={styles.bottomSheetCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 };

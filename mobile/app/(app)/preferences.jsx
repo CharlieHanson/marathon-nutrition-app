@@ -36,7 +36,7 @@ const FOOD_CATEGORIES = [
   },
   {
     id: 'dairy',
-    name: 'Dairy & Eggs',
+    name: 'Dairy',
     foods: ['Eggs', 'Greek Yogurt', 'Cottage Cheese', 'Milk', 'Cheese', 'Mozzarella', 'Feta', 'Butter', 'Cream Cheese'],
   },
   {
@@ -120,10 +120,10 @@ const ITEM_WIDTH = Math.floor((width - HORIZONTAL_RESERVE - (NUM_COLUMNS - 1) * 
 export default function PreferencesScreen() {
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const preferencesHook = useFoodPreferences(user, isGuest);
 
-  const styles = getStyles(colors);
+  const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   // State map: foodKey -> "neutral" | "liked" | "disliked"
   const [foodStates, setFoodStates] = useState({});
@@ -440,11 +440,11 @@ export default function PreferencesScreen() {
         ) : null}
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
+            <Ionicons name="search" size={18} color={colors.textTertiary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search foods…"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.placeholderColor}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
@@ -458,7 +458,7 @@ export default function PreferencesScreen() {
                 onPress={() => setSearchQuery('')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -520,8 +520,14 @@ export default function PreferencesScreen() {
         ListFooterComponent={
           <>
             {/* Other Foods Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionDivider} />
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconWrap}>
+                  <Ionicons name="pencil-outline" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.sectionTitle}>Other Foods</Text>
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Other Foods I Like</Text>
                 <TextInput
@@ -532,11 +538,11 @@ export default function PreferencesScreen() {
                   editable={!isGuest}
                   multiline
                   numberOfLines={2}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.placeholderColor}
                 />
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
                 <Text style={styles.inputLabel}>Other Foods I Dislike</Text>
                 <TextInput
                   style={[styles.textArea, isGuest && styles.textAreaDisabled]}
@@ -546,15 +552,20 @@ export default function PreferencesScreen() {
                   editable={!isGuest}
                   multiline
                   numberOfLines={2}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.placeholderColor}
                 />
               </View>
             </View>
 
             {/* Favorite Cuisines Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionDivider} />
-              <Text style={styles.sectionTitle}>Favorite Cuisines</Text>
+            <View style={[styles.sectionCard, { marginTop: 10 }]}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconWrap}>
+                  <Ionicons name="globe-outline" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.sectionTitle}>Favorite Cuisines</Text>
+              </View>
+
               <View style={styles.cuisinesGrid}>
                 {COMMON_CUISINES.map((cuisine) => {
                   const isFavorite = favoriteCuisines.has(cuisine);
@@ -590,7 +601,7 @@ export default function PreferencesScreen() {
                 })}
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
                 <Text style={styles.inputLabel}>Other Favorite Cuisines</Text>
                 <TextInput
                   style={[styles.textArea, isGuest && styles.textAreaDisabled]}
@@ -600,7 +611,7 @@ export default function PreferencesScreen() {
                   editable={!isGuest}
                   multiline
                   numberOfLines={2}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.placeholderColor}
                 />
               </View>
             </View>
@@ -655,35 +666,28 @@ export default function PreferencesScreen() {
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
-    overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
+  // ── Sticky header — warm bg, no heavy card border ──
   stickyHeader: {
-    backgroundColor: colors.cardBackground,
-    paddingHorizontal: 12,
-    paddingTop: 14,
+    backgroundColor: isDarkMode ? colors.background : 'rgba(247,244,236,0.97)',
+    paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   fetchErrorBanner: {
     backgroundColor: colors.errorLight || '#FEF2F2',
     borderWidth: 1,
     borderColor: colors.errorBorder || '#FECACA',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   fetchErrorBannerText: {
     fontSize: 13,
@@ -702,9 +706,9 @@ const getStyles = (colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.inputBackground,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -714,15 +718,15 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 12,
     gap: 6,
-    minHeight: 36,
-    shadowColor: colors.shadowColor,
+    minHeight: 38,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: isDarkMode ? 0 : 0.18,
+    shadowRadius: 3,
+    elevation: isDarkMode ? 0 : 2,
   },
   topSaveButtonDisabled: {
     opacity: 0.7,
@@ -746,9 +750,9 @@ const getStyles = (colors) => StyleSheet.create({
     gap: 6,
   },
   filterChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: colors.border,
@@ -763,48 +767,48 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   filterChipTextActive: {
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   tapToCycleHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 8,
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 7,
     fontWeight: '500',
   },
   content: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
     paddingBottom: 24,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 16,
-    fontWeight: '600',
-  },
+  // ── Category cards ──
   categoryContainer: {
-    marginBottom: 10,
+    marginBottom: 8,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDarkMode ? 0 : 0.04,
+    shadowRadius: 4,
+    elevation: isDarkMode ? 0 : 1,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 0,
+    paddingVertical: 11,
   },
   categoryTitle: {
+    fontFamily: 'PlayfairDisplay_600SemiBold',
     fontSize: 16,
-    fontWeight: '800',
     color: colors.text,
   },
   foodsGrid: {
     paddingTop: 2,
+    paddingBottom: 10,
   },
   foodsRow: {
     flexDirection: 'row',
@@ -816,15 +820,15 @@ const getStyles = (colors) => StyleSheet.create({
     width: ITEM_WIDTH,
     maxWidth: ITEM_WIDTH,
     flex: 0,
-    paddingVertical: 5,
+    paddingVertical: 6,
     paddingHorizontal: 3,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 32,
+    minHeight: 34,
   },
   foodTileLiked: {
     backgroundColor: colors.successLight,
@@ -854,36 +858,53 @@ const getStyles = (colors) => StyleSheet.create({
     top: 4,
     right: 4,
   },
-  section: {
-    marginTop: 8,
-    marginBottom: 16,
+  // ── Footer section cards ──
+  sectionCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDarkMode ? 0 : 0.04,
+    shadowRadius: 4,
+    elevation: isDarkMode ? 0 : 1,
   },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginBottom: 16,
-    marginTop: 8,
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sectionIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: isDarkMode ? 'rgba(61,124,101,0.2)' : 'rgba(61,124,101,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 17,
     color: colors.text,
-    marginBottom: 12,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textSecondary,
     marginBottom: 6,
+    letterSpacing: 0.2,
   },
   textArea: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 13,
@@ -894,19 +915,20 @@ const getStyles = (colors) => StyleSheet.create({
   textAreaDisabled: {
     backgroundColor: colors.inputBackground,
     color: colors.textTertiary,
+    opacity: 0.7,
   },
   cuisinesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   cuisineChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: colors.inputBackground,
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -929,7 +951,7 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.primary,
   },
   saveSection: {
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 16,
   },
   saveButton: {
@@ -937,16 +959,16 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 14,
     gap: 8,
-    minHeight: 48,
-    shadowColor: colors.shadowColor,
+    minHeight: 50,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: isDarkMode ? 0 : 0.2,
+    shadowRadius: 6,
+    elevation: isDarkMode ? 0 : 3,
   },
   saveButtonDisabled: {
     opacity: 0.7,
@@ -960,10 +982,10 @@ const getStyles = (colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     backgroundColor: colors.successLight,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.success,
     gap: 6,
@@ -975,17 +997,17 @@ const getStyles = (colors) => StyleSheet.create({
   },
   guestMessage: {
     flexDirection: 'row',
-    padding: 12,
+    padding: 14,
     backgroundColor: colors.warningLight,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.warning,
     gap: 10,
   },
   guestIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.warningLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1001,7 +1023,7 @@ const getStyles = (colors) => StyleSheet.create({
   },
   guestText: {
     fontSize: 12,
-    color: colors.warning,
+    color: colors.textSecondary,
     lineHeight: 16,
     fontWeight: '600',
   },

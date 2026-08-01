@@ -3,7 +3,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
@@ -24,8 +24,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
-
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-pro', temperature: 0.7, maxTokens: 5000 },
@@ -61,7 +59,8 @@ export function createGenerateSingleMealHandler(provider) {
         mealType: rawMealType,
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workouts: rawWorkouts,
+        tomorrowWorkouts: rawTomorrowWorkouts,
         weekStarting,
         userPrompt,
         ragContext,
@@ -95,14 +94,14 @@ export function createGenerateSingleMealHandler(provider) {
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
-      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-      const dayTiming = trainingPlan?.[day]?.timing || null;
-      const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+      const dayWorkouts = Array.isArray(rawWorkouts) ? rawWorkouts : [];
+      const tomorrowWorkouts = Array.isArray(rawTomorrowWorkouts) ? rawTomorrowWorkouts : [];
+      const numericWorkouts = withNumericIntensities(dayWorkouts);
 
       const nutrition = computeNutritionTargets({
         userProfile,
-        todayWorkouts: dayWorkouts,
-        workoutTiming: timingMap[dayTiming] || null,
+        todayWorkouts: numericWorkouts,
+        workoutTiming: deriveWorkoutTiming(dayWorkouts),
         mealSlots,
       });
 
@@ -139,9 +138,6 @@ export function createGenerateSingleMealHandler(provider) {
         }
       }
 
-      const dayIndex = DAYS.indexOf(day);
-      const tomorrowDay = DAYS[(dayIndex + 1) % 7];
-
       const enhancedPreferences = userPrompt
         ? { ...foodPreferences, likes: [foodPreferences?.likes, userPrompt].filter(Boolean).join(', ') }
         : foodPreferences;
@@ -152,7 +148,7 @@ export function createGenerateSingleMealHandler(provider) {
         foodPreferences: enhancedPreferences,
         dietaryRestrictions,
         todayTraining: formatTrainingDay(dayWorkouts),
-        tomorrowTraining: formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []),
+        tomorrowTraining: formatTrainingDay(tomorrowWorkouts),
         avoidIngredients: [...new Set(usedProteins)],
         alreadyGeneratedToday: alreadyToday,
         ragContext: ragContext || null,

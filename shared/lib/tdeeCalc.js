@@ -143,6 +143,55 @@ export function parseHeightCm(raw) {
     'strength training':          1.06,
     'sport practice':             1.05,
   };
+
+  const INTENSITY_LABEL_TO_NUMERIC = {
+    Recovery: 2,
+    Low: 3,
+    Medium: 5,
+    High: 8,
+  };
+
+  const TIMING_LABEL_TO_SLOT = {
+    Morning: 'am',
+    Afternoon: 'pm',
+    Evening: 'pm',
+  };
+
+  /**
+   * Map UI intensity labels to the 1–10 scale used by getTrainingMultiplier.
+   * Unknown / missing → 5 (Medium).
+   */
+  export function mapIntensity(label) {
+    if (label == null || label === '') return 5;
+    if (typeof label === 'number' && Number.isFinite(label)) return label;
+    const mapped = INTENSITY_LABEL_TO_NUMERIC[label];
+    return mapped != null ? mapped : 5;
+  }
+
+  /**
+   * Derive day-level workoutTiming ("am" | "pm" | null) from per-workout timing.
+   * Uses the first meaningful non-Rest workout that has a timing field.
+   */
+  export function deriveWorkoutTiming(workouts) {
+    if (!workouts || !Array.isArray(workouts)) return null;
+    for (const w of workouts) {
+      const type = (w?.type || '').trim();
+      if (!type || type.toLowerCase() === 'rest') continue;
+      const timing = w?.timing;
+      if (!timing || timing === '—' || timing === '') continue;
+      return TIMING_LABEL_TO_SLOT[timing] || null;
+    }
+    return null;
+  }
+
+  /** Apply mapIntensity to each workout; preserves other fields. */
+  export function withNumericIntensities(workouts) {
+    if (!workouts || !Array.isArray(workouts)) return [];
+    return workouts.map((w) => ({
+      ...w,
+      intensity: mapIntensity(w?.intensity),
+    }));
+  }
   
   /**
    * Get a training-day calorie multiplier from the day's workouts.

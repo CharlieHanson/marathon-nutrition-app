@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +22,7 @@ import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
-import { useTrainingPlan } from '../../hooks/useTrainingPlan';
+import { useWorkoutLog } from '../../hooks/useWorkoutLog';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useMealCompletions, getCurrentDayOfWeek, getTodayDate } from '../../hooks/useMealCompletions';
 import { saveMeal, recordStreakActivity } from '../../../shared/lib/dataClient';
@@ -60,6 +61,8 @@ import {
   getDayMealToggles,
   getActiveMealTypes,
   isPastDay,
+  localDateForDay,
+  addDaysToLocalDate,
 } from '../../utils/mealHelpers';
 import { MealTypeToggles } from '../../components/meals/MealTypeToggles';
 import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
@@ -69,6 +72,7 @@ import { MealsSkeleton } from '../../components/ui/Skeleton';
 
 // Footer height: paddingVertical (8*2) + minHeight (60) = 76px
 const FOOTER_HEIGHT = 24;
+const { width } = Dimensions.get('window');
 
 const OFFLINE_ALERT = () =>
   Alert.alert('No Connection', 'Please check your internet connection and try again.');
@@ -78,13 +82,13 @@ export default function MealsScreen() {
   const router = useRouter();
   const { user, isGuest } = useAuth();
   const { isConnected } = useNetwork();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { notifyTargetDismissed, notifyTargetPress, isActive, currentStep, next, patchStep } =
     useProductTour();
   const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
   const isFocused = useIsFocused();
 
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDarkMode);
 
   // Calculate FAB position: footer height + safe area bottom + gap
   const insets = useSafeAreaInsets();
@@ -125,7 +129,12 @@ export default function MealsScreen() {
   const [showDebugPrompt, setShowDebugPrompt] = useState(false);
 
   const mealPlanHook = useMealPlan(user, isGuest);
-  const trainingPlanHook = useTrainingPlan(user, isGuest);
+  const workoutLogHook = useWorkoutLog(user, isGuest);
+  const {
+    flushPendingSaves,
+    getWorkoutsForDate,
+    loadWeek: loadWorkoutWeek,
+  } = workoutLogHook;
   const profileHook = useUserProfile(user, isGuest);
   const { regenerateAllMeals, clearAllMeals, clearMeal, getMealStatus, setDayMealToggles } = mealPlanHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
@@ -147,7 +156,68 @@ export default function MealsScreen() {
         }
       : null);
   const foodPreferences = profileHook.foodPreferences;
-  const trainingPlan = trainingPlanHook.plan;
+
+  const resolveWorkoutsForMealDay = useCallback(
+    async (dayName) => {
+      const week = mealPlanHook.currentWeekStarting;
+      const localDate = localDateForDay(week, dayName);
+      if (localDate) {
+        const tomorrow = addDaysToLocalDate(localDate, 1);
+        await Promise.all([
+          flushPendingSaves(localDate),
+          tomorrow ? flushPendingSaves(tomorrow) : Promise.resolve(),
+        ]);
+      }
+      const workouts = localDate ? getWorkoutsForDate(localDate) : [];
+      const tomorrowWorkouts = localDate
+        ? getWorkoutsForDate(addDaysToLocalDate(localDate, 1))
+        : [];
+      return { localDate, workouts, tomorrowWorkouts };
+    },
+    [mealPlanHook.currentWeekStarting, flushPendingSaves, getWorkoutsForDate]
+  );
+
+  const resolveWorkoutsByDay = useCallback(
+    async (days) => {
+      const week = mealPlanHook.currentWeekStarting;
+      const dates = (days || [])
+        .map((day) => localDateForDay(week, day))
+        .filter(Boolean);
+      if (dates.length) {
+        await Promise.all(dates.map((d) => flushPendingSaves(d)));
+      }
+      const map = {};
+      (days || []).forEach((day) => {
+        const date = localDateForDay(week, day);
+        map[day] = date ? getWorkoutsForDate(date) : [];
+      });
+      return map;
+    },
+    [mealPlanHook.currentWeekStarting, flushPendingSaves, getWorkoutsForDate]
+  );
+
+  const analyticsTrainingPlan = useMemo(() => {
+    const week = mealPlanHook.currentWeekStarting;
+    if (!week) return null;
+    const plan = {};
+    DAYS.forEach((day, idx) => {
+      const date = localDateForDay(week, day) || addDaysToLocalDate(week, idx);
+      plan[day] = { workouts: getWorkoutsForDate(date) };
+    });
+    return plan;
+  }, [
+    mealPlanHook.currentWeekStarting,
+    getWorkoutsForDate,
+    workoutLogHook.logsByDate,
+    workoutLogHook.draftByDate,
+  ]);
+
+  // Ensure workout logs for the meal week are loaded (may differ from Training's selected week).
+  useEffect(() => {
+    const week = mealPlanHook.currentWeekStarting;
+    if (!week || !user || isGuest) return;
+    loadWorkoutWeek(week);
+  }, [mealPlanHook.currentWeekStarting, user, isGuest, loadWorkoutWeek]);
 
   // Close meal option sheets when leaving meals_generate or ending the tour.
   // Local state only — do not notifyTargetDismissed (would double-advance).
@@ -193,40 +263,6 @@ export default function MealsScreen() {
   const todayDayOfWeek = getCurrentDayOfWeek();
   const isCurrentWeek = mealPlanHook.currentWeekStarting === getMondayOfCurrentWeek();
 
-  // Track if we've already celebrated today (to avoid repeated alerts)
-  const [hasShownCelebration, setHasShownCelebration] = useState(false);
-
-  // Celebration when all active meals are completed for today
-  useEffect(() => {
-    if (!isCurrentWeek || selectedDay !== todayDayOfWeek) {
-      // Reset celebration flag when switching days
-      setHasShownCelebration(false);
-      return;
-    }
-
-    const todayDayMeals = mealPlanHook.mealPlan?.[todayDayOfWeek] || {};
-    const todayActiveTypes = getActiveMealTypes(getDayMealToggles(todayDayMeals), todayDayMeals);
-    const todayCompletions = mealCompletionsHook.completions.filter(
-      (c) => c.day_of_week === todayDayOfWeek
-    );
-
-    if (
-      todayActiveTypes.length > 0 &&
-      todayCompletions.length >= todayActiveTypes.length &&
-      !hasShownCelebration &&
-      !mealCompletionsHook.loading
-    ) {
-      setHasShownCelebration(true);
-      setTimeout(() => {
-        Alert.alert(
-          '🎉 Congratulations!',
-          `You've completed all ${todayActiveTypes.length} meals for today! Keep up the great work!`,
-          [{ text: 'Awesome!', style: 'default' }]
-        );
-      }, 500); // Small delay for better UX
-    }
-  }, [mealCompletionsHook.completions, selectedDay, todayDayOfWeek, isCurrentWeek, hasShownCelebration, mealCompletionsHook.loading, mealPlanHook.mealPlan]);
-
   // Auto-save lives in MealPlanProvider (single writer).
   // Handlers
   const handleMealPress = (mealType, parsedMeal) => {
@@ -253,6 +289,13 @@ export default function MealsScreen() {
 
   const handleEmptyGenerateWithAI = async () => {
     if (!emptyMealType) return;
+    if (!canDo('meal_generation')) {
+      Alert.alert(
+        'Daily Limit Reached',
+        `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
+      );
+      return;
+    }
     const mealType = emptyMealType;
     const waitingForTourMeal =
       isActive && currentStep?.id === 'meals_generate';
@@ -266,10 +309,11 @@ export default function MealsScreen() {
       }
       return;
     }
+    const { workouts, tomorrowWorkouts } = await resolveWorkoutsForMealDay(selectedDay);
     await mealPlanHook.generateSingleMeal(
       selectedDay,
       mealType,
-      { userProfile, foodPreferences, trainingPlan },
+      { userProfile, foodPreferences, workouts, tomorrowWorkouts },
     );
     refetchLimits();
     // Wait for generation to finish before showing the next tour step.
@@ -280,6 +324,13 @@ export default function MealsScreen() {
 
   const handleGetRecipe = async () => {
     if (!selectedMeal || !mealPlanHook.mealPlan) return;
+    if (!canDo('recipe_generation')) {
+      Alert.alert(
+        'Daily Limit Reached',
+        `You've used all ${DAILY_LIMITS.recipe_generation} recipe generations for today. Limits reset at midnight.`
+      );
+      return;
+    }
     if (isConnected === false) {
       OFFLINE_ALERT();
       return;
@@ -381,6 +432,13 @@ export default function MealsScreen() {
 
   const handleRegenerate = () => {
     if (!selectedMeal) return;
+    if (!canDo('meal_generation')) {
+      Alert.alert(
+        'Daily Limit Reached',
+        `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
+      );
+      return;
+    }
     setShowMealOptions(false);
     setRegenerateReason('');
     setShowRegenerateReasonModal(true);
@@ -406,10 +464,12 @@ export default function MealsScreen() {
     }
 
     setShowRegenerateReasonModal(false);
+    const { workouts, tomorrowWorkouts } = await resolveWorkoutsForMealDay(selectedDay);
     await mealPlanHook.regenerateMeal(selectedDay, selectedMeal.mealType, regenerateReason.trim(), {
       userProfile,
       foodPreferences,
-      trainingPlan,
+      workouts,
+      tomorrowWorkouts,
       userId: user?.id,
     });
     refetchLimits();
@@ -571,8 +631,13 @@ export default function MealsScreen() {
     
     // Debug callback intentionally omitted — enabling debug forces a huge SSE
     // payload after OpenAI returns and commonly trips the 120s client timeout.
-    const runGenerateDay = () =>
-      mealPlanHook.generateDay(selectedDay, userProfile, foodPreferences, trainingPlan);
+    const runGenerateDay = async () => {
+      const { workouts, tomorrowWorkouts } = await resolveWorkoutsForMealDay(selectedDay);
+      return mealPlanHook.generateDay(selectedDay, userProfile, foodPreferences, {
+        workouts,
+        tomorrowWorkouts,
+      });
+    };
 
     // If all meals are filled for this day, show action sheet
     if (dayStatus.allFilled) {
@@ -791,7 +856,8 @@ export default function MealsScreen() {
   const dayToggles = getDayMealToggles(selectedDayMeals);
   const activeTypes = getActiveMealTypes(dayToggles, selectedDayMeals);
 
-  const showFab = !dayMealStatus.allFilled && canDo('meal_generation');
+  const showFab = !dayMealStatus.allFilled;
+  const mealGenerationLimitReached = !canDo('meal_generation');
   const scrollBottomPadding = showFab ? 96 : 20;
 
   const weekDateNumbers = useMemo(
@@ -820,7 +886,7 @@ export default function MealsScreen() {
         onNextWeek={() => weekNavRef.current.onNextWeek()}
         weekNavDisabled={!user || isGuest}
         animatedStyle={{
-          paddingHorizontal: 0,
+          paddingHorizontal: 16,
           paddingTop: 4,
           paddingBottom: 10,
           marginBottom: 0,
@@ -858,6 +924,11 @@ export default function MealsScreen() {
 
   return (
     <View style={styles.container}>
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
+      </View>
+
       {/* Status Banner — errors only; generation progress lives on the meal cards */}
       {mealPlanHook.statusMessage?.includes('❌') ? (
         <View style={[styles.statusBanner, styles.statusBannerError]}>
@@ -895,26 +966,36 @@ export default function MealsScreen() {
           paddingHorizontal: 16,
         }}
       >
-        <QuickActionsRow
-          hasMeals={hasMeals}
-          onAnalytics={() => setShowAnalyticsModal(true)}
-          onGroceryList={generateGroceryList}
-          onMealPrep={() => setShowMealPrepModal(true)}
-          onLogMeal={() => setShowLogMealModal(true)}
-          loadingGroceryList={loadingGroceryList}
-          groceryRemaining={remaining('grocery_list')}
-          canGenerate={canDo('meal_generation')}
-          animatedStyle={styles.quickActionsInScroll}
-        />
+        <View style={styles.toolbarRow}>
+          <QuickActionsRow
+            hasMeals={hasMeals}
+            onAnalytics={() => setShowAnalyticsModal(true)}
+            onGroceryList={generateGroceryList}
+            onMealPrep={() => {
+              if (!canDo('meal_generation')) {
+                Alert.alert(
+                  'Daily Limit Reached',
+                  `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
+                );
+                return;
+              }
+              setShowMealPrepModal(true);
+            }}
+            onLogMeal={() => setShowLogMealModal(true)}
+            loadingGroceryList={loadingGroceryList}
+            groceryRemaining={remaining('grocery_list')}
+            canGenerate={canDo('meal_generation')}
+          />
 
-        <MealTypeToggles
-          includeDessert={dayToggles.includeDessert}
-          onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeDessert: val })}
-          disabled={mealPlanHook.isGenerating || isGuest}
-          dayMeals={selectedDayMeals}
-          onLogSnack={() => setShowLogSnackModal(true)}
-          showDessert={!isPastDay(selectedDay, mealPlanHook.currentWeekStarting)}
-        />
+          <MealTypeToggles
+            includeDessert={dayToggles.includeDessert}
+            onToggleDessert={(val) => setDayMealToggles(selectedDay, { includeDessert: val })}
+            disabled={mealPlanHook.isGenerating || isGuest}
+            dayMeals={selectedDayMeals}
+            onLogSnack={() => setShowLogSnackModal(true)}
+            showDessert={!isPastDay(selectedDay, mealPlanHook.currentWeekStarting)}
+          />
+        </View>
         {selectedDayMeals?.over_budget ? (
           <View style={styles.overBudgetBanner}>
             <Text style={styles.overBudgetText}>
@@ -922,54 +1003,57 @@ export default function MealsScreen() {
             </Text>
           </View>
         ) : null}
-        {activeTypes.map((mealType, index) => {
-          const isToday = isCurrentWeek && selectedDay === todayDayOfWeek;
-          const isCompleted = isToday && mealCompletionsHook.completions.some(
-            (c) => c.day_of_week === selectedDay && c.meal_type === mealType
-          );
-
-          const card = (
-            <MealCard
-              mealType={mealType}
-              meal={mealPlanHook.mealPlan?.[selectedDay]?.[mealType] || ''}
-              rating={mealPlanHook.mealPlan?.[selectedDay]?.[`${mealType}_rating`] || 0}
-              onRate={(rating) => mealPlanHook.rateMeal(selectedDay, mealType, rating)}
-              onMealPress={
-                index === 0
-                  ? (type, parsed) => {
-                      notifyTargetPress('meals-first-slot');
-                      // Filled breakfast → meals_generate is skipped; don't open regenerate sheet
-                      if (isActive && currentStep?.id === 'meals_overview') return;
-                      handleMealPress(type, parsed);
-                    }
-                  : handleMealPress
-              }
-              onEmptyPress={
-                index === 0
-                  ? (type) => {
-                      notifyTargetPress('meals-first-slot');
-                      handleEmptyMealPress(type);
-                    }
-                  : handleEmptyMealPress
-              }
-              parseMeal={parseMeal}
-              showCheckbox={isToday}
-              isCompleted={isCompleted}
-              onToggleComplete={() => mealCompletionsHook.toggleMealCompletion(selectedDay, mealType)}
-              isAdjusted={(selectedDayMeals?.adjusted_meal_types || []).includes(mealType)}
-            />
-          );
-
-          if (index === 0) {
-            return (
-              <TourTarget key={`${selectedDay}-${mealType}`} id="meals-first-slot">
-                {card}
-              </TourTarget>
+        <View style={styles.timelineList}>
+          {activeTypes.map((mealType, index) => {
+            const isToday = isCurrentWeek && selectedDay === todayDayOfWeek;
+            const isCompleted = isToday && mealCompletionsHook.completions.some(
+              (c) => c.day_of_week === selectedDay && c.meal_type === mealType
             );
-          }
 
-          return <React.Fragment key={`${selectedDay}-${mealType}`}>{card}</React.Fragment>;
-        })}
+            const card = (
+              <MealCard
+                mealType={mealType}
+                meal={mealPlanHook.mealPlan?.[selectedDay]?.[mealType] || ''}
+                rating={mealPlanHook.mealPlan?.[selectedDay]?.[`${mealType}_rating`] || 0}
+                onRate={(rating) => mealPlanHook.rateMeal(selectedDay, mealType, rating)}
+                onMealPress={
+                  index === 0
+                    ? (type, parsed) => {
+                        notifyTargetPress('meals-first-slot');
+                        // Filled breakfast → meals_generate is skipped; don't open regenerate sheet
+                        if (isActive && currentStep?.id === 'meals_overview') return;
+                        handleMealPress(type, parsed);
+                      }
+                    : handleMealPress
+                }
+                onEmptyPress={
+                  index === 0
+                    ? (type) => {
+                        notifyTargetPress('meals-first-slot');
+                        handleEmptyMealPress(type);
+                      }
+                    : handleEmptyMealPress
+                }
+                parseMeal={parseMeal}
+                showCheckbox={isToday}
+                isCompleted={isCompleted}
+                onToggleComplete={() => mealCompletionsHook.toggleMealCompletion(selectedDay, mealType)}
+                isAdjusted={(selectedDayMeals?.adjusted_meal_types || []).includes(mealType)}
+                isLast={index === activeTypes.length - 1}
+              />
+            );
+
+            if (index === 0) {
+              return (
+                <TourTarget key={`${selectedDay}-${mealType}`} id="meals-first-slot">
+                  {card}
+                </TourTarget>
+              );
+            }
+
+            return <React.Fragment key={`${selectedDay}-${mealType}`}>{card}</React.Fragment>;
+          })}
+        </View>
         <Text style={styles.preferencesHint}>
           Don't like the meals being generated? Update your preferences in{' '}
           <Text
@@ -986,24 +1070,43 @@ export default function MealsScreen() {
         </Text>
       </ScrollView>
 
-      {/* FAB — only show when the day has at least one empty meal AND limit not reached */}
+      {/* FAB — show when the day has at least one empty meal (grayed if limit reached) */}
       {!showFab ? null : (
         <>
           <TouchableOpacity 
-            style={[styles.fab, { bottom: fabBottom }]} 
+            style={[
+              styles.fab,
+              { bottom: fabBottom },
+              mealGenerationLimitReached && styles.fabDisabled,
+            ]} 
             onPress={handleGenerateMeals} 
             disabled={mealPlanHook.isGenerating}
           >
             {mealPlanHook.isGenerating ? (
               <ActivityIndicator size="small" color={colors.textInverse} />
             ) : (
-              <Ionicons name="add" size={28} color={colors.textInverse} />
+              <Ionicons
+                name="add"
+                size={28}
+                color={mealGenerationLimitReached ? colors.textTertiary : colors.textInverse}
+              />
             )}
           </TouchableOpacity>
 
           {!mealPlanHook.isGenerating ? (
-            <View style={[styles.fabLabel, { bottom: fabLabelBottom }]}>
-              <Text style={styles.fabLabelText}>
+            <View
+              style={[
+                styles.fabLabel,
+                { bottom: fabLabelBottom },
+                mealGenerationLimitReached && styles.fabLabelDisabled,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.fabLabelText,
+                  mealGenerationLimitReached && styles.fabLabelTextDisabled,
+                ]}
+              >
                 {dayMealStatus.hasPartial ? 'Generate Remaining' : 'Generate Meals'}
               </Text>
             </View>
@@ -1037,6 +1140,7 @@ export default function MealsScreen() {
         loadingRecipe={loadingRecipe}
         savingMeal={savingMeal}
         canRegenerate={canDo('meal_generation')}
+        canGetRecipe={canDo('recipe_generation')}
       />
 
       <EmptyMealOptionsBottomSheet
@@ -1045,8 +1149,7 @@ export default function MealsScreen() {
         canGenerate={canDo('meal_generation')}
         showMealPrep={
           !!emptyMealType &&
-          !['snacks', 'dessert'].includes(emptyMealType) &&
-          canDo('meal_generation')
+          !['snacks', 'dessert'].includes(emptyMealType)
         }
         onGenerate={handleEmptyGenerateWithAI}
         onLogMeal={() => {
@@ -1058,6 +1161,13 @@ export default function MealsScreen() {
           notifyTargetDismissed('meals-generate-action');
         }}
         onMealPrep={() => {
+          if (!canDo('meal_generation')) {
+            Alert.alert(
+              'Daily Limit Reached',
+              `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
+            );
+            return;
+          }
           const mealType = emptyMealType;
           setShowEmptyMealOptions(false);
           setEmptyMealType(null);
@@ -1101,7 +1211,7 @@ export default function MealsScreen() {
         onClose={() => setShowAnalyticsModal(false)}
         mealPlan={mealPlanHook.mealPlan}
         userProfile={userProfile}
-        trainingPlan={trainingPlan}
+        trainingPlan={analyticsTrainingPlan}
       />
 
       <MealPrepModal
@@ -1119,6 +1229,7 @@ export default function MealsScreen() {
         canGenerate={canDo('meal_generation')}
         mealPrepRemaining={remaining('meal_generation')}
         onGenerateSuccess={refetchLimits}
+        resolveWorkoutsByDay={resolveWorkoutsByDay}
       />
 
       <LogMealModal
@@ -1156,10 +1267,33 @@ export default function MealsScreen() {
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
+  bgDecor: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 9999,
+  },
+  bgCircleMint: {
+    width: width * 0.72,
+    height: width * 0.72,
+    backgroundColor: isDarkMode ? 'rgba(224,236,222,0.12)' : '#E0ECDE',
+    top: -width * 0.18,
+    right: -width * 0.28,
+  },
+  bgCirclePeach: {
+    width: width * 0.78,
+    height: width * 0.78,
+    backgroundColor: isDarkMode ? 'rgba(247,233,218,0.1)' : '#F7E9DA',
+    top: width * 0.22,
+    left: -width * 0.42,
   },
   loadingContainer: {
     flex: 1,
@@ -1181,6 +1315,7 @@ const getStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderBottomWidth: 1,
     borderBottomColor: colors.primaryBorder,
+    zIndex: 1,
   },
   statusBannerSuccess: {
     backgroundColor: colors.successLight,
@@ -1197,7 +1332,14 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
   },
   quickActionsInScroll: {
-    marginBottom: 10,
+    marginBottom: 0,
+  },
+  toolbarRow: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  timelineList: {
+    marginTop: 2,
   },
   overBudgetBanner: {
     backgroundColor: colors.infoLight,
@@ -1236,6 +1378,8 @@ const getStyles = (colors) => StyleSheet.create({
   },
   mealsScroll: {
     flex: 1,
+    zIndex: 1,
+    backgroundColor: 'transparent',
   },
   preferencesHint: {
     marginTop: 16,
@@ -1274,6 +1418,11 @@ const getStyles = (colors) => StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  fabDisabled: {
+    backgroundColor: colors.borderDark || colors.border,
+    shadowOpacity: 0.08,
+    elevation: 2,
+  },
   fabLabel: {
     position: 'absolute',
     right: 34,
@@ -1282,10 +1431,16 @@ const getStyles = (colors) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  fabLabelDisabled: {
+    backgroundColor: colors.borderDark || colors.border,
+  },
   fabLabelText: {
     fontSize: 12,
     fontWeight: '800',
     color: colors.textInverse,
+  },
+  fabLabelTextDisabled: {
+    color: colors.textTertiary,
   },
   debugPromptContainer: {
     position: 'absolute',

@@ -10,7 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getRequestUserId } from '../lib/requestUser.js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import {
   formatMealString,
   rebalanceDayMacros,
@@ -114,7 +114,7 @@ async function saveWeekMeals(userId, weekStarting, meals, existingId) {
   if (error) throw error;
 }
 
-async function loadDailyMacros(userId, day) {
+async function loadDailyMacros(userId, localDate) {
   const { data: profile, error } = await supabase
     .from('user_profiles')
     .select('age, height, weight, goal, activity_level, gender, dietary_restrictions')
@@ -127,27 +127,23 @@ async function loadDailyMacros(userId, day) {
   }
 
   // Training optional; budgets without workout shifts still valid
-  let trainingPlan = null;
+  let dayWorkouts = [];
   try {
-    const { data: tp } = await supabase
-      .from('training_plans')
-      .select('plan_data')
+    const { data: log } = await supabase
+      .from('workout_logs')
+      .select('workouts')
       .eq('user_id', userId)
-      .eq('is_active', true)
+      .eq('local_date', localDate)
       .maybeSingle();
-    trainingPlan = tp?.plan_data || null;
+    dayWorkouts = Array.isArray(log?.workouts) ? log.workouts : [];
   } catch {
-    trainingPlan = null;
+    dayWorkouts = [];
   }
-
-  const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-  const dayTiming = trainingPlan?.[day]?.timing || null;
-  const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
 
   const nutrition = computeNutritionTargets({
     userProfile: profile,
-    todayWorkouts: dayWorkouts,
-    workoutTiming: timingMap[dayTiming] || null,
+    todayWorkouts: withNumericIntensities(dayWorkouts),
+    workoutTiming: deriveWorkoutTiming(dayWorkouts),
   });
 
   return nutrition.dailyMacros;
@@ -244,7 +240,7 @@ export default async function handler(req, res) {
 
     if (shouldRebalance) {
       const [dailyMacros, completedMealTypes] = await Promise.all([
-        loadDailyMacros(userId, day),
+        loadDailyMacros(userId, localDate),
         loadCompletedMealTypes(userId, localDate, day),
       ]);
 

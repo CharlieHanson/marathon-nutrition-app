@@ -131,6 +131,16 @@ export default async function handler(req, res) {
       console.error('Error deleting training_plans:', trainingError);
     }
 
+    // 4b. Delete workout logs
+    const { error: workoutLogsError } = await supabase
+      .from('workout_logs')
+      .delete()
+      .eq('user_id', userId);
+
+    if (workoutLogsError) {
+      console.error('Error deleting workout_logs:', workoutLogsError);
+    }
+
     // 5. Delete food preferences
     const { error: prefsError } = await supabase
       .from('food_preferences')

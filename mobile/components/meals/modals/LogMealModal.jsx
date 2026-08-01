@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   StyleSheet,
   Alert,
@@ -27,7 +26,6 @@ const DAY_LABELS = {
   saturday: 'Sat',
   sunday: 'Sun',
 };
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'dessert'];
 const MEAL_LABELS = {
   breakfast: 'Breakfast',
   lunch: 'Lunch',
@@ -42,6 +40,11 @@ const MEAL_LABELS_PLURAL = {
   snacks: 'snacks',
   dessert: 'desserts',
 };
+
+function formatMealWithMacros(desc, macros) {
+  const c = (n) => Math.round(Number(n) || 0);
+  return `${desc} (Cal: ${c(macros.calories)}, P: ${c(macros.protein)}g, C: ${c(macros.carbs)}g, F: ${c(macros.fat)}g)`;
+}
 
 const getStyles = (colors) =>
   StyleSheet.create({
@@ -103,6 +106,41 @@ const getStyles = (colors) =>
     },
     mealTypeButtonTextSelected: {
       color: '#FFFFFF',
+    },
+    modeRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    modeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    modeButtonSelected: {
+      backgroundColor: colors.primaryLight || colors.inputBackground,
+      borderColor: colors.primary,
+    },
+    modeButtonText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    modeButtonTextSelected: {
+      color: colors.primary,
+    },
+    modeButtonHint: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: colors.textTertiary,
+      textAlign: 'center',
     },
     textInput: {
       width: '100%',
@@ -186,6 +224,30 @@ const getStyles = (colors) =>
       fontSize: 14,
       fontWeight: '800',
       color: '#FFFFFF',
+    },
+    macroRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    macroField: {
+      flex: 1,
+    },
+    macroLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.textTertiary,
+      marginBottom: 4,
+    },
+    macroInput: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.text,
+      textAlign: 'center',
+      backgroundColor: colors.inputBackground,
     },
     logButton: {
       flexDirection: 'row',
@@ -282,6 +344,11 @@ export const LogMealModal = ({
   const [mealDescription, setMealDescription] = useState('');
   const [selectedDay, setSelectedDay] = useState(defaultDay || 'monday');
   const [selectedMealType, setSelectedMealType] = useState(defaultMealType || 'lunch');
+  const [macroMode, setMacroMode] = useState('auto'); // 'auto' | 'manual'
+  const [manualCalories, setManualCalories] = useState('');
+  const [manualProtein, setManualProtein] = useState('');
+  const [manualCarbs, setManualCarbs] = useState('');
+  const [manualFat, setManualFat] = useState('');
 
   const logMealActiveTypes = getActiveMealTypes(
     getDayMealToggles(mealPlan?.[selectedDay]),
@@ -333,6 +400,17 @@ export const LogMealModal = ({
     load();
   }, [visible, userId, selectedMealType, defaultMealType, isGuest]);
 
+  const setMode = (mode) => {
+    setMacroMode(mode);
+    setEstimatedMacros(null);
+    if (mode === 'auto') {
+      setManualCalories('');
+      setManualProtein('');
+      setManualCarbs('');
+      setManualFat('');
+    }
+  };
+
   const handleEstimateMacros = async () => {
     if (!mealDescription.trim()) return;
 
@@ -347,40 +425,77 @@ export const LogMealModal = ({
 
       if (result.success && result.macros) {
         setEstimatedMacros(result.macros);
+      } else {
+        Alert.alert('Estimate failed', result.error || "Couldn't estimate macros. Try again or enter them manually.");
       }
     } catch (error) {
       console.error('Failed to estimate macros:', error);
+      Alert.alert('Estimate failed', "Couldn't estimate macros. Try again or enter them manually.");
     } finally {
       setIsEstimating(false);
     }
   };
 
+  const parseManualMacros = () => {
+    const macros = {
+      calories: Number(manualCalories),
+      protein: Number(manualProtein),
+      carbs: Number(manualCarbs),
+      fat: Number(manualFat),
+    };
+    if (!Number.isFinite(macros.calories) || macros.calories < 1) {
+      Alert.alert('Invalid macros', 'Calories must be at least 1.');
+      return null;
+    }
+    for (const key of ['protein', 'carbs', 'fat']) {
+      if (!Number.isFinite(macros[key]) || macros[key] < 0) {
+        Alert.alert('Invalid macros', `${key.charAt(0).toUpperCase() + key.slice(1)} must be a non-negative number.`);
+        return null;
+      }
+    }
+    return macros;
+  };
+
+  const finishLog = (finalMeal) => {
+    onLog(selectedDay, selectedMealType, finalMeal);
+    setLogged(true);
+    setTimeout(() => {
+      handleClose();
+    }, 1000);
+  };
+
   const handleLog = async () => {
     if (!mealDescription.trim()) return;
+
+    const desc = mealDescription.trim();
+
+    if (macroMode === 'manual') {
+      const macros = parseManualMacros();
+      if (!macros) return;
+      finishLog(formatMealWithMacros(desc, macros));
+      return;
+    }
+
+    // Auto: reuse preview if available, otherwise estimate now
+    if (estimatedMacros) {
+      finishLog(formatMealWithMacros(desc, estimatedMacros));
+      return;
+    }
 
     setIsEstimating(true);
     setLogged(false);
 
     try {
       const result = await apiClient.estimateMacros({
-        meal: mealDescription.trim(),
+        meal: desc,
         mealType: selectedMealType,
       });
 
-      const finalMeal = result.success && result.meal ? result.meal : mealDescription.trim();
-      onLog(selectedDay, selectedMealType, finalMeal);
-      setLogged(true);
-
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
+      const finalMeal = result.success && result.meal ? result.meal : desc;
+      finishLog(finalMeal);
     } catch (error) {
       console.error('Failed to log meal:', error);
-      onLog(selectedDay, selectedMealType, mealDescription.trim());
-      setLogged(true);
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
+      finishLog(desc);
     } finally {
       setIsEstimating(false);
     }
@@ -407,11 +522,27 @@ export const LogMealModal = ({
     setMealDescription('');
     setLogged(false);
     setEstimatedMacros(null);
+    setMacroMode('auto');
+    setManualCalories('');
+    setManualProtein('');
+    setManualCarbs('');
+    setManualFat('');
     setSavedMeals([]);
     setSavedMealsError(null);
     setLoggingSavedMeal(null);
     onClose();
   };
+
+  const manualReady =
+    manualCalories.trim() !== '' &&
+    manualProtein.trim() !== '' &&
+    manualCarbs.trim() !== '' &&
+    manualFat.trim() !== '';
+  const canLog =
+    mealDescription.trim() &&
+    !logged &&
+    !isEstimating &&
+    (macroMode === 'auto' || manualReady);
 
   return (
     <AestheticSheet
@@ -492,59 +623,124 @@ export const LogMealModal = ({
           returnKeyType="done"
           blurOnSubmit={true}
         />
-        <Text style={styles.helperText}>Be descriptive for better macro estimates</Text>
+        <Text style={styles.helperText}>
+          {macroMode === 'auto'
+            ? 'Be descriptive for better macro estimates'
+            : 'Name the meal, then enter macros below'}
+        </Text>
       </AestheticCard>
 
-      {/* Estimate Macros Button */}
-      {mealDescription.trim() && !estimatedMacros && (
-        <TouchableOpacity
-          onPress={handleEstimateMacros}
-          disabled={isEstimating}
-          style={[styles.estimateButton, isEstimating && styles.estimateButtonDisabled]}
-        >
-          {isEstimating ? (
-            <>
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-              <Text style={styles.estimateButtonText}>Estimating...</Text>
-            </>
-          ) : (
-            <Text style={styles.estimateButtonText}>Preview Macro Estimate</Text>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {/* Estimated Macros Display */}
-      {estimatedMacros && (
-        <View style={styles.macrosContainer}>
-          <Text style={styles.macrosTitle}>Estimated Macros:</Text>
-          <View style={styles.macrosGrid}>
-            <View style={[styles.macroChip, styles.macroChipCalories]}>
-              <Text style={styles.macroChipLabel}>Cal</Text>
-              <Text style={styles.macroChipValue}>{estimatedMacros.calories}</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipProtein]}>
-              <Text style={styles.macroChipLabel}>P</Text>
-              <Text style={styles.macroChipValue}>{estimatedMacros.protein}g</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipCarbs]}>
-              <Text style={styles.macroChipLabel}>C</Text>
-              <Text style={styles.macroChipValue}>{estimatedMacros.carbs}g</Text>
-            </View>
-            <View style={[styles.macroChip, styles.macroChipFat]}>
-              <Text style={styles.macroChipLabel}>F</Text>
-              <Text style={styles.macroChipValue}>{estimatedMacros.fat}g</Text>
-            </View>
-          </View>
+      {/* Macro mode */}
+      <AestheticCard>
+        <AestheticSectionLabel>Macros</AestheticSectionLabel>
+        <View style={styles.modeRow}>
+          <TouchableOpacity
+            style={[styles.modeButton, macroMode === 'auto' && styles.modeButtonSelected]}
+            onPress={() => setMode('auto')}
+          >
+            <Text
+              style={[
+                styles.modeButtonText,
+                macroMode === 'auto' && styles.modeButtonTextSelected,
+              ]}
+            >
+              Estimate for me
+            </Text>
+            <Text style={styles.modeButtonHint}>AI fills calories & macros</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeButton, macroMode === 'manual' && styles.modeButtonSelected]}
+            onPress={() => setMode('manual')}
+          >
+            <Text
+              style={[
+                styles.modeButtonText,
+                macroMode === 'manual' && styles.modeButtonTextSelected,
+              ]}
+            >
+              Enter myself
+            </Text>
+            <Text style={styles.modeButtonHint}>Type Cal / P / C / F</Text>
+          </TouchableOpacity>
         </View>
+      </AestheticCard>
+
+      {macroMode === 'manual' ? (
+        <AestheticCard>
+          <AestheticSectionLabel>Your macros</AestheticSectionLabel>
+          <View style={styles.macroRow}>
+            {[
+              { key: 'calories', label: 'Cal', value: manualCalories, set: setManualCalories },
+              { key: 'protein', label: 'P (g)', value: manualProtein, set: setManualProtein },
+              { key: 'carbs', label: 'C (g)', value: manualCarbs, set: setManualCarbs },
+              { key: 'fat', label: 'F (g)', value: manualFat, set: setManualFat },
+            ].map((field) => (
+              <View key={field.key} style={styles.macroField}>
+                <Text style={styles.macroLabel}>{field.label}</Text>
+                <TextInput
+                  style={styles.macroInput}
+                  value={field.value}
+                  onChangeText={field.set}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+            ))}
+          </View>
+        </AestheticCard>
+      ) : (
+        <>
+          {mealDescription.trim() && !estimatedMacros && (
+            <TouchableOpacity
+              onPress={handleEstimateMacros}
+              disabled={isEstimating}
+              style={[styles.estimateButton, isEstimating && styles.estimateButtonDisabled]}
+            >
+              {isEstimating ? (
+                <>
+                  <ActivityIndicator size="small" color={colors.textSecondary} />
+                  <Text style={styles.estimateButtonText}>Estimating...</Text>
+                </>
+              ) : (
+                <Text style={styles.estimateButtonText}>Preview Macro Estimate</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {estimatedMacros && (
+            <View style={styles.macrosContainer}>
+              <Text style={styles.macrosTitle}>Estimated Macros:</Text>
+              <View style={styles.macrosGrid}>
+                <View style={[styles.macroChip, styles.macroChipCalories]}>
+                  <Text style={styles.macroChipLabel}>Cal</Text>
+                  <Text style={styles.macroChipValue}>{estimatedMacros.calories}</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipProtein]}>
+                  <Text style={styles.macroChipLabel}>P</Text>
+                  <Text style={styles.macroChipValue}>{estimatedMacros.protein}g</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipCarbs]}>
+                  <Text style={styles.macroChipLabel}>C</Text>
+                  <Text style={styles.macroChipValue}>{estimatedMacros.carbs}g</Text>
+                </View>
+                <View style={[styles.macroChip, styles.macroChipFat]}>
+                  <Text style={styles.macroChipLabel}>F</Text>
+                  <Text style={styles.macroChipValue}>{estimatedMacros.fat}g</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </>
       )}
 
       {/* Log Meal Button */}
       <TouchableOpacity
         onPress={handleLog}
-        disabled={!mealDescription.trim() || logged || isEstimating}
+        disabled={!canLog}
         style={[
           styles.logButton,
-          (!mealDescription.trim() || isEstimating) && styles.logButtonDisabled,
+          !canLog && styles.logButtonDisabled,
           logged && styles.logButtonSuccess,
         ]}
       >

@@ -335,6 +335,8 @@ export const MealPrepModal = ({
   canGenerate = true,
   mealPrepRemaining = Infinity,
   onGenerateSuccess,
+  /** async (days: string[]) => { [weekday]: workouts[] } */
+  resolveWorkoutsByDay,
 }) => {
   const [step, setStep] = useState(1); // 1: meal type, 2: days, 3: options
   const [selectedMealType, setSelectedMealType] = useState(defaultMealType || 'lunch');
@@ -385,12 +387,17 @@ export const MealPrepModal = ({
     setError('');
 
     try {
+      const workoutsByDay = resolveWorkoutsByDay
+        ? await resolveWorkoutsByDay(selectedDays)
+        : {};
+
       const result = await apiClient.generateMealPrep({
         userId,
         mealType: selectedMealType,
         days: selectedDays,
         userProfile,
         foodPreferences,
+        workoutsByDay,
       });
 
       if (result.success && result.options?.length > 0) {
@@ -602,7 +609,7 @@ export const MealPrepModal = ({
                     styles.primaryButtonDisabled,
                 ]}
                 onPress={handleGenerateOptions}
-                disabled={selectedDays.length === 0 || isLoading || !canGenerate}
+                disabled={selectedDays.length === 0 || isLoading}
               >
                 {isLoading ? (
                   <>

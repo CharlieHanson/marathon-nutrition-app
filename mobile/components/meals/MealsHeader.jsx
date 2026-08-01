@@ -111,7 +111,7 @@ export const QuickActionsRow = ({
             accessibilityLabel="Analytics"
             accessibilityRole="button"
           >
-            <Ionicons name="bar-chart-outline" size={18} color={colors.primary} />
+            <Ionicons name="bar-chart-outline" size={16} color={colors.text} />
             <Text style={styles.quickActionText}>Analytics</Text>
           </TouchableOpacity>
 
@@ -121,7 +121,7 @@ export const QuickActionsRow = ({
               groceryLimitReached && styles.quickActionBtnDisabled,
             ]}
             onPress={onGroceryList}
-            disabled={loadingGroceryList || groceryLimitReached}
+            disabled={loadingGroceryList}
             accessibilityLabel="Grocery list"
             accessibilityRole="button"
           >
@@ -130,8 +130,8 @@ export const QuickActionsRow = ({
             ) : (
               <Ionicons
                 name="cart-outline"
-                size={18}
-                color={groceryLimitReached ? colors.textTertiary : colors.primary}
+                size={16}
+                color={groceryLimitReached ? colors.textTertiary : colors.text}
               />
             )}
             <Text
@@ -146,17 +146,29 @@ export const QuickActionsRow = ({
         </>
       ) : (
         <>
-          {canGenerate && (
-            <TouchableOpacity
-              style={styles.quickActionBtn}
-              onPress={onMealPrep}
-              accessibilityLabel="Meal prep"
-              accessibilityRole="button"
+          <TouchableOpacity
+            style={[
+              styles.quickActionBtn,
+              !canGenerate && styles.quickActionBtnDisabled,
+            ]}
+            onPress={onMealPrep}
+            accessibilityLabel="Meal prep"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name="restaurant-outline"
+              size={16}
+              color={!canGenerate ? colors.textTertiary : colors.text}
+            />
+            <Text
+              style={[
+                styles.quickActionText,
+                !canGenerate && styles.quickActionTextDisabled,
+              ]}
             >
-              <Ionicons name="restaurant-outline" size={18} color={colors.primary} />
-              <Text style={styles.quickActionText}>Meal Prep</Text>
-            </TouchableOpacity>
-          )}
+              Meal Prep
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.quickActionBtn}
@@ -164,7 +176,7 @@ export const QuickActionsRow = ({
             accessibilityLabel="Log meal"
             accessibilityRole="button"
           >
-            <Ionicons name="create-outline" size={18} color={colors.primary} />
+            <Ionicons name="create-outline" size={16} color={colors.text} />
             <Text style={styles.quickActionText}>Log Meal</Text>
           </TouchableOpacity>
         </>
@@ -233,83 +245,85 @@ export const DaySelector = ({
   };
 
   return (
-    <Animated.View style={[styles.calendarRow, animatedStyle]}>
-      {showWeekNav ? (
-        <TouchableOpacity
-          onPress={handlePreviousWeek}
-          style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
-          disabled={weekNavDisabled || !onPreviousWeek}
-          accessibilityLabel="Previous week"
-          accessibilityRole="button"
-          hitSlop={ARROW_HIT_SLOP}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={20}
-            color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
-          />
-        </TouchableOpacity>
-      ) : null}
-
-      {days.map((day, index) => {
-        const isSelected = visualSelected === day;
-        const isToday = visualIsCurrentWeek && day === todayDayOfWeek;
-
-        return (
+    <Animated.View style={[styles.calendarOuter, animatedStyle]}>
+      <View style={styles.calendarCard}>
+        {showWeekNav ? (
           <TouchableOpacity
-            key={day}
-            style={styles.calendarDay}
-            onPress={() => handleSelectDay(day)}
-            activeOpacity={0.7}
-            accessibilityLabel={`${DAY_LABELS[index]}, ${visualDates[index]}`}
+            onPress={handlePreviousWeek}
+            style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+            disabled={weekNavDisabled || !onPreviousWeek}
+            accessibilityLabel="Previous week"
             accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
+            hitSlop={ARROW_HIT_SLOP}
           >
-            <Text
-              style={[
-                styles.calendarWeekday,
-                isSelected && styles.calendarWeekdaySelected,
-              ]}
-            >
-              {DAY_LABELS[index].toUpperCase()}
-            </Text>
-            <View
-              style={[
-                styles.calendarDateCircle,
-                isSelected && styles.calendarDateCircleSelected,
-                isToday && !isSelected && styles.calendarDateCircleToday,
-              ]}
+            <Ionicons
+              name="chevron-back"
+              size={20}
+              color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+            />
+          </TouchableOpacity>
+        ) : null}
+
+        {days.map((day, index) => {
+          const isSelected = visualSelected === day;
+          const isToday = visualIsCurrentWeek && day === todayDayOfWeek;
+
+          return (
+            <TouchableOpacity
+              key={day}
+              style={styles.calendarDay}
+              onPress={() => handleSelectDay(day)}
+              activeOpacity={0.7}
+              accessibilityLabel={`${DAY_LABELS[index]}, ${visualDates[index]}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
             >
               <Text
                 style={[
-                  styles.calendarDateText,
-                  isSelected && styles.calendarDateTextSelected,
-                  isToday && !isSelected && styles.calendarDateTextToday,
+                  styles.calendarWeekday,
+                  isSelected && styles.calendarWeekdaySelected,
                 ]}
               >
-                {visualDates[index]}
+                {DAY_LABELS[index].toUpperCase()}
               </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+              <View
+                style={[
+                  styles.calendarDateCircle,
+                  isSelected && styles.calendarDateCircleSelected,
+                  isToday && !isSelected && styles.calendarDateCircleToday,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.calendarDateText,
+                    isSelected && styles.calendarDateTextSelected,
+                    isToday && !isSelected && styles.calendarDateTextToday,
+                  ]}
+                >
+                  {visualDates[index]}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
 
-      {showWeekNav ? (
-        <TouchableOpacity
-          onPress={handleNextWeek}
-          style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
-          disabled={weekNavDisabled || !onNextWeek}
-          accessibilityLabel="Next week"
-          accessibilityRole="button"
-          hitSlop={ARROW_HIT_SLOP}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
-          />
-        </TouchableOpacity>
-      ) : null}
+        {showWeekNav ? (
+          <TouchableOpacity
+            onPress={handleNextWeek}
+            style={[styles.weekArrowBtn, weekNavDisabled && styles.disabledBtn]}
+            disabled={weekNavDisabled || !onNextWeek}
+            accessibilityLabel="Next week"
+            accessibilityRole="button"
+            hitSlop={ARROW_HIT_SLOP}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={weekNavDisabled ? colors.textTertiary : colors.textSecondary}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </Animated.View>
   );
 };
@@ -402,18 +416,26 @@ const getStyles = (colors) => StyleSheet.create({
   quickActionsRow: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+    width: '100%',
   },
   quickActionBtn: {
     flex: 1,
-    height: 42,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.inputBackground,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
+    height: 42,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   quickActionBtnDisabled: {
     opacity: 0.6,
@@ -427,11 +449,24 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textTertiary,
   },
 
-  calendarRow: {
+  calendarOuter: {
+    marginBottom: 0,
+  },
+  calendarCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   weekArrowBtn: {
     width: 22,

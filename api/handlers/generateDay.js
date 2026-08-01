@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
@@ -45,7 +45,8 @@ export function createGenerateDayHandler(provider) {
       day,
       userProfile,
       foodPreferences,
-      trainingPlan,
+      workouts: rawWorkouts,
+      tomorrowWorkouts: rawTomorrowWorkouts,
       weekStarting,
       existingMeals,
       ragContext,
@@ -141,14 +142,14 @@ export function createGenerateDayHandler(provider) {
         }
       }
 
-      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-      const dayTiming = trainingPlan?.[day]?.timing || null;
-      const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+      const dayWorkouts = Array.isArray(rawWorkouts) ? rawWorkouts : [];
+      const tomorrowWorkouts = Array.isArray(rawTomorrowWorkouts) ? rawTomorrowWorkouts : [];
+      const numericWorkouts = withNumericIntensities(dayWorkouts);
 
       const nutrition = computeNutritionTargets({
         userProfile,
-        todayWorkouts: dayWorkouts,
-        workoutTiming: timingMap[dayTiming] || null,
+        todayWorkouts: numericWorkouts,
+        workoutTiming: deriveWorkoutTiming(dayWorkouts),
         mealSlots,
       });
 
@@ -177,9 +178,8 @@ export function createGenerateDayHandler(provider) {
         }
       }
 
-      const tomorrowDay = DAYS[(dayIndex + 1) % 7];
       const todayTraining = formatTrainingDay(dayWorkouts);
-      const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
+      const tomorrowTraining = formatTrainingDay(tomorrowWorkouts);
 
       const budgetsToGenerate = {};
       for (const mt of emptySlots) {

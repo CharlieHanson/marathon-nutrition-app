@@ -14,7 +14,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
-import { useTrainingPlan } from '../../hooks/useTrainingPlan';
+import { useWorkoutLog } from '../../hooks/useWorkoutLog';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useMealCompletions } from '../../hooks/useMealCompletions';
 import {
@@ -71,13 +71,10 @@ const getFirstName = (profile, rawProfile, isGuest) => {
   return full.trim().split(/\s+/)[0];
 };
 
-const getTodayWorkouts = (trainingPlan) => {
-  if (!trainingPlan) return [];
-  const todayDay = getTodayDayName();
-  const dayData = trainingPlan[todayDay];
-  if (!dayData?.workouts || !Array.isArray(dayData.workouts)) return [];
+const getTodayWorkouts = (workouts) => {
+  if (!workouts || !Array.isArray(workouts)) return [];
 
-  return dayData.workouts.filter((w) => {
+  return workouts.filter((w) => {
     const hasType = w.type && w.type.trim() && w.type !== 'Rest';
     const hasDistance = w.distance && w.distance.trim();
     const hasNotes = w.notes && w.notes.trim();
@@ -233,7 +230,7 @@ export default function DashboardScreen() {
   const { user, isGuest } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const mealPlanHook = useMealPlan(user, isGuest);
-  const trainingPlanHook = useTrainingPlan(user, isGuest);
+  const workoutLogHook = useWorkoutLog(user, isGuest);
   const profileHook = useUserProfile(user, isGuest);
   const { refreshProfile } = profileHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
@@ -257,12 +254,14 @@ export default function DashboardScreen() {
   const todayMacros = todayMeals
     ? calculateDayMacros(todayMeals)
     : { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  const todayWorkouts = getTodayWorkouts(trainingPlanHook.plan);
+  const todayWorkouts = getTodayWorkouts(
+    workoutLogHook.getWorkoutsForDate(getLocalDateString())
+  );
   const todaysTraining = getTodaysTraining(
-    trainingPlanHook.plan,
+    isGuest || workoutLogHook.isLoading ? null : { loaded: true },
     todayWorkouts,
     isGuest,
-    trainingPlanHook.isLoading
+    workoutLogHook.isLoading
   );
 
   const calculateEatenMacros = () => {
