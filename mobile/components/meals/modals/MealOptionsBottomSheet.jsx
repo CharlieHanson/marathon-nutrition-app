@@ -115,6 +115,7 @@ export const MealOptionsBottomSheet = ({
   mealName,
   rating,
   onRate,
+  onEdit,
   onSaveMeal,
   onGetRecipe,
   onRegenerate,
@@ -148,6 +149,13 @@ export const MealOptionsBottomSheet = ({
             <Text style={styles.bottomSheetRatingLabel}>Rate this meal:</Text>
             <StarRating rating={rating || 0} onRate={onRate} />
           </View>
+
+          {onEdit ? (
+            <TouchableOpacity style={styles.bottomSheetOption} onPress={onEdit}>
+              <Ionicons name="create-outline" size={22} color={colors.primary} />
+              <Text style={styles.bottomSheetOptionText}>Edit meal</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {onSaveMeal ? (
             <TouchableOpacity

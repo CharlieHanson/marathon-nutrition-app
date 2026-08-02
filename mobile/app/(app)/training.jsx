@@ -313,11 +313,9 @@ export default function TrainingScreen() {
     return undefined;
   }, [isFocused, flushPendingSaves, selectedDate]);
 
+  // Keep set vs clear separate so content updates don't blank the reserved strip.
   useLayoutEffect(() => {
-    if (!isFocused) {
-      clearHeaderSlot('training');
-      return undefined;
-    }
+    if (!isFocused) return undefined;
 
     setHeaderSlot(
       <DaySelector
@@ -345,10 +343,8 @@ export default function TrainingScreen() {
       />,
       'training'
     );
-
-    return () => clearHeaderSlot('training');
+    return undefined;
   }, [
-    clearHeaderSlot,
     goToNextWeek,
     goToPreviousWeek,
     isCurrentWeek,
@@ -362,6 +358,13 @@ export default function TrainingScreen() {
     weekDateNumbers,
     weekStarting,
   ]);
+
+  useLayoutEffect(() => {
+    if (!isFocused) {
+      clearHeaderSlot('training');
+    }
+    return () => clearHeaderSlot('training');
+  }, [clearHeaderSlot, isFocused]);
 
   const commitWorkouts = (workouts) => {
     updateDayWorkouts(selectedDate, workouts);

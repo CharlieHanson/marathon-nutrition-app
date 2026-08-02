@@ -5,10 +5,19 @@ import { useProductTour } from '../../context/ProductTourContext';
 /**
  * Registers a measurable target for the product tour spotlight.
  * Zero visual change when the tour is inactive.
+ *
+ * Optional onTourActivate: used when Next should simulate a press for
+ * measure-only targets (no child onPress), e.g. meals-first-slot.
  */
-export function TourTarget({ id, children, style, onPress }) {
+export function TourTarget({ id, children, style, onPress, onTourActivate }) {
   const ref = useRef(null);
   const { registerTarget, unregisterTarget, notifyTargetPress } = useProductTour();
+  const onPressRef = useRef(onPress);
+  const onTourActivateRef = useRef(onTourActivate);
+  const childOnPressRef = useRef(null);
+
+  onPressRef.current = onPress;
+  onTourActivateRef.current = onTourActivate;
 
   useEffect(() => {
     if (!id) return undefined;
@@ -36,10 +45,23 @@ export function TourTarget({ id, children, style, onPress }) {
             resolve({ x, y, width, height });
           });
         }),
+      press: () => {
+        if (typeof onTourActivateRef.current === 'function') {
+          onTourActivateRef.current();
+          return;
+        }
+        notifyTargetPress(id);
+        if (typeof onPressRef.current === 'function') {
+          onPressRef.current();
+        }
+        if (typeof childOnPressRef.current === 'function') {
+          childOnPressRef.current();
+        }
+      },
     });
 
     return () => unregisterTarget(id);
-  }, [id, registerTarget, unregisterTarget]);
+  }, [id, registerTarget, unregisterTarget, notifyTargetPress]);
 
   const handlePress = (event) => {
     notifyTargetPress(id);
@@ -49,6 +71,10 @@ export function TourTarget({ id, children, style, onPress }) {
   };
 
   const child = Children.count(children) === 1 ? Children.only(children) : null;
+  childOnPressRef.current =
+    isValidElement(child) && typeof child.props.onPress === 'function'
+      ? child.props.onPress
+      : null;
 
   if (isValidElement(child) && (onPress || typeof child.props.onPress === 'function')) {
     const originalOnPress = child.props.onPress;

@@ -36,10 +36,19 @@ export function TourSpotlight() {
     back,
     skip,
     finish,
+    pressCurrentTarget,
   } = useProductTour();
 
   const styles = useMemo(() => getStyles(colors), [colors]);
   const pulse = useSharedValue(1);
+
+  const handleNext = () => {
+    if (currentStep?.advanceOn === 'targetPress') {
+      pressCurrentTarget();
+      return;
+    }
+    next();
+  };
 
   useEffect(() => {
     if (!isActive || !currentTarget) {
@@ -144,7 +153,7 @@ export function TourSpotlight() {
         colors={colors}
         onSkip={skip}
         onBack={back}
-        onNext={next}
+        onNext={handleNext}
         onDone={finish}
       />
     </View>

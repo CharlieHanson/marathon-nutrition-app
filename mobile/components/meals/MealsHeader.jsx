@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   ActivityIndicator,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,6 +20,11 @@ import {
 import { macroColors } from '../../../shared/lib/macroColors';
 
 const ARROW_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 4 };
+const SWIPE_DISTANCE = 48;
+const SWIPE_VELOCITY = 0.55;
+const WEEK_SLIDE_OUT_MS = 150;
+const WEEK_SLIDE_IN_MS = 200;
+const WEEK_SLIDE_FALLBACK_WIDTH = 260;
 
 export const WeekNavigation = ({
   weekRange,
@@ -206,14 +212,30 @@ export const DaySelector = ({
   // Parent screens are heavy; waiting for setHeaderSlot recreation feels laggy.
   const [visualSelected, setVisualSelected] = useState(selectedDay);
   const [visualWeekStarting, setVisualWeekStarting] = useState(weekStarting);
+  const weekSlideX = useRef(new Animated.Value(0)).current;
+  const trackWidthRef = useRef(WEEK_SLIDE_FALLBACK_WIDTH);
+  const animatingRef = useRef(false);
+  const weekNavDisabledRef = useRef(weekNavDisabled);
+  const showWeekNavRef = useRef(showWeekNav);
+  const weekActionRef = useRef({ previous: () => {}, next: () => {} });
 
   useEffect(() => {
     setVisualSelected(selectedDay);
   }, [selectedDay]);
 
   useEffect(() => {
+    // Skip sync while a slide is in flight — optimistic week already applied.
+    if (animatingRef.current) return;
     setVisualWeekStarting(weekStarting);
   }, [weekStarting]);
+
+  useEffect(() => {
+    weekNavDisabledRef.current = weekNavDisabled;
+  }, [weekNavDisabled]);
+
+  useEffect(() => {
+    showWeekNavRef.current = showWeekNav;
+  }, [showWeekNav]);
 
   const visualDates = useMemo(() => {
     if (visualWeekStarting) return getWeekDateNumbers(visualWeekStarting);
@@ -230,23 +252,120 @@ export const DaySelector = ({
     onSelectDay?.(day);
   };
 
+  // direction: 1 = next week (exit left, enter from right)
+  //            -1 = previous week (exit right, enter from left)
+  const runWeekTransition = (direction, applyChange) => {
+    if (animatingRef.current) return;
+    animatingRef.current = true;
+
+    const width = trackWidthRef.current || WEEK_SLIDE_FALLBACK_WIDTH;
+
+    Animated.timing(weekSlideX, {
+      toValue: -direction * width,
+      duration: WEEK_SLIDE_OUT_MS,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) {
+        weekSlideX.setValue(0);
+        animatingRef.current = false;
+        return;
+      }
+
+      applyChange();
+      weekSlideX.setValue(direction * width);
+
+      Animated.timing(weekSlideX, {
+        toValue: 0,
+        duration: WEEK_SLIDE_IN_MS,
+        useNativeDriver: true,
+      }).start(() => {
+        animatingRef.current = false;
+      });
+    });
+  };
+
   const handlePreviousWeek = () => {
-    if (weekNavDisabled || !onPreviousWeek) return;
+    if (weekNavDisabled || !onPreviousWeek || animatingRef.current) return;
     const prev = getPreviousWeek(visualWeekStarting);
-    if (prev) setVisualWeekStarting(prev);
-    onPreviousWeek();
+    if (!prev) return;
+
+    runWeekTransition(-1, () => {
+      setVisualWeekStarting(prev);
+      onPreviousWeek();
+    });
   };
 
   const handleNextWeek = () => {
-    if (weekNavDisabled || !onNextWeek) return;
+    if (weekNavDisabled || !onNextWeek || animatingRef.current) return;
     const next = getNextWeek(visualWeekStarting);
-    if (next) setVisualWeekStarting(next);
-    onNextWeek();
+    if (!next) return;
+
+    runWeekTransition(1, () => {
+      setVisualWeekStarting(next);
+      onNextWeek();
+    });
   };
+
+  weekActionRef.current = {
+    previous: handlePreviousWeek,
+    next: handleNextWeek,
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Claim only clear horizontal swipes so day taps still work.
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        showWeekNavRef.current &&
+        !animatingRef.current &&
+        Math.abs(gesture.dx) > 12 &&
+        Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.25,
+      onPanResponderMove: (_, gesture) => {
+        if (!showWeekNavRef.current || weekNavDisabledRef.current || animatingRef.current) {
+          return;
+        }
+        const width = trackWidthRef.current || WEEK_SLIDE_FALLBACK_WIDTH;
+        weekSlideX.setValue(Math.max(-width * 0.45, Math.min(width * 0.45, gesture.dx * 0.55)));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (animatingRef.current) return;
+
+        const goNext =
+          gesture.dx < -SWIPE_DISTANCE || gesture.vx < -SWIPE_VELOCITY;
+        const goPrev =
+          gesture.dx > SWIPE_DISTANCE || gesture.vx > SWIPE_VELOCITY;
+
+        if (
+          showWeekNavRef.current &&
+          !weekNavDisabledRef.current &&
+          (goNext || goPrev)
+        ) {
+          if (goNext) weekActionRef.current.next();
+          else weekActionRef.current.previous();
+          return;
+        }
+
+        Animated.spring(weekSlideX, {
+          toValue: 0,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 120,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        if (animatingRef.current) return;
+        Animated.spring(weekSlideX, {
+          toValue: 0,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 120,
+        }).start();
+      },
+    })
+  ).current;
 
   return (
     <Animated.View style={[styles.calendarOuter, animatedStyle]}>
-      <View style={styles.calendarCard}>
+      <View style={styles.calendarCard} {...panResponder.panHandlers}>
         {showWeekNav ? (
           <TouchableOpacity
             onPress={handlePreviousWeek}
@@ -264,48 +383,63 @@ export const DaySelector = ({
           </TouchableOpacity>
         ) : null}
 
-        {days.map((day, index) => {
-          const isSelected = visualSelected === day;
-          const isToday = visualIsCurrentWeek && day === todayDayOfWeek;
+        <View
+          style={styles.calendarDaysTrack}
+          onLayout={(e) => {
+            const w = e.nativeEvent.layout.width;
+            if (w > 0) trackWidthRef.current = w;
+          }}
+        >
+          <Animated.View
+            style={[
+              styles.calendarDaysRow,
+              { transform: [{ translateX: weekSlideX }] },
+            ]}
+          >
+            {days.map((day, index) => {
+              const isSelected = visualSelected === day;
+              const isToday = visualIsCurrentWeek && day === todayDayOfWeek;
 
-          return (
-            <TouchableOpacity
-              key={day}
-              style={styles.calendarDay}
-              onPress={() => handleSelectDay(day)}
-              activeOpacity={0.7}
-              accessibilityLabel={`${DAY_LABELS[index]}, ${visualDates[index]}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text
-                style={[
-                  styles.calendarWeekday,
-                  isSelected && styles.calendarWeekdaySelected,
-                ]}
-              >
-                {DAY_LABELS[index].toUpperCase()}
-              </Text>
-              <View
-                style={[
-                  styles.calendarDateCircle,
-                  isSelected && styles.calendarDateCircleSelected,
-                  isToday && !isSelected && styles.calendarDateCircleToday,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.calendarDateText,
-                    isSelected && styles.calendarDateTextSelected,
-                    isToday && !isSelected && styles.calendarDateTextToday,
-                  ]}
+              return (
+                <TouchableOpacity
+                  key={day}
+                  style={styles.calendarDay}
+                  onPress={() => handleSelectDay(day)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`${DAY_LABELS[index]}, ${visualDates[index]}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
                 >
-                  {visualDates[index]}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                  <Text
+                    style={[
+                      styles.calendarWeekday,
+                      isSelected && styles.calendarWeekdaySelected,
+                    ]}
+                  >
+                    {DAY_LABELS[index].toUpperCase()}
+                  </Text>
+                  <View
+                    style={[
+                      styles.calendarDateCircle,
+                      isSelected && styles.calendarDateCircleSelected,
+                      isToday && !isSelected && styles.calendarDateCircleToday,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.calendarDateText,
+                        isSelected && styles.calendarDateTextSelected,
+                        isToday && !isSelected && styles.calendarDateTextToday,
+                      ]}
+                    >
+                      {visualDates[index]}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </Animated.View>
+        </View>
 
         {showWeekNav ? (
           <TouchableOpacity
@@ -455,7 +589,6 @@ const getStyles = (colors) => StyleSheet.create({
   calendarCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.cardBackground,
     borderRadius: 999,
     borderWidth: 1,
@@ -467,6 +600,15 @@ const getStyles = (colors) => StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 1,
+  },
+  calendarDaysTrack: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  calendarDaysRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
   },
   weekArrowBtn: {
     width: 22,

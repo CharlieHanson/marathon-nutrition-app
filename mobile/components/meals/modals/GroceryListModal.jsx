@@ -7,17 +7,19 @@ import {
   AestheticSectionLabel,
 } from '../../ui/AestheticSheet';
 
-export const GroceryListModal = ({ visible, groceryList, onShare, onClose }) => {
+export const GroceryListModal = ({ visible, groceryList, onShare, onClose, rangeTitle }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
   const categories = groceryList || [];
+  const title = rangeTitle || 'Grocery List';
 
   return (
     <AestheticSheet
       visible={visible}
       onClose={onClose}
-      title="Grocery List"
-      eyebrow="THIS WEEK"
+      title={title}
+      titleStyle={styles.rangeTitle}
+      eyebrow="GROCERIES"
       icon="cart-outline"
       onShare={onShare}
       shareDisabled={categories.length === 0}
@@ -53,6 +55,10 @@ export const GroceryListModal = ({ visible, groceryList, onShare, onClose }) => 
 
 const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
+    rangeTitle: {
+      fontSize: 18,
+      lineHeight: 22,
+    },
     emptyText: {
       fontSize: 14,
       fontWeight: '500',

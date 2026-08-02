@@ -24,7 +24,7 @@ export const PRODUCT_TOUR_STEPS = [
     advanceOn: 'targetPress',
     showSkip: true,
     showBack: true,
-    showNext: false,
+    showNext: true,
   },
   {
     id: 'training_build',
@@ -50,7 +50,7 @@ export const PRODUCT_TOUR_STEPS = [
     advanceOn: 'targetPress',
     showSkip: true,
     showBack: true,
-    showNext: false,
+    showNext: true,
   },
   {
     id: 'meals_overview',
@@ -68,7 +68,7 @@ export const PRODUCT_TOUR_STEPS = [
     advanceOn: 'targetPress',
     showSkip: true,
     showBack: true,
-    showNext: false,
+    showNext: true,
   },
   {
     id: 'meals_generate',
@@ -95,7 +95,7 @@ export const PRODUCT_TOUR_STEPS = [
     advanceOn: 'targetPress',
     showSkip: true,
     showBack: true,
-    showNext: false,
+    showNext: true,
   },
   {
     id: 'tour_done',

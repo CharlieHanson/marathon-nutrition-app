@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffe
 import {
   View,
   Text,
-  ActivityIndicator,
   Modal,
   Pressable,
   Alert,
@@ -14,7 +13,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +40,7 @@ import { EmptyMealOptionsBottomSheet } from '../../components/meals/modals/Empty
 import { AnalyticsModal } from '../../components/meals/modals/AnalyticsModal';
 import { MealPrepModal } from '../../components/meals/modals/MealPrepModal';
 import { LogMealModal } from '../../components/meals/modals/LogMealModal';
+import { EditMealModal } from '../../components/meals/modals/EditMealModal';
 import { LogSnackModal } from '../../components/meals/modals/LogSnackModal';
 import { ErrorState } from '../../components/ErrorState';
 import { ServingsPickerModal } from '../../components/meals/modals/ServingsPickerModal';
@@ -70,8 +69,6 @@ import { usePostHog } from 'posthog-react-native';
 import { capture } from '../../lib/analytics';
 import { MealsSkeleton } from '../../components/ui/Skeleton';
 
-// Footer height: paddingVertical (8*2) + minHeight (60) = 76px
-const FOOTER_HEIGHT = 24;
 const { width } = Dimensions.get('window');
 
 const OFFLINE_ALERT = () =>
@@ -89,12 +86,6 @@ export default function MealsScreen() {
   const isFocused = useIsFocused();
 
   const styles = getStyles(colors, isDarkMode);
-
-  // Calculate FAB position: footer height + safe area bottom + gap
-  const insets = useSafeAreaInsets();
-  const bottomOffset = FOOTER_HEIGHT;
-  const fabBottom = bottomOffset;
-  const fabLabelBottom = bottomOffset + 70;
 
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().getDay();
@@ -120,6 +111,7 @@ export default function MealsScreen() {
   const [mealPrepDefaultType, setMealPrepDefaultType] = useState(undefined);
   const [showLogMealModal, setShowLogMealModal] = useState(false);
   const [logMealDefaultType, setLogMealDefaultType] = useState(undefined);
+  const [showEditMealModal, setShowEditMealModal] = useState(false);
   const [showLogSnackModal, setShowLogSnackModal] = useState(false);
   const [logSnackSubmitting, setLogSnackSubmitting] = useState(false);
   const [showServingsPicker, setShowServingsPicker] = useState(false);
@@ -136,7 +128,7 @@ export default function MealsScreen() {
     loadWeek: loadWorkoutWeek,
   } = workoutLogHook;
   const profileHook = useUserProfile(user, isGuest);
-  const { regenerateAllMeals, clearAllMeals, clearMeal, getMealStatus, setDayMealToggles } = mealPlanHook;
+  const { clearMeal, setDayMealToggles } = mealPlanHook;
   const mealCompletionsHook = useMealCompletions(user, isGuest);
   const { canDo, remaining, refetch: refetchLimits } = useUsageLimits(user, isGuest);
 
@@ -244,8 +236,8 @@ export default function MealsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, currentStep?.id, selectedDay, next]);
 
-  // Filled breakfast: show Next on overview and skip the generate step entirely
-  // (its target lives in a sheet that won't open when the slot is already filled).
+  // Filled breakfast: skip the generate step entirely (its target lives in a
+  // sheet that won't open when the slot is already filled).
   useEffect(() => {
     if (!isActive) return;
     const breakfast = mealPlanHook.mealPlan?.[selectedDay]?.breakfast;
@@ -253,9 +245,6 @@ export default function MealsScreen() {
       typeof breakfast === 'string' &&
       breakfast.trim().length > 0 &&
       breakfast !== '__generating__';
-    if (currentStep?.id === 'meals_overview') {
-      patchStep('meals_overview', { showNext: hasBreakfast });
-    }
     patchStep('meals_generate', { skip: hasBreakfast });
   }, [isActive, currentStep?.id, selectedDay, mealPlanHook.mealPlan, patchStep]);
 
@@ -510,6 +499,17 @@ export default function MealsScreen() {
     }
   };
 
+  const handleEditMeal = () => {
+    setShowMealOptions(false);
+    setShowEditMealModal(true);
+  };
+
+  const handleSaveEditedMeal = (mealDescription) => {
+    if (!selectedMeal?.mealType) return;
+    mealPlanHook.updateMeal(selectedDay, selectedMeal.mealType, mealDescription);
+    setShowEditMealModal(false);
+  };
+
   const handleLogSnack = async ({ day, name, calories, protein, carbs, fat }) => {
     if (!user || isGuest) {
       Alert.alert('Sign in required', 'Log in to save snacks.');
@@ -591,137 +591,6 @@ export default function MealsScreen() {
     }
   };
 
-  // Helper to get meal status for a specific day
-  const getDayMealStatus = (day) => {
-    const dayMeals = mealPlanHook.mealPlan?.[day] || {};
-    const activeTypes = getActiveMealTypes(getDayMealToggles(dayMeals), dayMeals);
-    let filled = 0;
-    let total = activeTypes.length;
-
-    activeTypes.forEach((mealType) => {
-      const meal = dayMeals[mealType];
-      if (meal && typeof meal === 'string' && meal.trim().length > 0) {
-        filled++;
-      }
-    });
-
-    return {
-      filled,
-      total,
-      allFilled: filled === total,
-      hasAny: filled > 0,
-      hasPartial: filled > 0 && filled < total,
-    };
-  };
-
-  const handleGenerateMeals = async () => {
-    console.log('🔵 FAB PRESSED - handleGenerateMeals called');
-    if (isConnected === false) {
-      OFFLINE_ALERT();
-      return;
-    }
-    if (!canDo('meal_generation')) {
-      Alert.alert(
-        'Daily Limit Reached',
-        `You've used all ${DAILY_LIMITS.meal_generation} meal generations for today. Limits reset at midnight.`
-      );
-      return;
-    }
-    const dayStatus = getDayMealStatus(selectedDay);
-    
-    // Debug callback intentionally omitted — enabling debug forces a huge SSE
-    // payload after OpenAI returns and commonly trips the 120s client timeout.
-    const runGenerateDay = async () => {
-      const { workouts, tomorrowWorkouts } = await resolveWorkoutsForMealDay(selectedDay);
-      return mealPlanHook.generateDay(selectedDay, userProfile, foodPreferences, {
-        workouts,
-        tomorrowWorkouts,
-      });
-    };
-
-    // If all meals are filled for this day, show action sheet
-    if (dayStatus.allFilled) {
-      const options = ['Cancel', 'Regenerate Day', 'Clear Day'];
-      const destructiveButtonIndex = 2;
-      const cancelButtonIndex = 0;
-
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            options,
-            cancelButtonIndex,
-            destructiveButtonIndex,
-          },
-          async (buttonIndex) => {
-            if (buttonIndex === 1) {
-              // Regenerate Day
-              await mealPlanHook.clearDay(selectedDay);
-              await runGenerateDay();
-              refetchLimits();
-            } else if (buttonIndex === 2) {
-              // Clear Day
-              Alert.alert(
-                'Clear Day',
-                `Are you sure you want to clear all meals for ${capitalize(selectedDay)}?`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Clear',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await mealPlanHook.clearDay(selectedDay);
-                    },
-                  },
-                ]
-              );
-            }
-          }
-        );
-      } else {
-        // Android: use Alert
-        Alert.alert(
-          'Regenerate / Clear',
-          `Choose an action for ${capitalize(selectedDay)}:`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Regenerate Day',
-              onPress: async () => {
-                await mealPlanHook.clearDay(selectedDay);
-                await runGenerateDay();
-                refetchLimits();
-              },
-            },
-            {
-              text: 'Clear Day',
-              style: 'destructive',
-              onPress: async () => {
-                Alert.alert(
-                  'Clear Day',
-                  `Are you sure you want to clear all meals for ${capitalize(selectedDay)}?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Clear',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await mealPlanHook.clearDay(selectedDay);
-                      },
-                    },
-                  ]
-                );
-              },
-            },
-          ]
-        );
-      }
-    } else {
-      // Normal generation flow - generate meals for the selected day
-      await runGenerateDay();
-      refetchLimits();
-    }
-  };
-
   const handlePreviousWeek = useCallback(async () => {
     const prevWeek = getPreviousWeek(mealPlanHook.currentWeekStarting);
     if (prevWeek) await mealPlanHook.loadMealPlanByWeek(prevWeek);
@@ -756,14 +625,24 @@ export default function MealsScreen() {
     try {
       setLoadingGroceryList(true);
       const allMeals = [];
+      const weekStarting = mealPlanHook.currentWeekStarting;
+      const viewingCurrentWeek = weekStarting === getMondayOfCurrentWeek();
+      const todayDay = getCurrentDayOfWeek();
+      const completions = mealCompletionsHook.completions || [];
 
       Object.entries(mealPlanHook.mealPlan || {}).forEach(([day, meals]) => {
+        // Past days this week are already eaten — skip them.
+        if (viewingCurrentWeek && isPastDay(day, weekStarting)) {
+          return;
+        }
+
         Object.entries(meals || {}).forEach(([mealType, meal]) => {
           if (
             !meal ||
             typeof meal !== 'string' ||
             mealType.includes('_rating') ||
-            meal.trim() === ''
+            meal.trim() === '' ||
+            meal === '__generating__'
           ) {
             return;
           }
@@ -772,6 +651,15 @@ export default function MealsScreen() {
           if (mealType === 'snacks') {
             return;
           }
+
+          // Today: only include meals not marked completed.
+          if (viewingCurrentWeek && day === todayDay) {
+            const isCompleted = completions.some(
+              (c) => c.day_of_week === day && c.meal_type === mealType
+            );
+            if (isCompleted) return;
+          }
+
           allMeals.push(meal);
         });
       });
@@ -804,6 +692,22 @@ export default function MealsScreen() {
     }
   };
 
+  const groceryRangeTitle = (() => {
+    const weekStarting = mealPlanHook.currentWeekStarting;
+    if (!weekStarting) return 'Grocery List';
+    const weekEnd = addDaysToLocalDate(weekStarting, 6);
+    const startIso =
+      weekStarting === getMondayOfCurrentWeek() ? getTodayDate() : weekStarting;
+    const formatShort = (iso) => {
+      if (!iso) return '';
+      return new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+    };
+    return `Groceries for ${formatShort(startIso)} - ${formatShort(weekEnd)}`;
+  })();
+
   const handleShareGroceryList = async () => {
     try {
       const listItems = [];
@@ -817,8 +721,8 @@ export default function MealsScreen() {
       });
       const listText = listItems.join('\n');
       await Share.share({
-        message: `Grocery List:\n${listText}`,
-        title: 'Grocery List',
+        message: `${groceryRangeTitle}:\n${listText}`,
+        title: groceryRangeTitle,
       });
     } catch (error) {
       console.error('Error sharing grocery list:', error);
@@ -849,16 +753,9 @@ export default function MealsScreen() {
         )
     );
 
-  // Get day-specific meal status for FAB
-  const dayMealStatus = getDayMealStatus(selectedDay);
-
   const selectedDayMeals = mealPlanHook.mealPlan?.[selectedDay] || {};
   const dayToggles = getDayMealToggles(selectedDayMeals);
   const activeTypes = getActiveMealTypes(dayToggles, selectedDayMeals);
-
-  const showFab = !dayMealStatus.allFilled;
-  const mealGenerationLimitReached = !canDo('meal_generation');
-  const scrollBottomPadding = showFab ? 96 : 20;
 
   const weekDateNumbers = useMemo(
     () => getWeekDateNumbers(mealPlanHook.currentWeekStarting),
@@ -867,11 +764,10 @@ export default function MealsScreen() {
 
   // Day strip in the global header — useLayoutEffect so it lands before first paint
   // (useFocusEffect is post-paint and lets meal cards shift down when the strip appears).
+  // Keep set vs clear in separate effects: clearing on every content dep update caused
+  // intermittent empty reserved strips when navigating to Meals/Training.
   useLayoutEffect(() => {
-    if (!isFocused) {
-      clearHeaderSlot('meals');
-      return undefined;
-    }
+    if (!isFocused) return undefined;
 
     setHeaderSlot(
       <DaySelector
@@ -894,10 +790,8 @@ export default function MealsScreen() {
       />,
       'meals'
     );
-
-    return () => clearHeaderSlot('meals');
+    return undefined;
   }, [
-    clearHeaderSlot,
     isCurrentWeek,
     isFocused,
     isGuest,
@@ -908,6 +802,13 @@ export default function MealsScreen() {
     user,
     weekDateNumbers,
   ]);
+
+  useLayoutEffect(() => {
+    if (!isFocused) {
+      clearHeaderSlot('meals');
+    }
+    return () => clearHeaderSlot('meals');
+  }, [clearHeaderSlot, isFocused]);
 
   if (mealPlanHook.fetchError && !mealPlanHook.isLoading) {
     return (
@@ -961,7 +862,7 @@ export default function MealsScreen() {
         removeClippedSubviews={false}
         contentContainerStyle={{
           paddingTop: 8,
-          paddingBottom: scrollBottomPadding,
+          paddingBottom: 20,
           // Inset lives here (not on Layout) so card scale can paint into it.
           paddingHorizontal: 16,
         }}
@@ -1045,7 +946,22 @@ export default function MealsScreen() {
 
             if (index === 0) {
               return (
-                <TourTarget key={`${selectedDay}-${mealType}`} id="meals-first-slot">
+                <TourTarget
+                  key={`${selectedDay}-${mealType}`}
+                  id="meals-first-slot"
+                  onTourActivate={() => {
+                    const mealStr = mealPlanHook.mealPlan?.[selectedDay]?.[mealType] || '';
+                    const isFilled =
+                      typeof mealStr === 'string' &&
+                      mealStr.trim().length > 0 &&
+                      mealStr !== '__generating__';
+                    notifyTargetPress('meals-first-slot');
+                    if (!isFilled) {
+                      handleEmptyMealPress(mealType);
+                    }
+                    // Filled slot during overview: advance only (same as card tap).
+                  }}
+                >
                   {card}
                 </TourTarget>
               );
@@ -1070,56 +986,13 @@ export default function MealsScreen() {
         </Text>
       </ScrollView>
 
-      {/* FAB — show when the day has at least one empty meal (grayed if limit reached) */}
-      {!showFab ? null : (
-        <>
-          <TouchableOpacity 
-            style={[
-              styles.fab,
-              { bottom: fabBottom },
-              mealGenerationLimitReached && styles.fabDisabled,
-            ]} 
-            onPress={handleGenerateMeals} 
-            disabled={mealPlanHook.isGenerating}
-          >
-            {mealPlanHook.isGenerating ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
-            ) : (
-              <Ionicons
-                name="add"
-                size={28}
-                color={mealGenerationLimitReached ? colors.textTertiary : colors.textInverse}
-              />
-            )}
-          </TouchableOpacity>
-
-          {!mealPlanHook.isGenerating ? (
-            <View
-              style={[
-                styles.fabLabel,
-                { bottom: fabLabelBottom },
-                mealGenerationLimitReached && styles.fabLabelDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.fabLabelText,
-                  mealGenerationLimitReached && styles.fabLabelTextDisabled,
-                ]}
-              >
-                {dayMealStatus.hasPartial ? 'Generate Remaining' : 'Generate Meals'}
-              </Text>
-            </View>
-          ) : null}
-        </>
-      )}
-
       {/* Modals */}
       <MealOptionsBottomSheet
         visible={showMealOptions}
         mealName={selectedMeal?.name}
         rating={mealPlanHook.mealPlan?.[selectedDay]?.[`${selectedMeal?.mealType}_rating`]}
         onRate={(rating) => mealPlanHook.rateMeal(selectedDay, selectedMeal?.mealType, rating)}
+        onEdit={handleEditMeal}
         onSaveMeal={!isGuest && user?.id ? handleSaveMeal : undefined}
         onGetRecipe={handleGetRecipe}
         onRegenerate={handleRegenerate}
@@ -1190,6 +1063,7 @@ export default function MealsScreen() {
       <GroceryListModal
         visible={showGroceryModal}
         groceryList={groceryList}
+        rangeTitle={groceryRangeTitle}
         onShare={handleShareGroceryList}
         onClose={() => setShowGroceryModal(false)}
       />
@@ -1244,6 +1118,13 @@ export default function MealsScreen() {
         isGuest={isGuest}
         userId={user?.id}
         mealPlan={mealPlanHook.mealPlan}
+      />
+
+      <EditMealModal
+        visible={showEditMealModal}
+        onClose={() => setShowEditMealModal(false)}
+        onSave={handleSaveEditedMeal}
+        initialMeal={selectedMeal}
       />
 
       <LogSnackModal
@@ -1402,45 +1283,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     color: colors.textTertiary || colors.textSecondary,
     textAlign: 'center',
     fontWeight: '500',
-  },
-  fab: {
-    position: 'absolute',
-    right: 34,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  fabDisabled: {
-    backgroundColor: colors.borderDark || colors.border,
-    shadowOpacity: 0.08,
-    elevation: 2,
-  },
-  fabLabel: {
-    position: 'absolute',
-    right: 34,
-    backgroundColor: colors.text,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  fabLabelDisabled: {
-    backgroundColor: colors.borderDark || colors.border,
-  },
-  fabLabelText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textInverse,
-  },
-  fabLabelTextDisabled: {
-    color: colors.textTertiary,
   },
   debugPromptContainer: {
     position: 'absolute',

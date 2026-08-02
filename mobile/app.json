@@ -2,7 +2,7 @@
   "expo": {
     "name": "Alimenta",
     "slug": "alimenta",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "alimenta",
@@ -17,10 +17,13 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.charliehanson.alimenta",
-      "buildNumber": "4",
+      "buildNumber": "16",
       "infoPlist": {
         "CFBundleDisplayName": "Alimenta",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -42,7 +45,8 @@
     },
     "plugins": [
       "expo-router",
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

@@ -25,6 +25,7 @@ export function AestheticSheet({
   visible,
   onClose,
   title,
+  titleStyle,
   eyebrow,
   icon = 'leaf-outline',
   height = '90%',
@@ -65,7 +66,7 @@ export function AestheticSheet({
               </View>
               <View style={styles.headerTextBlock}>
                 {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-                <Text style={styles.title} numberOfLines={2}>
+                <Text style={[styles.title, titleStyle]} numberOfLines={2}>
                   {title}
                 </Text>
               </View>
