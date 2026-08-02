@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +22,9 @@ import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import PreferencesScreen from './preferences';
 import { parseHeightCm, computeNutritionTargets } from '../../../shared/lib/tdeeCalc.js';
+import { AestheticCard } from '../../components/ui/AestheticSheet';
+
+const { width } = Dimensions.get('window');
 
 const GOAL_OPTIONS = [
   { value: 'lose', label: 'Lose weight' },
@@ -277,6 +281,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
+      </View>
+
       <View style={styles.contentWrapper}>
         {activeTab === 'preferences' ? (
           <View style={styles.tabContent}>
@@ -297,7 +307,7 @@ export default function ProfileScreen() {
             ) : null}
 
             {/* Personal Information */}
-            <View style={styles.section}>
+            <AestheticCard>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
                   <Ionicons name="person-circle-outline" size={20} color="#3D7C65" />
@@ -470,7 +480,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
                 <Text style={styles.inputLabel}>Activity Level (outside training)</Text>
                 <TouchableOpacity
                   style={[styles.pickerButton, isGuest && styles.inputDisabled]}
@@ -493,11 +503,10 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
                 <Text style={styles.inputHint}>Your daily activity excluding structured workouts</Text>
               </View>
-            </View>
+            </AestheticCard>
 
             {/* Training & Goals */}
-            <View style={styles.section}>
-              <View style={styles.sectionDivider} />
+            <AestheticCard>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
                   <Ionicons name="target-outline" size={20} color="#3D7C65" />
@@ -505,7 +514,7 @@ export default function ProfileScreen() {
                 <Text style={styles.sectionTitle}>Training & Goals</Text>
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
                 <Text style={styles.inputLabel}>Training Objective</Text>
                 <TextInput
                   style={[styles.textArea, isGuest && styles.inputDisabled]}
@@ -519,11 +528,10 @@ export default function ProfileScreen() {
                 />
                 <Text style={styles.inputHint}>Describe your primary training goal or objective</Text>
               </View>
-            </View>
+            </AestheticCard>
 
             {/* Dietary Preferences */}
-            <View style={styles.section}>
-              <View style={styles.sectionDivider} />
+            <AestheticCard>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
                   <Ionicons name="document-text-outline" size={20} color="#3D7C65" />
@@ -531,7 +539,7 @@ export default function ProfileScreen() {
                 <Text style={styles.sectionTitle}>Dietary Preferences</Text>
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
                 <Text style={styles.inputLabel}>Dietary Restrictions</Text>
                 <TextInput
                   style={[styles.textArea, isGuest && styles.inputDisabled]}
@@ -547,10 +555,10 @@ export default function ProfileScreen() {
                   Any foods you must avoid due to allergies, intolerances, or dietary choices
                 </Text>
               </View>
-            </View>
+            </AestheticCard>
 
             {/* Save Section */}
-            <View style={styles.saveSection}>
+            <AestheticCard>
               {!isGuest ? (
                 <>
                   <TouchableOpacity
@@ -569,7 +577,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.saveButton, { marginTop: 12 }]}
+                    style={[styles.saveButton, { marginTop: 10 }]}
                     onPress={handleCalculateMacros}
                   >
                     <Ionicons name="calculator-outline" size={18} color="#FFFFFF" />
@@ -597,7 +605,7 @@ export default function ProfileScreen() {
                   </View>
                 </View>
               )}
-            </View>
+            </AestheticCard>
 
             {!isGuest && <ProfileCompletionCard profile={profileHook.profile} styles={styles} />}
           </ScrollView>
@@ -964,40 +972,66 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: 16,
   },
+  // ── Background decoration ──
+  bgDecor: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 9999,
+  },
+  bgCircleMint: {
+    width: width * 0.7,
+    height: width * 0.7,
+    backgroundColor: isDarkMode ? 'rgba(224,236,222,0.07)' : '#E0ECDE',
+    top: -width * 0.2,
+    right: -width * 0.32,
+  },
+  bgCirclePeach: {
+    width: width * 0.75,
+    height: width * 0.75,
+    backgroundColor: isDarkMode ? 'rgba(247,233,218,0.07)' : '#F7E9DA',
+    top: width * 0.6,
+    left: -width * 0.42,
+  },
+  // ── Tab bar — soft pill segmented control ──
   tabBar: {
     flexDirection: 'row',
+    backgroundColor: isDarkMode ? colors.cardBackground : colors.inputBackground,
+    borderRadius: 20,
+    padding: 3,
+    gap: 2,
   },
   tab: {
     flex: 1,
-    paddingTop: 8,
-    paddingBottom: 10,
+    paddingVertical: 7,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
   },
   tabActive: {
-    borderBottomColor: colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
   },
   tabTextActive: {
-    color: colors.primary,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
+  // ── Content wrapper — transparent, open bg ──
   contentWrapper: {
     flex: 1,
-    marginBottom: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    backgroundColor: colors.cardBackground,
+    zIndex: 1,
   },
   tabContent: {
     flex: 1,
@@ -1019,18 +1053,18 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 20,
+    paddingBottom: 24,
+    gap: 12,
   },
   fetchErrorBanner: {
     backgroundColor: colors.errorLight || '#FEF2F2',
     borderWidth: 1,
     borderColor: colors.errorBorder || '#FECACA',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 14,
   },
   fetchErrorBannerText: {
     fontSize: 13,
@@ -1038,64 +1072,57 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     color: colors.error || '#DC2626',
     lineHeight: 18,
   },
-  // ── Section labels (replacing heavy icon headers) ──
-  section: {
-    marginBottom: 24,
-  },
+  // ── Section headers ──
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
   },
   sectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primaryLight,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: isDarkMode ? 'rgba(61,124,101,0.2)' : 'rgba(61,124,101,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 19,
     color: colors.text,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginBottom: 16,
-    marginTop: 4,
+    letterSpacing: -0.2,
   },
   // ── Inputs ──
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.text,       // ← was hardcoded '#374151', now theme-aware
-    marginBottom: 8,
+    color: colors.textSecondary,
+    marginBottom: 7,
+    letterSpacing: 0.1,
   },
   input: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 15,
     color: colors.text,
-    minHeight: 44,
+    minHeight: 46,
   },
   inputDisabled: {
     opacity: 0.5,
   },
   textArea: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 15,
@@ -1105,21 +1132,21 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   inputHint: {
     fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 6,
+    color: colors.textTertiary,
+    marginTop: 5,
     fontWeight: '500',
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: 44,
+    minHeight: 46,
   },
   pickerButtonText: {
     fontSize: 15,
@@ -1136,27 +1163,27 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   inputFlex: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 15,
     color: colors.text,
-    minHeight: 44,
+    minHeight: 46,
   },
   inputSmall: {
     width: 64,
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
     fontSize: 15,
     color: colors.text,
-    minHeight: 44,
+    minHeight: 46,
     textAlign: 'center',
   },
   unitButton: {
@@ -1166,10 +1193,10 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: 44,
+    minHeight: 46,
     minWidth: 80,
     gap: 4,
   },
@@ -1182,13 +1209,9 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginHorizontal: 4,
+    marginHorizontal: 2,
   },
   // ── Save ──
-  saveSection: {
-    marginTop: 8,
-    marginBottom: 16,
-  },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1196,14 +1219,14 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
     minHeight: 50,
-    shadowColor: colors.shadowColor,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: isDarkMode ? 0 : 0.2,
+    shadowRadius: 6,
+    elevation: isDarkMode ? 0 : 3,
   },
   saveButtonDisabled: {
     opacity: 0.7,
@@ -1216,11 +1239,11 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   confirmationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: colors.successLight,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.success,
     gap: 8,
@@ -1234,7 +1257,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     backgroundColor: colors.warningLight,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.warning,
     gap: 10,
@@ -1264,12 +1287,16 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   // ── Profile completion card ──
   completionCard: {
-    backgroundColor: colors.inputBackground,
-    borderRadius: 12,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
-    marginTop: 8,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDarkMode ? 0 : 0.05,
+    shadowRadius: 6,
+    elevation: isDarkMode ? 0 : 1,
   },
   completionHeader: {
     flexDirection: 'row',
@@ -1281,7 +1308,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: isDarkMode ? 'rgba(61,124,101,0.2)' : 'rgba(61,124,101,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1289,27 +1316,27 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flex: 1,
   },
   completionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 17,
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   completionSubtitle: {
     fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   completionPercentage: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   completionPercentageText: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '900',
     color: colors.primary,
   },
   progressBarContainer: {
-    height: 8,
+    height: 7,
     backgroundColor: colors.border,
     borderRadius: 4,
     overflow: 'hidden',
@@ -1336,8 +1363,8 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   },
   missingFieldTag: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.cardBackground,
+    paddingVertical: 5,
+    backgroundColor: colors.inputBackground,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.warning,
@@ -1358,16 +1385,16 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     zIndex: 0,
   },
   pickerModal: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '70%',
-    padding: 18,
+    padding: 20,
   },
   macrosModal: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     height: '90%',
     overflow: 'hidden',
     zIndex: 1,
@@ -1377,7 +1404,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flexDirection: 'column',
     pointerEvents: 'auto',
     padding: 18,
-    paddingTop: 12,
+    paddingTop: 14,
   },
   macrosModalHeader: {
     flexDirection: 'row',
@@ -1392,6 +1419,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 16,
+    marginTop: 4,
   },
   macrosModalScroll: {
     flex: 1,
@@ -1406,8 +1434,8 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     marginBottom: 20,
   },
   macrosSectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 17,
     color: colors.text,
     marginBottom: 12,
   },
@@ -1418,7 +1446,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   macrosStatCard: {
     padding: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   macrosStatLabel: {
     fontSize: 11,
@@ -1438,7 +1466,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   macrosDailyBox: {
     padding: 12,
     backgroundColor: colors.inputBackground,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 8,
   },
   macrosDailyTitle: {
@@ -1454,7 +1482,7 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   macrosMealBox: {
     padding: 12,
     backgroundColor: isDarkMode ? colors.background : colors.primaryLight,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: isDarkMode ? colors.borderDark : colors.primaryBorder,
   },
@@ -1486,13 +1514,13 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontFamily: 'PlayfairDisplay_600SemiBold',
+    fontSize: 20,
     color: colors.text,
   },
   pickerOptions: {
@@ -1503,8 +1531,8 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    borderRadius: 13,
     marginBottom: 6,
     backgroundColor: colors.inputBackground,
   },

@@ -7,6 +7,8 @@ import { getTopMealsByVector } from '../lib/rag.js'; // adjust path if needed
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
+import { mapIntensity } from '../../shared/lib/tdeeCalc.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey =
@@ -42,16 +44,29 @@ function mealCompletionOptions({ messages, maxTokens = 8000, response_format, te
 }
 const DESSERT_CATEGORIES = ['baked', 'frozen', 'chocolate', 'fruit', 'pastry/cream'];
 
-/* ---------------------- NEW: normalize training plan ---------------------- */
-// training_plans.plan_data → { day: { workouts: [...] }, ... }
-// We flatten that into { day: { type, distance, intensity }, ... }
-function summarizePlanData(planData) {
-  if (!planData || typeof planData !== 'object') return null;
+/* ---------------------- Normalize workout logs → day summary ---------------------- */
+// workout arrays (UI intensity labels) → { day: { type, distance, intensity:number }, ... }
+function addDaysToDateString(dateStr, days) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function weekdayFromLocalDate(localDate) {
+  const d = new Date(`${localDate}T00:00:00`);
+  const js = d.getDay();
+  return DAYS[js === 0 ? 6 : js - 1];
+}
+
+function summarizeWorkoutsByDay(workoutsByDay) {
+  if (!workoutsByDay || typeof workoutsByDay !== 'object') return null;
 
   const summary = {};
   for (const day of DAYS) {
-    const dayObj = planData[day] || {};
-    const workouts = Array.isArray(dayObj.workouts) ? dayObj.workouts : [];
+    const workouts = Array.isArray(workoutsByDay[day]) ? workoutsByDay[day] : [];
 
     if (!workouts.length) {
       summary[day] = { type: 'Rest', distance: '', intensity: 5 };
@@ -59,18 +74,15 @@ function summarizePlanData(planData) {
     }
 
     const nonRest = workouts.filter(
-      (w) => (w.type || '').toLowerCase() !== 'rest'
+      (w) => (w.type || '').trim() && (w.type || '').toLowerCase() !== 'rest'
     );
     const chosen = nonRest[0] || workouts[0];
 
-    const intensities = workouts
-      .map((w) => Number(w.intensity) || 0)
-      .filter((n) => n > 0);
-    const intensity = intensities.length
-      ? Math.round(
-          intensities.reduce((a, b) => a + b, 0) / intensities.length
-        )
-      : 5;
+    // Bug fix: was Number(w.intensity) which yields NaN for UI labels like "High"
+    const intensities = workouts.map((w) => mapIntensity(w.intensity));
+    const intensity = Math.round(
+      intensities.reduce((a, b) => a + b, 0) / intensities.length
+    );
 
     summary[day] = {
       type: chosen.type || 'Rest',
@@ -80,6 +92,30 @@ function summarizePlanData(planData) {
   }
 
   return summary;
+}
+
+async function loadWorkoutSummaryForWeek(userId, weekStarting) {
+  if (!userId || !weekStarting) return null;
+  const endDate = addDaysToDateString(weekStarting, 6);
+  const { data, error } = await supabase
+    .from('workout_logs')
+    .select('local_date, workouts')
+    .eq('user_id', userId)
+    .gte('local_date', weekStarting)
+    .lte('local_date', endDate);
+
+  if (error) {
+    console.error('generate-meals: workout_logs fetch failed', error);
+    return null;
+  }
+
+  const byDay = {};
+  for (const day of DAYS) byDay[day] = [];
+  for (const row of data || []) {
+    const day = weekdayFromLocalDate(row.local_date);
+    if (day) byDay[day] = Array.isArray(row.workouts) ? row.workouts : [];
+  }
+  return summarizeWorkoutsByDay(byDay);
 }
 
 /* ------------------------------- JSON schema ------------------------------- */
@@ -494,9 +530,10 @@ export default async function handler(req, res) {
   const {
     userProfile,
     foodPreferences,
-    trainingPlan: clientTrainingPlan,
+    workoutsByDay: clientWorkoutsByDay,
     weekStarting,
     existingMeals,
+    localDate,
   } = req.body || {};
 
   // Rate limit check must happen BEFORE sseHeaders() writes Content-Type
@@ -522,25 +559,15 @@ export default async function handler(req, res) {
     const dislikedFoods = foodPreferences?.dislikes || 'No dislikes specified';
     const cuisines      = foodPreferences?.cuisines || 'No cuisines specified';
 
-    // 🔥 NEW: prefer active training plan from DB
+    // Prefer workout_logs for the meal week; fall back to client workoutsByDay (e.g. guests)
     let trainingPlan = null;
 
-    if (userId) {
-      const { data: activePlan, error } = await supabase
-        .from('training_plans')
-        .select('plan_data')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!error && activePlan?.plan_data) {
-        trainingPlan = summarizePlanData(activePlan.plan_data);
-      }
+    if (userId && weekStarting) {
+      trainingPlan = await loadWorkoutSummaryForWeek(userId, weekStarting);
     }
 
-    // fallback to what client sends (e.g. guests)
-    if (!trainingPlan && clientTrainingPlan) {
-      trainingPlan = summarizePlanData(clientTrainingPlan) || null;
+    if (!trainingPlan && clientWorkoutsByDay) {
+      trainingPlan = summarizeWorkoutsByDay(clientWorkoutsByDay) || null;
     }
 
     // Start with existing meals or empty object
@@ -721,6 +748,7 @@ Return ONLY JSON with the same shape for this day:
     }
 
     sendEvent(res, 'done', { success: true, weekStarting, userSaved: Boolean(userId) });
+    await recordUserStreak(supabase, userId, localDate);
     clearInterval(keepAlive);
     res.end();
   } catch (error) {

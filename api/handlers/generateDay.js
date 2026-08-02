@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildDayPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
@@ -13,6 +13,7 @@ import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { buildGenerationMealSlots, toUiMealType, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -44,13 +45,15 @@ export function createGenerateDayHandler(provider) {
       day,
       userProfile,
       foodPreferences,
-      trainingPlan,
+      workouts: rawWorkouts,
+      tomorrowWorkouts: rawTomorrowWorkouts,
       weekStarting,
       existingMeals,
       ragContext,
       debug = false,
       forceRegenerate = false,
       includeDessert,
+      localDate,
     } = req.body;
 
     if (!userProfile || !day) {
@@ -139,14 +142,14 @@ export function createGenerateDayHandler(provider) {
         }
       }
 
-      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-      const dayTiming = trainingPlan?.[day]?.timing || null;
-      const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+      const dayWorkouts = Array.isArray(rawWorkouts) ? rawWorkouts : [];
+      const tomorrowWorkouts = Array.isArray(rawTomorrowWorkouts) ? rawTomorrowWorkouts : [];
+      const numericWorkouts = withNumericIntensities(dayWorkouts);
 
       const nutrition = computeNutritionTargets({
         userProfile,
-        todayWorkouts: dayWorkouts,
-        workoutTiming: timingMap[dayTiming] || null,
+        todayWorkouts: numericWorkouts,
+        workoutTiming: deriveWorkoutTiming(dayWorkouts),
         mealSlots,
       });
 
@@ -175,9 +178,8 @@ export function createGenerateDayHandler(provider) {
         }
       }
 
-      const tomorrowDay = DAYS[(dayIndex + 1) % 7];
       const todayTraining = formatTrainingDay(dayWorkouts);
-      const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
+      const tomorrowTraining = formatTrainingDay(tomorrowWorkouts);
 
       const budgetsToGenerate = {};
       for (const mt of emptySlots) {
@@ -300,6 +302,8 @@ export function createGenerateDayHandler(provider) {
           console.warn('Failed to save meals to DB:', e.message);
         }
       }
+
+      await recordUserStreak(supabase, userId, localDate);
 
       send('done', {
         success: true,

@@ -114,7 +114,7 @@ export const AnalyticsModal = ({
   
   const totalMacroCalories = macroDistribution.reduce((sum, m) => sum + m.value, 0);
   
-  // Training intensity correlation
+  // Training intensity correlation — expects { [weekday]: { workouts: [...] } } with UI labels
   const getTrainingInsight = () => {
     if (!trainingPlan) return null;
     
@@ -122,15 +122,32 @@ export const AnalyticsModal = ({
     let restDays = [];
     
     DAYS.forEach(day => {
-      const workout = trainingPlan[day];
+      const dayData = trainingPlan[day];
       const dayMacros = dayStats.find(d => d.fullDay === day);
       
       if (!dayMacros?.hasData) return;
       
-      const intensity = workout?.intensity || 5;
-      if (intensity >= 7) {
+      const workouts = dayData?.workouts || [];
+      if (workouts.length === 0) {
+        restDays.push(dayMacros.calories);
+        return;
+      }
+
+      let hasHighIntensity = false;
+      let hasRest = false;
+
+      workouts.forEach((workout) => {
+        const intensity = workout?.intensity || 'Medium';
+        if (intensity === 'High') {
+          hasHighIntensity = true;
+        } else if (intensity === 'Recovery' || workout?.type?.toLowerCase() === 'rest') {
+          hasRest = true;
+        }
+      });
+
+      if (hasHighIntensity) {
         highIntensityDays.push(dayMacros.calories);
-      } else if (intensity <= 3 || workout?.type?.toLowerCase() === 'rest') {
+      } else if (hasRest) {
         restDays.push(dayMacros.calories);
       }
     });

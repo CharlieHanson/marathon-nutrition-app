@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  Keyboard,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { parseHeightCm } from '../../../shared/lib/tdeeCalc.js';
@@ -98,12 +101,64 @@ function parseHeightForDisplay(raw) {
 export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const scrollRef = useRef(null);
+  const scrollY = useRef(0);
+  const keyboardHeight = useRef(0);
+  const focusedInputRef = useRef(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [showAgePicker, setShowAgePicker] = useState(false);
   const [showWeightUnitPicker, setShowWeightUnitPicker] = useState(false);
   const [showHeightUnitPicker, setShowHeightUnitPicker] = useState(false);
+  const [keyboardPad, setKeyboardPad] = useState(0);
+
+  const scrollTargetAboveKeyboard = (target) => {
+    if (!target?.measureInWindow || !scrollRef.current) return;
+    target.measureInWindow((_x, y, _width, height) => {
+      const windowHeight = Dimensions.get('window').height;
+      const kb = keyboardHeight.current;
+      const keyboardTop = kb > 0 ? windowHeight - kb : windowHeight * 0.55;
+      const inputBottom = y + height;
+      const gap = 24;
+      if (inputBottom > keyboardTop - gap) {
+        const delta = inputBottom - (keyboardTop - gap);
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, scrollY.current + delta),
+          animated: true,
+        });
+      }
+    });
+  };
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const height = e.endCoordinates?.height ?? 0;
+      keyboardHeight.current = height;
+      setKeyboardPad(Math.max(0, height - 80));
+      if (focusedInputRef.current) {
+        requestAnimationFrame(() => scrollTargetAboveKeyboard(focusedInputRef.current));
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardHeight.current = 0;
+      focusedInputRef.current = null;
+      setKeyboardPad(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollFocusedInputAboveKeyboard = (event) => {
+    const target = event?.target;
+    focusedInputRef.current = target;
+    const delay = Platform.OS === 'ios' ? 60 : 120;
+    setTimeout(() => scrollTargetAboveKeyboard(target), delay);
+  };
 
   const initialHeight = parseHeightForDisplay(profile.height);
   const initialWeight = parseWeightForDisplay(profile.weight);
@@ -163,10 +218,16 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 16 + keyboardPad }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => {
+          scrollY.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Name</Text>
@@ -177,6 +238,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             placeholder="Your name"
             placeholderTextColor={colors.placeholderColor}
             returnKeyType="done"
+            onFocus={scrollFocusedInputAboveKeyboard}
           />
         </View>
 
@@ -221,6 +283,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 onBlur={syncHeightToProfile}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
+                onFocus={scrollFocusedInputAboveKeyboard}
               />
               <TouchableOpacity
                 style={styles.unitButton}
@@ -241,6 +304,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 onBlur={syncHeightToProfile}
                 keyboardType="number-pad"
                 returnKeyType="done"
+                onFocus={scrollFocusedInputAboveKeyboard}
               />
               <Text style={styles.unitLabel}>ft</Text>
               <TextInput
@@ -252,6 +316,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
                 onBlur={syncHeightToProfile}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
+                onFocus={scrollFocusedInputAboveKeyboard}
               />
               <Text style={styles.unitLabel}>in</Text>
               <TouchableOpacity
@@ -277,6 +342,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
               onBlur={syncWeightToProfile}
               keyboardType="decimal-pad"
               returnKeyType="done"
+              onFocus={scrollFocusedInputAboveKeyboard}
             />
             <TouchableOpacity
               style={styles.unitButton}
@@ -340,6 +406,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             numberOfLines={3}
             returnKeyType="done"
             blurOnSubmit
+            onFocus={scrollFocusedInputAboveKeyboard}
           />
         </View>
 
@@ -355,6 +422,7 @@ export function ProfileStep({ profile, onUpdate, onNext, onBack, isSaving }) {
             numberOfLines={3}
             returnKeyType="done"
             blurOnSubmit
+            onFocus={scrollFocusedInputAboveKeyboard}
           />
         </View>
       </ScrollView>
@@ -693,7 +761,6 @@ function getStyles(colors) {
     },
     scroll: {
       flex: 1,
-      maxHeight: 400,
     },
     scrollContent: {
       paddingBottom: 16,

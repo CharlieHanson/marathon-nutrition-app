@@ -348,6 +348,24 @@ export function ProductTourProvider({ children }) {
     [next]
   );
 
+  /** Simulate pressing the current step's TourTarget (same as spotlight hole tap). */
+  const pressCurrentTarget = useCallback(() => {
+    if (!isActiveRef.current) return;
+    const step = stepsRef.current[stepIndexRef.current];
+    if (!step?.targetId) {
+      next();
+      return;
+    }
+    const entry = targetsRef.current.get(step.targetId);
+    if (typeof entry?.press === 'function') {
+      entry.press();
+      return;
+    }
+    if (step.advanceOn === 'targetPress') {
+      next();
+    }
+  }, [next]);
+
   /** Escape hatch when a modal/sheet closes without pressing the highlighted action. */
   const notifyTargetDismissed = useCallback(
     (id) => {
@@ -496,6 +514,7 @@ export function ProductTourProvider({ children }) {
       getTargetLayout,
       notifyTargetPress,
       notifyTargetDismissed,
+      pressCurrentTarget,
       remeasureCurrentTarget,
       navigateToRoute,
     }),
@@ -517,6 +536,7 @@ export function ProductTourProvider({ children }) {
       getTargetLayout,
       notifyTargetPress,
       notifyTargetDismissed,
+      pressCurrentTarget,
       remeasureCurrentTarget,
       navigateToRoute,
     ]

@@ -10,22 +10,27 @@ import {
   Pressable,
   TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useHeaderSlotActions } from '../../context/HeaderSlotContext';
-import { useTrainingPlan } from '../../hooks/useTrainingPlan';
+import { useWorkoutLog } from '../../hooks/useWorkoutLog';
 import { ErrorState } from '../../components/ErrorState';
 import { TourTarget } from '../../components/tour/TourTarget';
 import { DaySelector } from '../../components/meals/MealsHeader';
-import { getMondayOfCurrentWeek } from '../../utils/mealHelpers';
+import {
+  DAYS,
+  getMondayOfCurrentWeek,
+  getWeekDateNumbers,
+} from '../../utils/mealHelpers';
+import {
+  addDaysToDateString,
+} from '../../context/WorkoutLogContext';
+import { getCurrentDayOfWeek } from '../../hooks/useMealCompletions';
 
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const MAX_WORKOUTS = 5;
 
 const WORKOUT_TYPES = [
   'Rest',
@@ -39,6 +44,7 @@ const WORKOUT_TYPES = [
 ];
 
 const INTENSITY_LEVELS = ['High', 'Medium', 'Low', 'Recovery'];
+const INTENSITY_PILLS = ['Low', 'Medium', 'High', 'Recovery'];
 
 const WORKOUT_TIMING_OPTIONS = ['—', 'Morning', 'Afternoon', 'Evening'];
 
@@ -50,78 +56,77 @@ const DEFAULT_WORKOUT = {
   timing: '',
 };
 
-// Picker styles function
-const getPickerStyles = (colors) => StyleSheet.create({
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalOverlay,
-    justifyContent: 'flex-end',
-  },
-  pickerContainer: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
-    padding: 20,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-  },
-  pickerOptions: {
-    maxHeight: 400,
-  },
-  pickerOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickerOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  pickerOptionIcon: {
-    marginRight: 0,
-  },
-  pickerOptionSelected: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  pickerOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  pickerOptionTextSelected: {
-    color: colors.primary,
-    fontWeight: '800',
-  },
-});
+const getPickerStyles = (colors) =>
+  StyleSheet.create({
+    pickerOverlay: {
+      flex: 1,
+      backgroundColor: colors.modalOverlay,
+      justifyContent: 'flex-end',
+    },
+    pickerContainer: {
+      backgroundColor: colors.cardBackground,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '70%',
+      padding: 20,
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: '900',
+      color: colors.text,
+    },
+    pickerOptions: {
+      maxHeight: 400,
+    },
+    pickerOption: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      marginBottom: 8,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pickerOptionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 10,
+    },
+    pickerOptionIcon: {
+      marginRight: 0,
+    },
+    pickerOptionSelected: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+    pickerOptionText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    pickerOptionTextSelected: {
+      color: colors.primary,
+      fontWeight: '800',
+    },
+  });
 
-// Simple Picker component using Modal
 const Picker = ({ visible, options, selectedValue, onValueChange, onClose, title, getOptionIcon }) => {
   const { colors } = useTheme();
   const pickerStyles = getPickerStyles(colors);
-  
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={pickerStyles.pickerOverlay} onPress={onClose}>
@@ -227,85 +232,110 @@ const getTimingIcon = (timing) => {
   }
 };
 
-const getCurrentDay = () => {
-  const today = new Date().getDay();
-  return DAYS[today === 0 ? 6 : today - 1];
-};
-
-const getPlanDateLabel = (plan) => {
-  const createdAt = plan.created_at ? new Date(plan.created_at) : null;
-  const updatedAt = plan.updated_at ? new Date(plan.updated_at) : null;
-
-  if (updatedAt && createdAt && updatedAt > createdAt) {
-    return `Updated ${updatedAt.toLocaleDateString()}`;
-  }
-
-  if (createdAt) {
-    return `Created ${createdAt.toLocaleDateString()}`;
-  }
-
-  return '';
-};
-
-const getWeekDateNumbers = () => {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-  const monday = new Date(today);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-
-  return DAYS.map((_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
-    return date.getDate();
-  });
+const weekdayFromLocalDate = (localDate) => {
+  const d = new Date(`${localDate}T00:00:00`);
+  const js = d.getDay();
+  return DAYS[js === 0 ? 6 : js - 1];
 };
 
 export default function TrainingScreen() {
   const { user, isGuest } = useAuth();
-  const { isConnected } = useNetwork();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { setHeaderSlot, clearHeaderSlot } = useHeaderSlotActions();
   const isFocused = useIsFocused();
-  const trainingPlanHook = useTrainingPlan(user, isGuest);
-  const styles = useMemo(() => getStyles(colors), [colors]);
+  const workoutLog = useWorkoutLog(user, isGuest);
+  const styles = useMemo(() => getStyles(colors, isDarkMode), [colors, isDarkMode]);
 
-  const [planName, setPlanName] = useState('');
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [showLoadModal, setShowLoadModal] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showIntensityPicker, setShowIntensityPicker] = useState(false);
   const [showTimingPicker, setShowTimingPicker] = useState(false);
-  const [pickerContext, setPickerContext] = useState({ day: null, index: null, field: null });
-  const [selectedDay, setSelectedDay] = useState(getCurrentDay);
-  const weekDates = useMemo(getWeekDateNumbers, []);
-  const todayDay = getCurrentDay();
+  const [pickerContext, setPickerContext] = useState({ index: null, field: null });
+  const [showSaved, setShowSaved] = useState(false);
+  const [wasSaving, setWasSaving] = useState(false);
+
+  const {
+    selectedDate,
+    weekStarting,
+    isSaving,
+    isLoading,
+    error,
+    updateDayWorkouts,
+    getWorkoutsForDate,
+    flushPendingSaves,
+    setSelectedDate,
+    loadWeek,
+    clearError,
+    goToPreviousWeek,
+    goToNextWeek,
+  } = workoutLog;
+
+  const selectedDay = useMemo(() => weekdayFromLocalDate(selectedDate), [selectedDate]);
+  const weekDateNumbers = useMemo(() => getWeekDateNumbers(weekStarting), [weekStarting]);
+  const todayDayOfWeek = getCurrentDayOfWeek();
+  const isCurrentWeek = weekStarting === getMondayOfCurrentWeek();
+
+  const rawWorkouts = getWorkoutsForDate(selectedDate);
+  const selectedWorkouts = rawWorkouts.length ? rawWorkouts : [{ ...DEFAULT_WORKOUT }];
+  const addWorkoutLabel =
+    selectedWorkouts.length > 1 ? '+ Add another workout' : '+ Add workout';
 
   useEffect(() => {
-    setPlanName(trainingPlanHook.currentPlanName || '');
-  }, [trainingPlanHook.currentPlanName]);
-
-  // Day strip in the global header — useLayoutEffect so it lands before first paint.
-  useLayoutEffect(() => {
-    if (!isFocused) {
-      clearHeaderSlot('training');
+    if (isSaving) {
+      setWasSaving(true);
+      setShowSaved(false);
       return undefined;
     }
+    if (wasSaving) {
+      setShowSaved(true);
+      const t = setTimeout(() => setShowSaved(false), 2000);
+      setWasSaving(false);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [isSaving, wasSaving]);
+
+  useEffect(() => {
+    setShowSaved(false);
+    setWasSaving(false);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!error) return;
+    // Only alert for save failures after the user edits a workout.
+    // Load/revalidate flakes (e.g. brief offline on app resume) stay quiet.
+    if (!/save/i.test(error)) return;
+    Alert.alert('Error', error, [{ text: 'OK', onPress: clearError }]);
+  }, [error, clearError]);
+
+  useEffect(() => {
+    if (isFocused) return undefined;
+    void flushPendingSaves(selectedDate);
+    return undefined;
+  }, [isFocused, flushPendingSaves, selectedDate]);
+
+  // Keep set vs clear separate so content updates don't blank the reserved strip.
+  useLayoutEffect(() => {
+    if (!isFocused) return undefined;
 
     setHeaderSlot(
       <DaySelector
         days={DAYS}
-        weekDateNumbers={weekDates}
-        weekStarting={getMondayOfCurrentWeek()}
+        weekDateNumbers={weekDateNumbers}
+        weekStarting={weekStarting}
         selectedDay={selectedDay}
-        onSelectDay={setSelectedDay}
-        todayDayOfWeek={todayDay}
-        isCurrentWeek
-        showWeekNav={false}
+        onSelectDay={(day) => {
+          const idx = DAYS.indexOf(day);
+          if (idx < 0) return;
+          setSelectedDate(addDaysToDateString(weekStarting, idx));
+        }}
+        todayDayOfWeek={todayDayOfWeek}
+        isCurrentWeek={isCurrentWeek}
+        showWeekNav
+        onPreviousWeek={goToPreviousWeek}
+        onNextWeek={goToNextWeek}
+        weekNavDisabled={!user || isGuest}
         animatedStyle={{
-          paddingHorizontal: 12,
+          paddingHorizontal: 16,
           paddingTop: 4,
           paddingBottom: 10,
           marginBottom: 0,
@@ -313,210 +343,118 @@ export default function TrainingScreen() {
       />,
       'training'
     );
+    return undefined;
+  }, [
+    goToNextWeek,
+    goToPreviousWeek,
+    isCurrentWeek,
+    isFocused,
+    isGuest,
+    selectedDay,
+    setHeaderSlot,
+    setSelectedDate,
+    todayDayOfWeek,
+    user,
+    weekDateNumbers,
+    weekStarting,
+  ]);
 
+  useLayoutEffect(() => {
+    if (!isFocused) {
+      clearHeaderSlot('training');
+    }
     return () => clearHeaderSlot('training');
-  }, [clearHeaderSlot, isFocused, selectedDay, setHeaderSlot, todayDay, weekDates]);
+  }, [clearHeaderSlot, isFocused]);
 
-  const handleSave = async () => {
-    if (isConnected === false) {
-      Alert.alert('No Connection', 'Please check your internet connection and try again.');
-      return;
-    }
-    const nameToUse = planName.trim() || 'Untitled Plan';
-    const { error } = await trainingPlanHook.savePlan(nameToUse);
-
-    if (!error) {
-      setShowSaveModal(false);
-      setShowConfirmation(true);
-      setTimeout(() => setShowConfirmation(false), 3000);
-    } else {
-      Alert.alert('Error', 'Failed to save training plan');
-    }
+  const commitWorkouts = (workouts) => {
+    updateDayWorkouts(selectedDate, workouts);
   };
 
-  const MAX_SAVED_PLANS = 10;
-
-  const handleLoadClick = async () => {
-    await trainingPlanHook.loadSavedPlans();
-    setShowLoadModal(true);
+  const addWorkout = () => {
+    if (selectedWorkouts.length >= MAX_WORKOUTS) return;
+    commitWorkouts([...selectedWorkouts, { ...DEFAULT_WORKOUT }]);
   };
 
-  const handleCreateNewPlan = async () => {
-    const currentPlans = await trainingPlanHook.loadSavedPlans();
-    if (currentPlans.length >= MAX_SAVED_PLANS) {
-      Alert.alert(
-        'Plan Limit Reached',
-        `You can save up to ${MAX_SAVED_PLANS} training plans. Delete one or more plans before creating a new one.`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    trainingPlanHook.createNewPlan();
-  };
-
-  const handleLoadPlan = async (planId) => {
-    const { error } = await trainingPlanHook.loadPlan(planId);
-    if (!error) {
-      setShowLoadModal(false);
-    } else {
-      Alert.alert('Error', 'Failed to load training plan');
-    }
-  };
-
-  const handleDelete = (planId, planNameToDelete) => {
-    Alert.alert(
-      'Delete Plan',
-      `Delete "${planNameToDelete}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await trainingPlanHook.deletePlan(planId);
-            if (error) {
-              Alert.alert('Error', 'Failed to delete training plan');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const addWorkout = (day) => {
-    const existing = trainingPlanHook.plan[day]?.workouts || [];
-    trainingPlanHook.updatePlan(day, 'workouts', [...existing, { ...DEFAULT_WORKOUT }]);
-  };
-
-  const removeWorkout = (day, index) => {
-    const workouts = [...(trainingPlanHook.plan[day]?.workouts || [])];
+  const removeWorkout = (index) => {
+    const workouts = [...selectedWorkouts];
     workouts.splice(index, 1);
-    trainingPlanHook.updatePlan(
-      day,
-      'workouts',
-      workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }]
+    commitWorkouts(workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }]);
+  };
+
+  const updateWorkout = (index, field, value) => {
+    const workouts = selectedWorkouts.map((w, i) =>
+      i === index ? { ...w, [field]: value } : w
     );
+    commitWorkouts(workouts);
   };
 
-  const updateWorkout = (day, index, field, value) => {
-    const workouts = [...(trainingPlanHook.plan[day]?.workouts || [{ ...DEFAULT_WORKOUT }])];
-    workouts[index] = { ...workouts[index], [field]: value };
-    trainingPlanHook.updatePlan(day, 'workouts', workouts);
-  };
-
-  const openPicker = (day, index, field, options) => {
-    setPickerContext({ day, index, field, options });
-    if (field === 'type') {
-      setShowTypePicker(true);
-    } else if (field === 'intensity') {
-      setShowIntensityPicker(true);
-    } else if (field === 'timing') {
-      setShowTimingPicker(true);
-    }
+  const openPicker = (index, field) => {
+    setPickerContext({ index, field });
+    if (field === 'type') setShowTypePicker(true);
+    else if (field === 'intensity') setShowIntensityPicker(true);
+    else if (field === 'timing') setShowTimingPicker(true);
   };
 
   const handlePickerValueChange = (value) => {
-    if (pickerContext.day && pickerContext.index !== null) {
-      const stored = pickerContext.field === 'timing' && value === '—' ? '' : value;
-      updateWorkout(pickerContext.day, pickerContext.index, pickerContext.field, stored);
-    }
+    if (pickerContext.index === null) return;
+    const stored = pickerContext.field === 'timing' && value === '—' ? '' : value;
+    updateWorkout(pickerContext.index, pickerContext.field, stored);
   };
 
-  const selectedDayData = trainingPlanHook.plan[selectedDay] || { workouts: [{ ...DEFAULT_WORKOUT }] };
-  const selectedWorkouts = selectedDayData.workouts?.length
-    ? selectedDayData.workouts
-    : [{ ...DEFAULT_WORKOUT }];
-  const addWorkoutLabel = selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout';
-
-  if (trainingPlanHook.fetchError && !trainingPlanHook.isLoading) {
+  if (error && !isLoading && !Object.keys(workoutLog.logsByDate).length && !Object.keys(workoutLog.draftByDate).length) {
     return (
       <ErrorState
-        message={trainingPlanHook.fetchError}
-        onRetry={trainingPlanHook.refetchTrainingPlan}
+        message={error}
+        onRetry={() => {
+          clearError();
+          loadWeek(weekStarting);
+        }}
       />
     );
   }
 
-  if (trainingPlanHook.isLoading) {
+  if (isLoading && !Object.keys(workoutLog.logsByDate).length) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading training plan…</Text>
+        <Text style={styles.loadingText}>Loading workouts…</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <TourTarget id="training-editor" style={{ flex: 1 }}>
-        <View style={styles.planControlRow}>
-          <View style={styles.planInfo}>
-            <View style={styles.planTitleRow}>
-              <Text style={styles.planTitle} numberOfLines={1}>
-                {trainingPlanHook.currentPlanName || 'New Training Plan'}
-              </Text>
-              {showConfirmation ? (
-                <View style={styles.savedConfirmationPill}>
-                  <Ionicons name="checkmark-circle" size={12} color={colors.success} />
-                  <Text style={styles.savedConfirmationText}>Saved</Text>
-                </View>
-              ) : null}
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
+      </View>
+
+      <TourTarget id="training-editor" style={{ flex: 1, zIndex: 1 }}>
+        <View style={styles.statusRow}>
+          {isSaving ? (
+            <View style={styles.statusPill}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.statusText}>Saving…</Text>
             </View>
-          </View>
-
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={[styles.headerActionButton, styles.headerActionButtonSecondary]}
-              onPress={handleCreateNewPlan}
-              accessibilityLabel="New plan"
-              accessibilityRole="button"
-              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
-            >
-              <Ionicons name="add" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.headerActionButton, styles.headerActionButtonSecondary]}
-              onPress={handleLoadClick}
-              accessibilityLabel="Load plan"
-              accessibilityRole="button"
-              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
-            >
-              <Ionicons name="folder-open-outline" size={20} color={colors.info} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.headerActionButton, styles.headerActionButtonPrimary, styles.headerSaveButton]}
-              onPress={() => setShowSaveModal(true)}
-              disabled={trainingPlanHook.isSaving}
-              accessibilityLabel={trainingPlanHook.isSaving ? 'Saving plan' : 'Save plan'}
-              accessibilityRole="button"
-              hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
-            >
-              {trainingPlanHook.isSaving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-              )}
-              <Text style={styles.headerSaveButtonText}>
-                {trainingPlanHook.isSaving ? 'Saving...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          ) : showSaved ? (
+            <View style={[styles.statusPill, styles.statusPillSaved]}>
+              <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+              <Text style={[styles.statusText, styles.statusTextSaved]}>Saved</Text>
+            </View>
+          ) : (
+            <View style={styles.statusPillSpacer} />
+          )}
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           <View style={styles.workoutsContainer}>
             {selectedWorkouts.map((workout, index) => (
-              <View
-                key={index}
-                style={styles.workoutCard}
-              >
+              <View key={index} style={styles.workoutCard}>
                 <TouchableOpacity
                   style={styles.workoutField}
-                  onPress={() => openPicker(selectedDay, index, 'type', WORKOUT_TYPES)}
+                  onPress={() => openPicker(index, 'type')}
                 >
-                  <Text style={styles.workoutFieldLabel}>Workout Type</Text>
+                  <Text style={styles.workoutFieldLabel}>Workout type</Text>
                   <View style={styles.workoutFieldValue}>
                     {workout.type ? (
                       <View style={styles.workoutTypeRow}>
@@ -534,233 +472,105 @@ export default function TrainingScreen() {
                   </View>
                 </TouchableOpacity>
 
-                <View style={styles.workoutField}>
-                  <Text style={styles.workoutFieldLabel}>Distance/Duration</Text>
-                  <TextInput
-                    style={styles.workoutInput}
-                    placeholder="e.g., 5km, 30 min"
-                    value={workout.distance || ''}
-                    onChangeText={(text) => updateWorkout(selectedDay, index, 'distance', text)}
-                    placeholderTextColor={colors.placeholderColor}
-                    returnKeyType="done"
-                    maxLength={20}
-                  />
+                <View style={styles.fieldRow}>
+                  <View style={[styles.workoutField, styles.fieldFlex]}>
+                    <Text style={styles.workoutFieldLabel}>Distance / duration</Text>
+                    <TextInput
+                      style={styles.workoutInput}
+                      placeholder="e.g., 5km, 30 min"
+                      value={workout.distance || ''}
+                      onChangeText={(text) => updateWorkout(index, 'distance', text)}
+                      placeholderTextColor={colors.placeholderColor}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.workoutField, styles.fieldFlex]}
+                    onPress={() => openPicker(index, 'timing')}
+                  >
+                    <Text style={styles.workoutFieldLabel}>Workout time</Text>
+                    <View style={styles.workoutFieldValue}>
+                      <View style={styles.workoutTypeRow}>
+                        <Ionicons
+                          name={getTimingIcon(workout.timing || '—')}
+                          size={16}
+                          color={colors.textSecondary}
+                        />
+                        <Text
+                          style={
+                            workout.timing
+                              ? styles.workoutFieldText
+                              : styles.workoutFieldPlaceholder
+                          }
+                        >
+                          {workout.timing || '—'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                    </View>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.workoutField}
-                  onPress={() => openPicker(selectedDay, index, 'intensity', INTENSITY_LEVELS)}
-                >
+                <View style={styles.workoutField}>
                   <Text style={styles.workoutFieldLabel}>Intensity</Text>
-                  <View style={styles.workoutFieldValue}>
-                    <View style={styles.workoutTypeRow}>
-                      <Ionicons
-                        name={getIntensityIcon(workout.intensity || 'Medium')}
-                        size={18}
-                        color={colors.textSecondary}
-                      />
-                      <Text style={styles.workoutFieldText}>
-                        {workout.intensity || 'Medium'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
+                  <View style={styles.intensityPills}>
+                    {INTENSITY_PILLS.map((level) => {
+                      const selected = (workout.intensity || 'Medium') === level;
+                      return (
+                        <TouchableOpacity
+                          key={level}
+                          style={[
+                            styles.intensityPill,
+                            selected && styles.intensityPillSelected,
+                          ]}
+                          onPress={() => updateWorkout(index, 'intensity', level)}
+                        >
+                          <Text
+                            style={[
+                              styles.intensityPillText,
+                              selected && styles.intensityPillTextSelected,
+                            ]}
+                          >
+                            {level}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                </TouchableOpacity>
+                </View>
 
-                <TouchableOpacity
-                  style={styles.workoutField}
-                  onPress={() => openPicker(selectedDay, index, 'timing', WORKOUT_TIMING_OPTIONS)}
-                >
-                  <Text style={styles.workoutFieldLabel}>Workout Time</Text>
-                  <View style={styles.workoutFieldValue}>
-                    <View style={styles.workoutTypeRow}>
-                      <Ionicons
-                        name={getTimingIcon(workout.timing || '—')}
-                        size={18}
-                        color={colors.textSecondary}
-                      />
-                      <Text style={styles.workoutFieldText}>
-                        {workout.timing || '—'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-down" size={18} color={colors.textTertiary} />
-                  </View>
-                </TouchableOpacity>
-
-                {index > 0 && (
+                {selectedWorkouts.length > 1 ? (
                   <TouchableOpacity
                     style={styles.removeWorkoutBtn}
-                    onPress={() => removeWorkout(selectedDay, index)}
+                    onPress={() => removeWorkout(index)}
                   >
-                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Ionicons name="trash-outline" size={16} color={colors.error} />
                     <Text style={styles.removeWorkoutText}>Remove</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             ))}
 
-            {selectedWorkouts.length < 5 && (
+            {selectedWorkouts.length < MAX_WORKOUTS ? (
               <TouchableOpacity
                 style={styles.addAnotherWorkoutButton}
-                onPress={() => addWorkout(selectedDay)}
+                onPress={addWorkout}
                 accessibilityLabel={addWorkoutLabel}
-                accessibilityRole="button"
               >
-                <Ionicons name="add" size={20} color={colors.primary} />
+                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
                 <Text style={styles.addAnotherWorkoutText}>{addWorkoutLabel}</Text>
               </TouchableOpacity>
-            )}
-
-            <Text style={styles.saveHintText}>
-              Save your plan when done editing, create a new plan or see saved plans with buttons at the top.
-            </Text>
+            ) : null}
           </View>
         </ScrollView>
       </TourTarget>
 
-      {/* Save Modal */}
-      <Modal
-        visible={showSaveModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSaveModal(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.keyboardAvoidingOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <Pressable style={[styles.modalOverlay, styles.saveModalOverlay]} onPress={() => setShowSaveModal(false)}>
-            <Pressable style={styles.modalContent} onPress={() => {}}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Save Training Plan</Text>
-              <TouchableOpacity onPress={() => setShowSaveModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Enter plan name (e.g., Marathon Prep Week 1)"
-              value={planName}
-              onChangeText={setPlanName}
-              placeholderTextColor="#9CA3AF"
-              autoFocus
-              returnKeyType="done"
-              maxLength={40}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSecondary]}
-                onPress={() => setShowSaveModal(false)}
-              >
-                <Text style={styles.modalButtonTextSecondary}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={handleSave}
-                disabled={trainingPlanHook.isSaving}
-              >
-                <Text style={styles.modalButtonTextPrimary}>
-                  {trainingPlanHook.isSaving ? 'Saving...' : 'Save'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Load Modal */}
-      <Modal
-        visible={showLoadModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowLoadModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setShowLoadModal(false)}
-            accessibilityLabel="Close load training plan modal"
-            accessibilityRole="button"
-          />
-          <View style={styles.loadModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Load Training Plan</Text>
-              <TouchableOpacity onPress={() => setShowLoadModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {trainingPlanHook.savedPlans.length === 0 ? (
-              <View style={styles.emptyPlansContainer}>
-                <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.emptyPlansText}>
-                  No saved training plans yet. Create and save one to see it here!
-                </Text>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.plansList}
-                contentContainerStyle={styles.plansListContent}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-                keyboardShouldPersistTaps="handled"
-              >
-                {trainingPlanHook.savedPlans.map((plan) => {
-                  const isLoadedPlan = plan.id === trainingPlanHook.currentPlanId;
-
-                  return (
-                  <View key={plan.id} style={styles.planItem}>
-                    <View style={styles.planItemLeft}>
-                      <View style={styles.planItemTitleRow}>
-                        <Text style={styles.planItemName} numberOfLines={1}>
-                          {plan.name}
-                        </Text>
-                        {isLoadedPlan && (
-                          <View style={styles.activeBadgeSmall}>
-                            <Text style={styles.activeBadgeTextSmall}>Active</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.planItemDate}>
-                        {getPlanDateLabel(plan)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.planItemActions}>
-                      {!isLoadedPlan && (
-                        <TouchableOpacity
-                          style={styles.planActionBtn}
-                          onPress={() => handleLoadPlan(plan.id)}
-                        >
-                          <Text style={styles.planActionBtnText}>Load</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={[styles.planActionBtn, styles.planActionBtnDelete]}
-                        onPress={() => handleDelete(plan.id, plan.name)}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Type Picker */}
       <Picker
         visible={showTypePicker}
         options={WORKOUT_TYPES}
         selectedValue={
-          pickerContext.day && pickerContext.index !== null
-            ? trainingPlanHook.plan[pickerContext.day]?.workouts?.[pickerContext.index]?.type || ''
+          pickerContext.index !== null
+            ? selectedWorkouts[pickerContext.index]?.type || ''
             : ''
         }
         onValueChange={handlePickerValueChange}
@@ -769,14 +579,12 @@ export default function TrainingScreen() {
         getOptionIcon={getWorkoutIcon}
       />
 
-      {/* Intensity Picker */}
       <Picker
         visible={showIntensityPicker}
         options={INTENSITY_LEVELS}
         selectedValue={
-          pickerContext.day && pickerContext.index !== null
-            ? trainingPlanHook.plan[pickerContext.day]?.workouts?.[pickerContext.index]
-                ?.intensity || 'Medium'
+          pickerContext.index !== null
+            ? selectedWorkouts[pickerContext.index]?.intensity || 'Medium'
             : 'Medium'
         }
         onValueChange={handlePickerValueChange}
@@ -785,14 +593,12 @@ export default function TrainingScreen() {
         getOptionIcon={getIntensityIcon}
       />
 
-      {/* Workout Time Picker */}
       <Picker
         visible={showTimingPicker}
         options={WORKOUT_TIMING_OPTIONS}
         selectedValue={
-          pickerContext.day && pickerContext.index !== null
-            ? trainingPlanHook.plan[pickerContext.day]?.workouts?.[pickerContext.index]
-                ?.timing || '—'
+          pickerContext.index !== null
+            ? selectedWorkouts[pickerContext.index]?.timing || '—'
             : '—'
         }
         onValueChange={handlePickerValueChange}
@@ -804,368 +610,209 @@ export default function TrainingScreen() {
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    paddingHorizontal: 16,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  planControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 40,
-    marginBottom: 8,
-  },
-  planInfo: {
-    flex: 1,
-    marginRight: 8,
-    minWidth: 0,
-  },
-  planTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'nowrap',
-  },
-  planTitle: {
-    flexShrink: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  savedConfirmationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: colors.successLight,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-    gap: 3,
-    flexShrink: 0,
-  },
-  savedConfirmationText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.successText,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    flexShrink: 0,
-  },
-  headerActionButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerActionButtonSecondary: {
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerActionButtonPrimary: {
-    backgroundColor: colors.primary,
-  },
-  headerSaveButton: {
-    width: 'auto',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    gap: 5,
-  },
-  headerSaveButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  saveHintText: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  activeBadgeSmall: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: colors.successLight,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
-    flexShrink: 0,
-  },
-  activeBadgeTextSmall: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.successText,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 11,
-    paddingBottom: 20,
-  },
-  workoutsContainer: {
-    gap: 12,
-  },
-  addAnotherWorkoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-    gap: 8,
-  },
-  addAnotherWorkoutText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  workoutCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    gap: 12,
-  },
-  workoutField: {
-    marginBottom: 4,
-  },
-  workoutFieldLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 6,
-  },
-  workoutFieldValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: 44,
-  },
-  workoutTypeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  workoutFieldText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  workoutFieldPlaceholder: {
-    fontSize: 14,
-    color: colors.placeholderColor,
-    flex: 1,
-  },
-  workoutInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    fontSize: 14,
-    color: colors.text,
-    minHeight: 44,
-  },
-  workoutInputMultiline: {
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  removeWorkoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginTop: 4,
-    gap: 6,
-  },
-  removeWorkoutText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.error,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalOverlay,
-    justifyContent: 'center',
-    padding: 16,
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  keyboardAvoidingOverlay: {
-    flex: 1,
-  },
-  saveModalOverlay: {
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 20,
-  },
-  loadModalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: '80%',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-  },
-  modalInput: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalButtonSecondary: {
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtonPrimary: {
-    backgroundColor: colors.primary,
-  },
-  modalButtonTextSecondary: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  modalButtonTextPrimary: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  emptyPlansContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyPlansText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-    paddingHorizontal: 20,
-    lineHeight: 20,
-    fontWeight: '600',
-  },
-  plansList: {
-    flexShrink: 1,
-  },
-  plansListContent: {
-    paddingBottom: 4,
-  },
-  planItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 14,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 10,
-  },
-  planItemLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  planItemTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  planItemName: {
-    flexShrink: 1,
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  planItemDate: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  planItemActions: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  planActionBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  planActionBtnDelete: {
-    backgroundColor: colors.errorLight,
-    paddingHorizontal: 10,
-  },
-  planActionBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-});
+const getStyles = (colors, isDarkMode = false) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      overflow: 'hidden',
+    },
+    bgDecor: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    bgCircle: {
+      position: 'absolute',
+      borderRadius: 9999,
+    },
+    bgCircleMint: {
+      width: 260,
+      height: 260,
+      backgroundColor: isDarkMode ? 'rgba(224,236,222,0.1)' : '#E0ECDE',
+      top: -40,
+      right: -90,
+    },
+    bgCirclePeach: {
+      width: 280,
+      height: 280,
+      backgroundColor: isDarkMode ? 'rgba(247,233,218,0.08)' : '#F7E9DA',
+      top: 180,
+      left: -120,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    statusRow: {
+      minHeight: 28,
+      marginBottom: 6,
+      zIndex: 1,
+      alignItems: 'flex-end',
+    },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: colors.inputBackground,
+    },
+    statusPillSaved: {
+      backgroundColor: colors.successLight,
+      borderWidth: 1,
+      borderColor: colors.successBorder,
+    },
+    statusPillSpacer: {
+      height: 20,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    statusTextSaved: {
+      color: colors.successText,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingTop: 4,
+      paddingBottom: 28,
+    },
+    workoutsContainer: {
+      gap: 14,
+    },
+    addAnotherWorkoutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      backgroundColor: colors.cardBackground,
+    },
+    addAnotherWorkoutText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.primary,
+    },
+    workoutCard: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    workoutField: {
+      gap: 6,
+    },
+    fieldRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    fieldFlex: {
+      flex: 1,
+    },
+    workoutFieldLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    workoutFieldValue: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.inputBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      minHeight: 48,
+    },
+    workoutTypeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+    },
+    workoutFieldText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      flexShrink: 1,
+    },
+    workoutFieldPlaceholder: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.placeholderColor,
+    },
+    workoutInput: {
+      backgroundColor: colors.inputBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      minHeight: 48,
+    },
+    intensityPills: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    intensityPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.inputBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    intensityPillSelected: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+    intensityPillText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    intensityPillTextSelected: {
+      color: colors.primary,
+      fontWeight: '800',
+    },
+    removeWorkoutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      paddingVertical: 4,
+    },
+    removeWorkoutText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.error,
+    },
+  });

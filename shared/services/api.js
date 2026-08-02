@@ -3,6 +3,15 @@
 // paths and no hardcoded host fallbacks.
 import { supabase } from './getSupabase';
 import { isNative } from './isNative';
+import { getLocalDateString } from '../lib/dataClient';
+
+/** Ensure request bodies include client local YYYY-MM-DD for streak + snack logic. */
+function withLocalDate(data = {}) {
+  return {
+    ...data,
+    localDate: data.localDate || getLocalDateString(),
+  };
+}
 
 /**
  * Thrown when API returns 401 Unauthorized (session expired).
@@ -359,16 +368,17 @@ async function streamSSEDay(url, data, onProgress) {
 export const apiClient = {
   async generateMeals(data, onProgress) {
     try {
+      const payload = withLocalDate(data);
       // Use XMLHttpRequest for streaming in React Native
       if (isNative) {
-        return await streamSSE(getApiUrl('/api/generate-meals'), data, onProgress);
+        return await streamSSE(getApiUrl('/api/generate-meals'), payload, onProgress);
       }
 
       // Web: use fetch with getReader (original behavior)
       const response = await fetchWithTimeout(getApiUrl('/api/generate-meals'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }, 120000);
 
       if (response.status === 401) {
@@ -456,7 +466,7 @@ export const apiClient = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(withLocalDate(data)),
       },
       30000
     );
@@ -465,16 +475,17 @@ export const apiClient = {
 
   async generateDay(data, onProgress) {
     try {
+      const payload = withLocalDate(data);
       // Use XMLHttpRequest for streaming in React Native
       if (isNative) {
-        return await streamSSEDay(getApiUrl(mealGenApiPath('/api/generate-day')), data, onProgress);
+        return await streamSSEDay(getApiUrl(mealGenApiPath('/api/generate-day')), payload, onProgress);
       }
 
       // Web: use fetch with getReader
       const response = await fetchWithTimeout(getApiUrl(mealGenApiPath('/api/generate-day')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }, 120000);
 
       if (response.status === 401) {
@@ -572,7 +583,7 @@ export const apiClient = {
       const response = await fetchWithTimeout(getApiUrl(mealGenApiPath('/api/generate-single-meal')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(withLocalDate(data)),
       }, 120000);
 
       if (!response.ok) {
@@ -714,7 +725,7 @@ export const apiClient = {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(withLocalDate(data)),
         },
         30000
       );
@@ -777,7 +788,7 @@ export const apiClient = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(withLocalDate(data)),
       },
       30000
     );

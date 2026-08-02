@@ -6,16 +6,8 @@ import { useTheme } from '../../context/ThemeContext';
 const NOTICE_TIMEOUT = 4000;
 
 /**
- * Secondary controls row: Log Snack | dessert toggle (equal halves).
- * Snacks are no longer AI-generatable and have no toggle.
- *
- * Props:
- *   includeDessert   {boolean}
- *   onToggleDessert  {function}
- *   disabled         {boolean}  – true when generating, guest user, or past day
- *   dayMeals         {object}   – current day's meal plan object for notice detection
- *   onLogSnack       {function}
- *   showDessert      {boolean}  – hide dessert toggle on past days
+ * Snack pill + dessert toggle (dashboard aesthetic).
+ * Snacks are manual-log only and have no AI toggle.
  */
 export const MealTypeToggles = ({
   includeDessert,
@@ -25,8 +17,8 @@ export const MealTypeToggles = ({
   onLogSnack,
   showDessert = true,
 }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
   const [notice, setNotice] = useState(null);
   const noticeTimerRef = useRef(null);
 
@@ -54,87 +46,85 @@ export const MealTypeToggles = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.logSnackBtn}
-          onPress={onLogSnack}
-          accessibilityLabel="Log snack"
-          accessibilityRole="button"
-          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-        >
-          <Ionicons name="nutrition-outline" size={16} color={colors.primary} />
-          <Text style={styles.logSnackText}>Log Snack</Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.pill}
+        onPress={onLogSnack}
+        accessibilityLabel="Log snack"
+        accessibilityRole="button"
+        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+      >
+        <Ionicons name="nutrition-outline" size={16} color={colors.text} />
+        <Text style={styles.pillText}>Log Snack</Text>
+      </TouchableOpacity>
 
-        {showDessert ? (
-          <>
-            <Text style={styles.separator} accessibilityElementsHidden>
-              |
-            </Text>
-            <View style={styles.toggleRow}>
-              <Text style={[styles.label, disabled && styles.labelDisabled]}>Dessert</Text>
-              <Switch
-                value={includeDessert}
-                onValueChange={handleToggleDessert}
-                disabled={disabled}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.card || '#fff'}
-                ios_backgroundColor={colors.border}
-                accessibilityLabel="Toggle dessert"
-              />
-            </View>
-          </>
-        ) : null}
-      </View>
-
-      {notice ? (
-        <Text style={styles.notice}>{notice}</Text>
+      {showDessert ? (
+        <View style={styles.dessertPill}>
+          <Text style={[styles.dessertLabel, disabled && styles.labelDisabled]}>Dessert</Text>
+          <Switch
+            value={includeDessert}
+            onValueChange={handleToggleDessert}
+            disabled={disabled}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={colors.border}
+            accessibilityLabel="Toggle dessert"
+          />
+        </View>
       ) : null}
+
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
     </View>
   );
 };
 
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     container: {
-      paddingVertical: 4,
-      marginBottom: 10,
-    },
-    row: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+      alignSelf: 'flex-start',
     },
-    logSnackBtn: {
-      flex: 1,
+    pill: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 5,
-      paddingVertical: 4,
-      paddingHorizontal: 6,
-      minWidth: 0,
+      gap: 6,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDarkMode ? 0 : 0.04,
+      shadowRadius: 3,
+      elevation: isDarkMode ? 0 : 1,
     },
-    logSnackText: {
+    pillText: {
       fontSize: 13,
       fontWeight: '700',
-      color: colors.primary,
+      color: colors.text,
     },
-    separator: {
-      fontSize: 16,
-      fontWeight: '300',
-      color: colors.border,
-      marginHorizontal: 4,
-      lineHeight: 22,
-    },
-    toggleRow: {
-      flex: 1,
+    dessertPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 6,
-      minWidth: 0,
+      gap: 8,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 999,
+      paddingVertical: 6,
+      paddingLeft: 14,
+      paddingRight: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: isDarkMode ? 0 : 0.04,
+      shadowRadius: 3,
+      elevation: isDarkMode ? 0 : 1,
     },
-    label: {
+    dessertLabel: {
       fontSize: 13,
       fontWeight: '600',
       color: colors.textSecondary,
@@ -143,10 +133,11 @@ const getStyles = (colors) =>
       color: colors.textTertiary,
     },
     notice: {
+      width: '100%',
       fontSize: 11,
       fontWeight: '500',
       color: colors.textTertiary,
       textAlign: 'center',
-      marginTop: 6,
+      marginTop: 2,
     },
   });

@@ -67,7 +67,7 @@ The API client abstracts the HTTP layer, making it easy to swap implementations 
 React hooks that encapsulate shared business logic and state management. These hooks can be used in both React (web) and React Native applications. Examples include:
 - `useUserProfile` - User profile state management
 - `useMealPlan` - Meal plan state and operations
-- `useTrainingPlan` - Training plan state and operations
+- `useWorkoutLog` - Daily workout log state and operations
 - `useFoodPreferences` - Food preferences management
 - `useSavedMeals` - Saved meals state management
 

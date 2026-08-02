@@ -2,7 +2,7 @@
  * Shared handler: generate one day's meals (SSE), one LLM call per meal.
  */
 
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
@@ -11,13 +11,12 @@ import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
 import { buildGenerationMealSlots, resolveMealToggles } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
-
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.0-flash', temperature: 0.7, maxTokens: 800 },
@@ -31,7 +30,15 @@ export function createGenerateDayWebHandler(provider) {
     }
 
     const userId = getRequestUserId(req);
-    const { userProfile, foodPreferences, trainingPlan, day, includeDessert } = req.body;
+    const {
+      userProfile,
+      foodPreferences,
+      workouts: rawWorkouts,
+      tomorrowWorkouts: rawTomorrowWorkouts,
+      day,
+      includeDessert,
+      localDate,
+    } = req.body;
 
     if (!userProfile || !day) {
       return res.status(400).json({ success: false, error: 'Missing userProfile or day' });
@@ -65,13 +72,15 @@ export function createGenerateDayWebHandler(provider) {
     };
 
     try {
-      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-      const dayTiming = trainingPlan?.[day]?.timing || null;
+      const dayWorkouts = Array.isArray(rawWorkouts) ? rawWorkouts : [];
+      const tomorrowWorkoutsList = Array.isArray(rawTomorrowWorkouts) ? rawTomorrowWorkouts : [];
+      const numericWorkouts = withNumericIntensities(dayWorkouts);
 
+      // Bug fix: previously passed raw dayTiming (Morning/Afternoon) without mapping to am/pm
       const nutrition = computeNutritionTargets({
         userProfile,
-        todayWorkouts: dayWorkouts,
-        workoutTiming: dayTiming,
+        todayWorkouts: numericWorkouts,
+        workoutTiming: deriveWorkoutTiming(dayWorkouts),
         mealSlots,
       });
 
@@ -86,10 +95,8 @@ export function createGenerateDayWebHandler(provider) {
       });
 
       const generatedMeals = [];
-      const dayIndex = DAYS.indexOf(day);
-      const tomorrowDay = DAYS[(dayIndex + 1) % 7];
       const todayTraining = formatTrainingDay(dayWorkouts);
-      const tomorrowTraining = formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []);
+      const tomorrowTraining = formatTrainingDay(tomorrowWorkoutsList);
 
       for (const mealType of mealSlots) {
         send('status', { mealType, status: 'generating' });
@@ -169,6 +176,10 @@ export function createGenerateDayWebHandler(provider) {
         mealsGenerated: generatedMeals.length,
         provider,
       });
+
+      if (generatedMeals.length > 0) {
+        await recordUserStreak(supabase, userId, localDate);
+      }
     } catch (err) {
       console.error(`generate-day-web (${provider}) error:`, err);
       if (isHighDemandError(err.message)) {

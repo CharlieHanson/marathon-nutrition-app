@@ -39,8 +39,8 @@ export const Header = ({
 
           {/* Logo - Centered (non-interactive so it can't steal avatar taps) */}
           <View style={styles.logoContainer} pointerEvents="none">
-            <Text style={styles.logoOrange}>Al</Text>
-            <Text style={styles.logoGray}>imenta</Text>
+            <Text style={styles.logoBrand}>Al</Text>
+            <Text style={styles.logoRest}>imenta</Text>
           </View>
 
           {/* Right Section - Settings and Logout */}
@@ -52,7 +52,7 @@ export const Header = ({
                 style={styles.iconButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+                <Ionicons name="settings-outline" size={22} color={colors.text} />
               </TouchableOpacity>
             )}
             
@@ -65,7 +65,7 @@ export const Header = ({
               {isGuest ? (
                 <Text style={styles.exitGuestText}>Exit</Text>
               ) : (
-                <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
+                <Ionicons name="log-out-outline" size={22} color={colors.text} />
               )}
             </TouchableOpacity>
           </View>
@@ -83,23 +83,17 @@ export const Header = ({
 
 const getStyles = (colors) => StyleSheet.create({
   safeArea: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    shadowColor: colors.shadowColor,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.background,
+    borderBottomWidth: 0,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     minHeight: 48,
   },
@@ -108,9 +102,9 @@ const getStyles = (colors) => StyleSheet.create({
     paddingBottom: 0,
     paddingTop: 0,
   },
-  // Matches DaySelector / training day strip (padding 4+10 + ~44px row).
+  // Matches DaySelector pill card (padding 4+10 + ~52px row).
   headerExtraReserve: {
-    minHeight: 58,
+    minHeight: 72,
   },
   avatarTarget: {
     zIndex: 1,
@@ -132,14 +126,14 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     zIndex: 0,
   },
-  logoOrange: {
-    fontSize: 26,
-    fontWeight: 'bold',
+  logoBrand: {
+    fontFamily: 'Questrial_400Regular',
+    fontSize: 32,
     color: colors.primary,
   },
-  logoGray: {
-    fontSize: 26,
-    fontWeight: 'bold',
+  logoRest: {
+    fontFamily: 'Questrial_400Regular',
+    fontSize: 32,
     color: colors.text,
   },
   rightSection: {

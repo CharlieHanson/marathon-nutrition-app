@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Plus,
   Trash2,
-  Save,
-  FolderOpen,
-  X,
+  ChevronLeft,
+  ChevronRight,
   Waves,
   Bike,
   Dumbbell,
   Footprints,
   Zap,
 } from 'lucide-react';
+import { DAYS, addDaysToDateString, getMondayOfCurrentWeek } from '../hooks/useWorkoutLog';
 
 const WORKOUT_TYPES = [
   'Rest',
@@ -24,21 +24,9 @@ const WORKOUT_TYPES = [
   'Sport Practice',
 ];
 
-// ✅ Fixed day order
-const DAYS = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-];
-
-// ✅ Intensity options (stored as strings)
 const INTENSITY_LEVELS = ['High', 'Medium', 'Low', 'Recovery'];
+const MAX_WORKOUTS = 5;
 
-// ✅ Default workout with Medium intensity
 const DEFAULT_WORKOUT = {
   type: '',
   distance: '',
@@ -47,86 +35,103 @@ const DEFAULT_WORKOUT = {
   timing: '',
 };
 
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function weekdayFromLocalDate(localDate) {
+  const d = new Date(`${localDate}T00:00:00`);
+  const js = d.getDay();
+  return DAYS[js === 0 ? 6 : js - 1];
+}
+
+function getWeekDateNumbers(weekStarting) {
+  if (!weekStarting) return DAYS.map(() => 0);
+  return DAYS.map((_, i) => {
+    const d = new Date(`${weekStarting}T00:00:00`);
+    d.setDate(d.getDate() + i);
+    return d.getDate();
+  });
+}
+
 export const TrainingPlanPage = ({
-  trainingPlan,
-  currentPlanName,
-  savedPlans,
-  onUpdate,
-  onSave,
-  onLoadPlan,
-  onDeletePlan,
-  onCreateNew,
-  onLoadSavedPlans,
+  selectedDate,
+  weekStarting,
+  getWorkoutsForDate,
+  updateDayWorkouts,
+  setSelectedDate,
+  goToPreviousWeek,
+  goToNextWeek,
   isSaving,
   isLoading,
+  error,
+  onClearError,
 }) => {
-  const [planName, setPlanName] = useState('');
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [showLoadModal, setShowLoadModal] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  const [wasSaving, setWasSaving] = useState(false);
+
+  const selectedDay = useMemo(() => weekdayFromLocalDate(selectedDate), [selectedDate]);
+  const weekDates = useMemo(() => getWeekDateNumbers(weekStarting), [weekStarting]);
+  const isCurrentWeek = weekStarting === getMondayOfCurrentWeek();
+  const todayDay = weekdayFromLocalDate(
+    (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })()
+  );
+
+  const rawWorkouts = getWorkoutsForDate(selectedDate);
+  const selectedWorkouts = rawWorkouts.length ? rawWorkouts : [{ ...DEFAULT_WORKOUT }];
 
   useEffect(() => {
-    setPlanName(currentPlanName || '');
-  }, [currentPlanName]);
-
-  const handleSave = async () => {
-    const nameToUse = planName.trim() || 'Untitled Plan';
-    const { error } = await onSave(nameToUse);
-
-    if (!error) {
-      setShowSaveModal(false);
-      setShowConfirmation(true);
-      setTimeout(() => setShowConfirmation(false), 3000);
-    } else {
-      alert('Failed to save training plan');
+    if (isSaving) {
+      setWasSaving(true);
+      setShowSaved(false);
+      return undefined;
     }
-  };
-
-  const handleLoadClick = async () => {
-    await onLoadSavedPlans();
-    setShowLoadModal(true);
-  };
-
-  const handleLoadPlan = async (planId) => {
-    const { error } = await onLoadPlan(planId);
-    if (!error) {
-      setShowLoadModal(false);
-    } else {
-      alert('Failed to load training plan');
+    if (wasSaving) {
+      setShowSaved(true);
+      const t = setTimeout(() => setShowSaved(false), 2000);
+      setWasSaving(false);
+      return () => clearTimeout(t);
     }
+    return undefined;
+  }, [isSaving, wasSaving]);
+
+  useEffect(() => {
+    setShowSaved(false);
+    setWasSaving(false);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!error) return;
+    window.alert(error);
+    onClearError?.();
+  }, [error, onClearError]);
+
+  const commitWorkouts = (workouts) => {
+    updateDayWorkouts(selectedDate, workouts);
   };
 
-  const handleDelete = async (planId, planNameToDelete) => {
-    const shouldDelete =
-      typeof window !== 'undefined' &&
-      window.confirm(`Delete "${planNameToDelete}"? This cannot be undone.`);
-
-    if (!shouldDelete) return;
-
-    const { error } = await onDeletePlan(planId);
-    if (error) {
-      window.alert('Failed to delete training plan');
-    }
+  const addWorkout = () => {
+    if (selectedWorkouts.length >= MAX_WORKOUTS) return;
+    commitWorkouts([...selectedWorkouts, { ...DEFAULT_WORKOUT }]);
   };
 
-  const addWorkout = (day) => {
-    const existing = trainingPlan[day]?.workouts || [];
-    onUpdate(day, 'workouts', [...existing, { ...DEFAULT_WORKOUT }]);
-  };
-
-  const removeWorkout = (day, index) => {
-    const workouts = [...(trainingPlan[day]?.workouts || [])];
+  const removeWorkout = (index) => {
+    const workouts = [...selectedWorkouts];
     workouts.splice(index, 1);
-    onUpdate(day, 'workouts', workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }]);
+    commitWorkouts(workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }]);
   };
 
-  const updateWorkout = (day, index, field, value) => {
-    const workouts = [...(trainingPlan[day]?.workouts || [{ ...DEFAULT_WORKOUT }])];
-    workouts[index] = { ...workouts[index], [field]: value };
-    onUpdate(day, 'workouts', workouts);
+  const updateWorkout = (index, field, value) => {
+    const workouts = selectedWorkouts.map((w, i) =>
+      i === index ? { ...w, [field]: value } : w
+    );
+    commitWorkouts(workouts);
   };
 
-  // ---- UI helpers ----
   const getWorkoutIcon = (type) => {
     const iconProps = { className: 'w-4 h-4 text-gray-700' };
     switch (type) {
@@ -146,357 +151,165 @@ export const TrainingPlanPage = ({
     }
   };
 
-  const isWorkoutPlanned = (w) =>
-    (w.type && String(w.type).trim()) ||
-    (w.distance && String(w.distance).trim()) ||
-    (w.notes && String(w.notes).trim());
-
-  // Simple stats
-  const stats = (() => {
-    let plannedWorkouts = 0;
-    let highCount = 0;
-    let recoveryCount = 0;
-
-    DAYS.forEach((day) => {
-      const workouts = trainingPlan?.[day]?.workouts?.length
-        ? trainingPlan[day].workouts
-        : [{ ...DEFAULT_WORKOUT }];
-
-      workouts.forEach((w) => {
-        if (isWorkoutPlanned(w)) plannedWorkouts += 1;
-        if (w.intensity === 'High') highCount += 1;
-        if (w.intensity === 'Recovery' && isWorkoutPlanned(w)) recoveryCount += 1;
-      });
-    });
-
-    return { plannedWorkouts, highCount, recoveryCount };
-  })();
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <p className="text-gray-500">Loading training plan…</p>
+        <p className="text-gray-500">Loading workouts…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto px-4">
-      {/* Header with action buttons */}
+    <div className="space-y-6 max-w-3xl mx-auto px-4">
       <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <h2 className="text-xl font-semibold text-gray-900 truncate">
-              {currentPlanName || 'New Training Plan'}
-            </h2>
-            {currentPlanName && (
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full border border-green-200">
-                Active
-              </span>
-            )}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <button
+            type="button"
+            onClick={goToPreviousWeek}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-1 justify-center gap-1 sm:gap-2">
+            {DAYS.map((day, index) => {
+              const isSelected = selectedDay === day;
+              const isToday = isCurrentWeek && day === todayDay;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
+                  className={`flex flex-col items-center px-2 py-2 rounded-xl min-w-[44px] transition-colors ${
+                    isSelected
+                      ? 'bg-primary text-white'
+                      : isToday
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wide">
+                    {DAY_LABELS[index]}
+                  </span>
+                  <span className="text-sm font-semibold">{weekDates[index]}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={onCreateNew}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 border border-gray-200 shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Plan
-            </button>
+          <button
+            type="button"
+            onClick={goToNextWeek}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            aria-label="Next week"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
 
-            <button
-              onClick={handleLoadClick}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 shadow-sm transition-colors"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Load Previous
-            </button>
-
-            <button
-              onClick={() => setShowSaveModal(true)}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 shadow-sm transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save Plan'}
-            </button>
-
-            {showConfirmation && (
-              <div className="px-4 py-2 bg-green-50 border border-green-500 rounded-lg text-green-700 flex items-center gap-2 shadow-sm">
-                <span className="text-lg">✓</span>
-                <span className="font-medium">Saved!</span>
-              </div>
-            )}
+        <div className="flex items-center justify-between min-h-[28px]">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 capitalize">
+            <Calendar className="w-4 h-4 text-gray-600" />
+            {selectedDay}
+          </h2>
+          <div className="text-xs font-semibold text-gray-500">
+            {isSaving ? (
+              <span>Saving…</span>
+            ) : showSaved ? (
+              <span className="text-green-700">Saved</span>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Training schedule */}
-      <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
-            <p className="text-sm text-gray-500">Plan workouts for each day</p>
-          </div>
-
-          {/* KPI chips */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-              Planned: <span className="font-semibold">{stats.plannedWorkouts}</span>
-            </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-700">
-              High intensity: <span className="font-semibold">{stats.highCount}</span>
-            </span>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700">
-              Recovery: <span className="font-semibold">{stats.recoveryCount}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Detailed per-day panels ONLY (top week-at-a-glance boxes removed) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {DAYS.map((day) => {
-            const dayData = trainingPlan[day] || { workouts: [{ ...DEFAULT_WORKOUT }] };
-            const workouts = dayData.workouts?.length ? dayData.workouts : [{ ...DEFAULT_WORKOUT }];
-
-            const plannedCount = workouts.filter((w) => isWorkoutPlanned(w)).length;
-
-            const dayIcons = Array.from(
-              new Set(
-                workouts
-                  .map((w) => w.type)
-                  .filter((t) => t && t.trim() && t !== 'Rest')
-              )
-            ).slice(0, 4);
-
-            return (
-              <div
-                key={day}
-                className="rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-center px-4 py-3 border-b bg-gray-50 rounded-t-xl">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-medium text-gray-900 capitalize flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-600" />
-                      {day}
-                    </h4>
-
-                    {plannedCount > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">
-                        {plannedCount} workout{plannedCount === 1 ? '' : 's'}
-                      </span>
-                    )}
-
-                    {dayIcons.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        {dayIcons.map((t) => (
-                          <span
-                            key={t}
-                            className="p-1 rounded-md bg-white border border-gray-200"
-                            title={t}
-                          >
-                            {getWorkoutIcon(t)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => addWorkout(day)}
-                    className="text-sm px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1 transition-colors"
+      <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 space-y-3">
+        {selectedWorkouts.map((workout, index) => (
+          <div
+            key={index}
+            className="flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Workout</label>
+                <div className="flex items-center gap-2">
+                  {workout.type ? getWorkoutIcon(workout.type) : null}
+                  <select
+                    value={workout.type || ''}
+                    onChange={(e) => updateWorkout(index, 'type', e.target.value)}
+                    className="flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
                   >
-                    <Plus className="w-4 h-4" />
-                    Add Workout
-                  </button>
+                    <option value="">Select workout</option>
+                    {WORKOUT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                <div className="p-4 space-y-3">
-                  {workouts.map((workout, index) => (
-                    <div
-                      key={index}
-                      className="flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm"
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
-                        {/* Row 1: Workout type | Distance */}
-                        <div className="flex flex-col">
-                          <label className="text-xs text-gray-600 mb-1">Workout</label>
-                          <select
-                            value={workout.type || ''}
-                            onChange={(e) => updateWorkout(day, index, 'type', e.target.value)}
-                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                          >
-                            <option value="">Select workout</option>
-                            {WORKOUT_TYPES.map((type) => (
-                              <option key={type} value={type}>
-                                {type}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex flex-col">
-                          <label className="text-xs text-gray-600 mb-1">Distance/Duration</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 5k, 30 min"
-                            value={workout.distance || ''}
-                            onChange={(e) => updateWorkout(day, index, 'distance', e.target.value)}
-                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                          />
-                        </div>
-                        {/* Row 2: Intensity | Workout Time */}
-                        <div className="flex flex-col">
-                          <label className="text-xs text-gray-600 mb-1">Intensity</label>
-                          <select
-                            value={workout.intensity || 'Medium'}
-                            onChange={(e) => updateWorkout(day, index, 'intensity', e.target.value)}
-                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                          >
-                            {INTENSITY_LEVELS.map((level) => (
-                              <option key={level} value={level}>
-                                {level}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex flex-col">
-                          <label className="text-xs text-gray-600 mb-1">Workout Time</label>
-                          <select
-                            value={workout.timing ?? ''}
-                            onChange={(e) => updateWorkout(day, index, 'timing', e.target.value)}
-                            className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                          >
-                            <option value="">—</option>
-                            <option value="Morning">Morning</option>
-                            <option value="Afternoon">Afternoon</option>
-                            <option value="Evening">Evening</option>
-                          </select>
-                        </div>
-                      </div>
-                      {/* Remove */}
-                      {index > 0 && (
-                        <button
-                          onClick={() => removeWorkout(day, index)}
-                          className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md flex items-center justify-center p-2 transition-colors self-start"
-                          title="Remove workout"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Distance/Duration</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 5k, 30 min"
+                  value={workout.distance || ''}
+                  onChange={(e) => updateWorkout(index, 'distance', e.target.value)}
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Intensity</label>
+                <select
+                  value={workout.intensity || 'Medium'}
+                  onChange={(e) => updateWorkout(index, 'intensity', e.target.value)}
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                >
+                  {INTENSITY_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
-            );
-          })}
-        </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-600 mb-1">Workout Time</label>
+                <select
+                  value={workout.timing ?? ''}
+                  onChange={(e) => updateWorkout(index, 'timing', e.target.value)}
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
+                >
+                  <option value="">—</option>
+                  <option value="Morning">Morning</option>
+                  <option value="Afternoon">Afternoon</option>
+                  <option value="Evening">Evening</option>
+                </select>
+              </div>
+            </div>
+            {selectedWorkouts.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => removeWorkout(index)}
+                className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md flex items-center justify-center p-2 transition-colors self-start"
+                title="Remove workout"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
+        ))}
+
+        {selectedWorkouts.length < MAX_WORKOUTS ? (
+          <button
+            type="button"
+            onClick={addWorkout}
+            className="w-full text-sm px-3 py-2.5 rounded-lg border border-dashed border-gray-300 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout'}
+          </button>
+        ) : null}
       </div>
-
-      {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl ring-1 ring-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Save Training Plan</h3>
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <input
-              type="text"
-              value={planName}
-              onChange={(e) => setPlanName(e.target.value)}
-              placeholder="Enter plan name (e.g., Marathon Prep Week 1)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
-              autoFocus
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Load Modal */}
-      {showLoadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto shadow-xl ring-1 ring-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Load Training Plan</h3>
-              <button
-                onClick={() => setShowLoadModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {savedPlans.length === 0 ? (
-              <p className="text-gray-600 text-center py-8">
-                No saved training plans yet. Create and save one to see it here!
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {savedPlans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium truncate">{plan.name}</h4>
-                        {plan.is_active && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full border border-green-200">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Created {new Date(plan.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {!plan.is_active && (
-                        <button
-                          onClick={() => handleLoadPlan(plan.id)}
-                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-700 transition-colors"
-                        >
-                          Load
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(plan.id, plan.name)}
-                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

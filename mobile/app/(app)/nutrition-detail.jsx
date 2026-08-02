@@ -11,46 +11,51 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useMealPlan } from '../../hooks/useMealPlan';
-import { useMealCompletions, MEAL_TYPES } from '../../hooks/useMealCompletions';
+import { useMealCompletions } from '../../hooks/useMealCompletions';
 import { getDayMealToggles, getActiveMealTypes } from '../../utils/mealHelpers';
 import { macroColors } from '../../../shared/lib/macroColors';
+import {
+  AestheticCard,
+  AestheticSectionLabel,
+} from '../../components/ui/AestheticSheet';
 
 const { width } = Dimensions.get('window');
 
 const TABS = ['Overview', 'Calories', 'Macros'];
 
-// ─── Meal type display config (muted palette, aligned with macroColors) ─────
 const MEAL_CONFIG = {
-  breakfast: { label: 'Breakfast', color: macroColors.calories }, // clay
-  lunch:     { label: 'Lunch',     color: macroColors.protein },  // mint
-  dinner:    { label: 'Dinner',    color: macroColors.carbs },    // dusty blue
-  snacks:    { label: 'Snack',     color: macroColors.fat },      // mauve
-  dessert:   { label: 'Dessert',   color: '#B8956C' },            // sand (same family)
+  breakfast: { label: 'Breakfast', color: macroColors.calories },
+  lunch: { label: 'Lunch', color: macroColors.protein },
+  dinner: { label: 'Dinner', color: macroColors.carbs },
+  snacks: { label: 'Snack', color: macroColors.fat },
+  dessert: { label: 'Dessert', color: '#B8956C' },
 };
 
-// Fallback for any unknown meal type key
 const getMealConfig = (mealType) =>
-  MEAL_CONFIG[mealType] ?? { label: mealType.charAt(0).toUpperCase() + mealType.slice(1), color: '#6b7280' };
+  MEAL_CONFIG[mealType] ?? {
+    label: mealType.charAt(0).toUpperCase() + mealType.slice(1),
+    color: '#6b7280',
+  };
 
 const MACRO_CONFIG = [
-  { key: 'carbs',   label: 'Carbs',   color: macroColors.carbs, calsPerGram: 4 },
   { key: 'protein', label: 'Protein', color: macroColors.protein, calsPerGram: 4 },
-  { key: 'fat',     label: 'Lipids',  color: macroColors.fat, calsPerGram: 9 },
+  { key: 'carbs', label: 'Carbs', color: macroColors.carbs, calsPerGram: 4 },
+  { key: 'fat', label: 'Fats', color: macroColors.fat, calsPerGram: 9 },
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 const parseMeal = (mealString) => {
   if (!mealString || typeof mealString !== 'string') {
     return { calories: 0, protein: 0, carbs: 0, fat: 0 };
   }
   return {
-    calories: parseInt(mealString.match(/Cal:\s*(\d+)/)?.[1]  ?? 0, 10),
-    protein:  parseInt(mealString.match(/P:\s*(\d+)g/)?.[1]   ?? 0, 10),
-    carbs:    parseInt(mealString.match(/C:\s*(\d+)g/)?.[1]   ?? 0, 10),
-    fat:      parseInt(mealString.match(/F:\s*(\d+)g/)?.[1]   ?? 0, 10),
+    calories: parseInt(mealString.match(/Cal:\s*(\d+)/)?.[1] ?? 0, 10),
+    protein: parseInt(mealString.match(/P:\s*(\d+)g/)?.[1] ?? 0, 10),
+    carbs: parseInt(mealString.match(/C:\s*(\d+)g/)?.[1] ?? 0, 10),
+    fat: parseInt(mealString.match(/F:\s*(\d+)g/)?.[1] ?? 0, 10),
   };
 };
 
@@ -59,7 +64,6 @@ const getTodayDayName = () => {
   return names[new Date().getDay()];
 };
 
-// ─── Donut Pie Chart ─────────────────────────────────────────────────────────
 const PieChart = ({ data, size = 220 }) => {
   const total = data.reduce((sum, d) => sum + d.value, 0);
   if (total === 0) return null;
@@ -77,11 +81,12 @@ const PieChart = ({ data, size = 220 }) => {
     const end = angle + sweep;
     angle = end;
 
-    const cos0 = Math.cos(start), sin0 = Math.sin(start);
-    const cos1 = Math.cos(end),   sin1 = Math.sin(end);
+    const cos0 = Math.cos(start);
+    const sin0 = Math.sin(start);
+    const cos1 = Math.cos(end);
+    const sin1 = Math.sin(end);
     const large = sweep > Math.PI ? 1 : 0;
 
-    // Outer arc → inner arc (donut)
     const path = [
       `M ${cx + r * cos0} ${cy + r * sin0}`,
       `A ${r} ${r} 0 ${large} 1 ${cx + r * cos1} ${cy + r * sin1}`,
@@ -90,7 +95,7 @@ const PieChart = ({ data, size = 220 }) => {
       'Z',
     ].join(' ');
 
-    return { ...d, path, pct: Math.round((d.value / total) * 100) };
+    return { ...d, path };
   });
 
   return (
@@ -102,66 +107,72 @@ const PieChart = ({ data, size = 220 }) => {
   );
 };
 
-// ─── Horizontal progress bar row ────────────────────────────────────────────
 const MacroBar = ({ label, eaten, total, color, unit = 'g', colors }) => {
-  const pct = total > 0 ? Math.min((eaten / total) * 100, 100) : 0;
+  const pct = total > 0 ? Math.round((eaten / total) * 100) : 0;
+  const fillPct = Math.min(pct, 100);
   return (
     <View style={barStyles.row}>
       <View style={barStyles.labelRow}>
         <View style={[barStyles.dot, { backgroundColor: color }]} />
         <Text style={[barStyles.label, { color: colors.text }]}>{label}</Text>
         <Text style={[barStyles.values, { color: colors.textSecondary }]}>
-          {eaten}{unit}
-          <Text style={barStyles.valuesOf}> / {total}{unit}</Text>
+          {eaten}
+          {unit}
+          <Text style={barStyles.valuesOf}>
+            {' '}
+            / {total}
+            {unit}
+          </Text>
         </Text>
       </View>
+      <Text style={[barStyles.meta, { color: colors.textTertiary }]}>
+        {pct}% of goal · {total}
+        {unit} target
+      </Text>
       <View style={[barStyles.track, { backgroundColor: colors.border }]}>
-        <View style={[barStyles.fill, { width: `${pct}%`, backgroundColor: color }]} />
+        <View style={[barStyles.fill, { width: `${fillPct}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
 };
 
 const barStyles = StyleSheet.create({
-  row:      { marginBottom: 18 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
-  dot:      { width: 10, height: 10, borderRadius: 5 },
-  label:    { fontSize: 15, fontWeight: '700', flex: 1 },
-  values:   { fontSize: 14, fontWeight: '800' },
+  row: { marginBottom: 16 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  label: { fontSize: 15, fontWeight: '700', flex: 1 },
+  values: { fontSize: 14, fontWeight: '800' },
   valuesOf: { fontWeight: '500', opacity: 0.6 },
-  track:    { height: 10, borderRadius: 5, overflow: 'hidden' },
-  fill:     { height: '100%', borderRadius: 5 },
+  meta: { fontSize: 12, fontWeight: '500', marginBottom: 8, paddingLeft: 18 },
+  track: { height: 10, borderRadius: 5, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 5 },
 });
 
-// ─── Main screen ─────────────────────────────────────────────────────────────
 export default function NutritionDetailScreen() {
   const router = useRouter();
   const { user, isGuest } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const mealPlanHook = useMealPlan(user, isGuest);
   const mealCompletionsHook = useMealCompletions(user, isGuest);
 
   const [activeTab, setActiveTab] = useState('Overview');
-
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDarkMode);
 
   const todayDay = getTodayDayName();
   const todayMeals = mealPlanHook.mealPlan?.[todayDay] ?? {};
   const activeTypes = getActiveMealTypes(getDayMealToggles(todayMeals), todayMeals);
 
-  // Total planned macros for today (active types only)
   const totalMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };
   activeTypes.forEach((mt) => {
     if (todayMeals[mt]) {
       const p = parseMeal(todayMeals[mt]);
       totalMacros.calories += p.calories;
-      totalMacros.protein  += p.protein;
-      totalMacros.carbs    += p.carbs;
-      totalMacros.fat      += p.fat;
+      totalMacros.protein += p.protein;
+      totalMacros.carbs += p.carbs;
+      totalMacros.fat += p.fat;
     }
   });
 
-  // Eaten macros (only completed meals, active types only)
   const eatenMacros = { calories: 0, protein: 0, carbs: 0, fat: 0 };
   activeTypes.forEach((mt) => {
     const done = mealCompletionsHook.completions.some(
@@ -170,20 +181,20 @@ export default function NutritionDetailScreen() {
     if (done && todayMeals[mt]) {
       const p = parseMeal(todayMeals[mt]);
       eatenMacros.calories += p.calories;
-      eatenMacros.protein  += p.protein;
-      eatenMacros.carbs    += p.carbs;
-      eatenMacros.fat      += p.fat;
+      eatenMacros.protein += p.protein;
+      eatenMacros.carbs += p.carbs;
+      eatenMacros.fat += p.fat;
     }
   });
 
-  // Per-meal-type calories for Calories pie chart (active types only)
-  const mealTypeCalories = activeTypes.map((mt) => {
-    const cfg = getMealConfig(mt);
-    const cal = todayMeals[mt] ? parseMeal(todayMeals[mt]).calories : 0;
-    return { label: cfg.label, color: cfg.color, value: cal };
-  }).filter((d) => d.value > 0);
+  const mealTypeCalories = activeTypes
+    .map((mt) => {
+      const cfg = getMealConfig(mt);
+      const cal = todayMeals[mt] ? parseMeal(todayMeals[mt]).calories : 0;
+      return { label: cfg.label, color: cfg.color, value: cal };
+    })
+    .filter((d) => d.value > 0);
 
-  // Macro calories for Macros pie chart
   const macroPieData = MACRO_CONFIG.map((m) => ({
     label: m.label,
     color: m.color,
@@ -195,6 +206,8 @@ export default function NutritionDetailScreen() {
   const showLoading = isLoading && noData;
   const showFetchError = !!fetchError && noData && !isLoading;
   const showEmpty = !isLoading && !fetchError && noData;
+
+  const onClose = () => router.back();
 
   const renderDataPlaceholder = () => {
     if (showLoading) {
@@ -212,29 +225,34 @@ export default function NutritionDetailScreen() {
       );
     }
     if (showEmpty) {
-      return <EmptyState />;
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="restaurant-outline" size={48} color={colors.textTertiary} />
+          <Text style={styles.emptyStateTitle}>No meal data yet</Text>
+          <Text style={styles.emptyStateText}>Generate a meal plan to see stats</Text>
+        </View>
+      );
     }
     return null;
   };
 
-  // ── Render tabs ──────────────────────────────────────────────────────────
   const renderOverview = () => (
-    <ScrollView contentContainerStyle={styles.tabContent}>
-      {/* Header stat */}
-      <View style={styles.consumedHeader}>
-        <Text style={styles.consumedLabel}>You have consumed</Text>
+    <>
+      <AestheticCard>
+        <AestheticSectionLabel>CONSUMED TODAY</AestheticSectionLabel>
         <View style={styles.consumedCalRow}>
           <Text style={styles.consumedCalEaten}>{eatenMacros.calories}</Text>
           <Text style={styles.consumedCalDivider}> out of </Text>
           <Text style={styles.consumedCalTotal}>{totalMacros.calories}</Text>
           <Text style={styles.consumedCalUnit}> cal</Text>
         </View>
-      </View>
+      </AestheticCard>
 
       {noData ? (
         renderDataPlaceholder()
       ) : (
-        <View style={styles.barsContainer}>
+        <AestheticCard>
+          <AestheticSectionLabel>MACRO PROGRESS</AestheticSectionLabel>
           {MACRO_CONFIG.map((m) => (
             <MacroBar
               key={m.key}
@@ -245,9 +263,9 @@ export default function NutritionDetailScreen() {
               colors={colors}
             />
           ))}
-        </View>
+        </AestheticCard>
       )}
-    </ScrollView>
+    </>
   );
 
   const renderCalories = () => {
@@ -256,201 +274,287 @@ export default function NutritionDetailScreen() {
       ...d,
       pct: total > 0 ? Math.round((d.value / total) * 100) : 0,
     }));
-    return (
-      <ScrollView contentContainerStyle={styles.tabContent}>
-        {noData || mealTypeCalories.length === 0 ? (
-          renderDataPlaceholder()
-        ) : (
-          <>
-            <Text style={styles.pieTitle}>Calories by Meal</Text>
-            <View style={styles.pieWrapper}>
-              <PieChart data={mealTypeCalories} size={width * 0.62} />
-              <View style={styles.pieCenterLabel}>
-                <Text style={styles.pieCenterValue}>{totalMacros.calories}</Text>
-                <Text style={styles.pieCenterUnit}>cal</Text>
-              </View>
-            </View>
 
-            {/* Detail list */}
-            <View style={styles.detailList}>
-              {keyItems.map((item, i) => (
-                <View key={i} style={[styles.detailRow, i < keyItems.length - 1 && styles.detailRowBorder]}>
-                  <View style={[styles.detailSwatch, { backgroundColor: item.color }]} />
-                  <Text style={styles.detailLabel}>{item.label}</Text>
-                  <Text style={styles.detailValue}>{item.value} cal</Text>
-                  <Text style={styles.detailPct}>{item.pct}%</Text>
-                </View>
-              ))}
+    if (noData || mealTypeCalories.length === 0) {
+      return renderDataPlaceholder();
+    }
+
+    return (
+      <>
+        <AestheticCard>
+          <AestheticSectionLabel>CALORIES BY MEAL</AestheticSectionLabel>
+          <View style={styles.pieWrapper}>
+            <PieChart data={mealTypeCalories} size={width * 0.55} />
+            <View style={styles.pieCenterLabel}>
+              <Text style={styles.pieCenterValue}>{totalMacros.calories}</Text>
+              <Text style={styles.pieCenterUnit}>cal</Text>
             </View>
-          </>
-        )}
-      </ScrollView>
+          </View>
+        </AestheticCard>
+
+        <AestheticCard>
+          <AestheticSectionLabel>BREAKDOWN</AestheticSectionLabel>
+          {keyItems.map((item, i) => (
+            <View
+              key={i}
+              style={[styles.detailRow, i < keyItems.length - 1 && styles.detailRowBorder]}
+            >
+              <View style={[styles.detailSwatch, { backgroundColor: item.color }]} />
+              <Text style={styles.detailLabel}>{item.label}</Text>
+              <Text style={styles.detailValue}>{item.value} cal</Text>
+              <Text style={styles.detailPct}>{item.pct}%</Text>
+            </View>
+          ))}
+        </AestheticCard>
+      </>
     );
   };
 
   const renderMacros = () => {
-    return (
-      <ScrollView contentContainerStyle={styles.tabContent}>
-        {noData || macroPieData.length === 0 ? (
-          renderDataPlaceholder()
-        ) : (
-          <>
-            <Text style={styles.pieTitle}>Macros by Calories</Text>
-            <View style={styles.pieWrapper}>
-              <PieChart data={macroPieData} size={width * 0.62} />
-              <View style={styles.pieCenterLabel}>
-                <Text style={styles.pieCenterValue}>{totalMacros.calories}</Text>
-                <Text style={styles.pieCenterUnit}>cal</Text>
-              </View>
-            </View>
+    if (noData || macroPieData.length === 0) {
+      return renderDataPlaceholder();
+    }
 
-            {/* Detail list */}
-            <View style={styles.detailList}>
-              {MACRO_CONFIG.filter((m) => totalMacros[m.key] > 0).map((m, i, arr) => {
-                const calVal = totalMacros[m.key] * m.calsPerGram;
-                const totalMacroCals = macroPieData.reduce((s, d) => s + d.value, 0);
-                const pct = totalMacroCals > 0 ? Math.round((calVal / totalMacroCals) * 100) : 0;
-                return (
-                  <View key={m.key} style={[styles.detailRow, i < arr.length - 1 && styles.detailRowBorder]}>
-                    <View style={[styles.detailSwatch, { backgroundColor: m.color }]} />
-                    <Text style={styles.detailLabel}>{m.label}</Text>
-                    <Text style={styles.detailValue}>{totalMacros[m.key]}g</Text>
-                    <Text style={styles.detailPct}>{pct}%</Text>
-                  </View>
-                );
-              })}
+    return (
+      <>
+        <AestheticCard>
+          <AestheticSectionLabel>MACROS BY CALORIES</AestheticSectionLabel>
+          <View style={styles.pieWrapper}>
+            <PieChart data={macroPieData} size={width * 0.55} />
+            <View style={styles.pieCenterLabel}>
+              <Text style={styles.pieCenterValue}>{totalMacros.calories}</Text>
+              <Text style={styles.pieCenterUnit}>cal</Text>
             </View>
-            <Text style={styles.macroNote}>
-              Protein &amp; Carbs = 4 cal/g · Lipids = 9 cal/g
-            </Text>
-          </>
-        )}
-      </ScrollView>
+          </View>
+        </AestheticCard>
+
+        <AestheticCard>
+          <AestheticSectionLabel>DISTRIBUTION</AestheticSectionLabel>
+          {MACRO_CONFIG.filter((m) => totalMacros[m.key] > 0).map((m, i, arr) => {
+            const calVal = totalMacros[m.key] * m.calsPerGram;
+            const totalMacroCals = macroPieData.reduce((s, d) => s + d.value, 0);
+            const pct = totalMacroCals > 0 ? Math.round((calVal / totalMacroCals) * 100) : 0;
+            return (
+              <View
+                key={m.key}
+                style={[styles.detailRow, i < arr.length - 1 && styles.detailRowBorder]}
+              >
+                <View style={[styles.detailSwatch, { backgroundColor: m.color }]} />
+                <Text style={styles.detailLabel}>{m.label}</Text>
+                <Text style={styles.detailValue}>{totalMacros[m.key]}g</Text>
+                <Text style={styles.detailPct}>{pct}%</Text>
+              </View>
+            );
+          })}
+          <Text style={styles.macroNote}>
+            Protein & Carbs = 4 cal/g · Fats = 9 cal/g
+          </Text>
+        </AestheticCard>
+      </>
     );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.backButton}
-        >
-          <Ionicons name="chevron-down" size={26} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Today's Nutrition</Text>
-        <View style={styles.headerSpacer} />
+    <SafeAreaView edges={['top', 'bottom']} style={styles.sheet}>
+      <View pointerEvents="none" style={styles.bgDecor}>
+        <View style={[styles.bgCircle, styles.bgCircleMint]} />
+        <View style={[styles.bgCircle, styles.bgCirclePeach]} />
       </View>
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {TABS.map((tab) => (
+      <View style={styles.modalInner}>
+        <View style={styles.handleRow}>
+          <View style={styles.handle} />
+        </View>
+
+        <View style={styles.header}>
+          <View style={styles.headerIconWrap}>
+            <Ionicons name="nutrition-outline" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.headerTextBlock}>
+            <Text style={styles.eyebrow}>NUTRITION</Text>
+            <Text style={styles.title}>{"Today's Nutrition"}</Text>
+          </View>
           <TouchableOpacity
-            key={tab}
-            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
-            onPress={() => setActiveTab(tab)}
-            activeOpacity={0.7}
+            onPress={onClose}
+            style={styles.iconButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab}
-            </Text>
+            <Ionicons name="close" size={22} color={colors.text} />
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-      {/* Tab content */}
-      <View style={styles.contentArea}>
-        {activeTab === 'Overview' && renderOverview()}
-        {activeTab === 'Calories' && renderCalories()}
-        {activeTab === 'Macros'   && renderMacros()}
+        <View style={styles.tabBar}>
+          {TABS.map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabPill, active && styles.tabPillActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === 'Overview' && renderOverview()}
+          {activeTab === 'Calories' && renderCalories()}
+          {activeTab === 'Macros' && renderMacros()}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const EmptyState = () => (
-  <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-    <Ionicons name="restaurant-outline" size={48} color="#D1D5DB" />
-    <Text style={{ fontSize: 16, fontWeight: '700', color: '#9CA3AF', marginTop: 12 }}>
-      No meal data yet
-    </Text>
-    <Text style={{ fontSize: 14, color: '#D1D5DB', marginTop: 4 }}>
-      Generate a meal plan to see stats
-    </Text>
-  </View>
-);
-
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
-    container: {
+    sheet: {
       flex: 1,
-      backgroundColor: colors.cardBackground,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 16,
+      backgroundColor: colors.background,
       overflow: 'hidden',
-      marginBottom: 24, // ← adjust this to raise/lower the bottom border
+    },
+    bgDecor: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    bgCircle: {
+      position: 'absolute',
+      borderRadius: 9999,
+    },
+    bgCircleMint: {
+      width: width * 0.65,
+      height: width * 0.65,
+      backgroundColor: isDarkMode ? 'rgba(224,236,222,0.08)' : '#E0ECDE',
+      top: -width * 0.22,
+      right: -width * 0.3,
+    },
+    bgCirclePeach: {
+      width: width * 0.7,
+      height: width * 0.7,
+      backgroundColor: isDarkMode ? 'rgba(247,233,218,0.08)' : '#F7E9DA',
+      top: width * 0.55,
+      left: -width * 0.4,
+    },
+    modalInner: {
+      flex: 1,
+      zIndex: 1,
+    },
+    handleRow: {
+      alignItems: 'center',
+      paddingTop: 10,
+      paddingBottom: 4,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.borderDark,
+      opacity: 0.7,
     },
     header: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       paddingHorizontal: 16,
-      paddingTop: 16,
+      paddingTop: 8,
       paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.cardBackground,
+      gap: 12,
     },
-    backButton: {
-      width: 36,
+    headerIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: isDarkMode ? 'rgba(61,124,101,0.2)' : 'rgba(61,124,101,0.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
     },
-    headerTitle: {
+    headerTextBlock: {
       flex: 1,
-      textAlign: 'center',
-      fontSize: 17,
-      fontWeight: '800',
+      paddingRight: 4,
+    },
+    eyebrow: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.textTertiary,
+      letterSpacing: 0.9,
+      marginBottom: 2,
+    },
+    title: {
+      fontFamily: 'PlayfairDisplay_600SemiBold',
+      fontSize: 24,
       color: colors.text,
+      letterSpacing: -0.3,
+      lineHeight: 30,
     },
-    headerSpacer: {
-      width: 36,
+    iconButton: {
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: isDarkMode ? colors.cardBackground : 'rgba(255,255,255,0.7)',
     },
-    // ── Tab bar ──
     tabBar: {
       flexDirection: 'row',
-      backgroundColor: colors.cardBackground,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
     },
-    tabItem: {
+    tabPill: {
       flex: 1,
-      paddingVertical: 12,
       alignItems: 'center',
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    tabItemActive: {
-      borderBottomColor: colors.primary,
+    tabPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     tabLabel: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '700',
       color: colors.textSecondary,
     },
     tabLabelActive: {
-      color: colors.primary,
-      fontWeight: '800',
+      color: '#FFFFFF',
     },
-    // ── Content ──
-    contentArea: {
+    content: {
       flex: 1,
-      backgroundColor: colors.cardBackground,
+      minHeight: 0,
     },
-    tabContent: {
-      padding: 20,
-      paddingBottom: 40,
-      backgroundColor: colors.cardBackground,
+    contentContainer: {
+      paddingHorizontal: 16,
+      paddingBottom: 20,
+      gap: 12,
+    },
+    footer: {
+      padding: 16,
+      paddingTop: 8,
+    },
+    closeButton: {
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+    },
+    closeButtonText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
     stateContainer: {
       alignItems: 'center',
@@ -463,73 +567,65 @@ const getStyles = (colors) =>
       color: colors.error || '#DC2626',
       textAlign: 'center',
     },
-    // ── Overview ──
-    consumedHeader: {
+    emptyState: {
       alignItems: 'center',
-      marginBottom: 32,
-      paddingTop: 8,
+      paddingVertical: 48,
     },
-    consumedLabel: {
-      fontSize: 14,
-      fontWeight: '600',
+    emptyStateTitle: {
+      fontSize: 16,
+      fontWeight: '700',
       color: colors.textSecondary,
-      marginBottom: 10,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      marginTop: 12,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: colors.textTertiary,
+      marginTop: 4,
+      textAlign: 'center',
     },
     consumedCalRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
     },
     consumedCalEaten: {
-      fontSize: 44,
+      fontSize: 40,
       fontWeight: '900',
       color: colors.text,
-      lineHeight: 48,
+      lineHeight: 44,
     },
     consumedCalDivider: {
-      fontSize: 16,
+      fontSize: 15,
       color: colors.textTertiary,
       fontWeight: '500',
       marginBottom: 8,
     },
     consumedCalTotal: {
-      fontSize: 30,
+      fontSize: 28,
       fontWeight: '800',
       color: colors.textSecondary,
-      lineHeight: 36,
+      lineHeight: 34,
       marginBottom: 4,
     },
     consumedCalUnit: {
-      fontSize: 16,
+      fontSize: 15,
       color: colors.textTertiary,
       fontWeight: '500',
       marginBottom: 8,
-    },
-    barsContainer: {
-      paddingTop: 4,
-    },
-    // ── Calories / Macros tabs ──
-    pieTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      textAlign: 'center',
-      marginBottom: 16,
     },
     pieWrapper: {
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
+      paddingVertical: 8,
     },
     pieCenterLabel: {
       position: 'absolute',
       alignItems: 'center',
     },
     pieCenterValue: {
-      fontSize: 26,
+      fontSize: 24,
       fontWeight: '900',
       color: colors.text,
     },
@@ -538,29 +634,20 @@ const getStyles = (colors) =>
       color: colors.textSecondary,
       fontWeight: '600',
     },
-    detailList: {
-      marginTop: 24,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
     detailRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 13,
+      paddingVertical: 12,
       gap: 10,
     },
     detailRowBorder: {
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     detailSwatch: {
       width: 12,
       height: 12,
-      borderRadius: 3,
+      borderRadius: 6,
     },
     detailLabel: {
       flex: 1,
@@ -585,7 +672,7 @@ const getStyles = (colors) =>
       fontSize: 12,
       color: colors.textTertiary,
       textAlign: 'center',
-      marginTop: 12,
+      marginTop: 10,
       fontStyle: 'italic',
     },
   });

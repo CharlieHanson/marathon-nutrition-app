@@ -246,6 +246,7 @@ export function UserProfileProvider({ children }) {
       updateProfile,
       saveProfile,
       refetchProfile,
+      refreshProfile: refetchProfile,
     }),
     [updateProfile, saveProfile, refetchProfile]
   );

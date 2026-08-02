@@ -75,6 +75,30 @@ export const getNextWeek = (currentWeek) => {
   return date.toISOString().split('T')[0];
 };
 
+/** Local YYYY-MM-DD for a weekday name within a Mon-start week. */
+export const localDateForDay = (weekStarting, dayName) => {
+  if (!weekStarting || !dayName) return null;
+  const idx = DAYS.indexOf(dayName);
+  if (idx < 0) return null;
+  const monday = new Date(`${weekStarting}T00:00:00`);
+  monday.setDate(monday.getDate() + idx);
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth() + 1).padStart(2, '0');
+  const d = String(monday.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/** Add calendar days to a YYYY-MM-DD string (local, not UTC). */
+export const addDaysToLocalDate = (localDate, days) => {
+  if (!localDate) return null;
+  const d = new Date(`${localDate}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export const parseMeal = (mealString) => {
   if (!mealString || typeof mealString !== 'string') {
     return { name: '', calories: 0, protein: 0, carbs: 0, fat: 0 };

@@ -11,6 +11,7 @@ import * as Sentry from '@sentry/react-native';
 import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../../shared/lib/supabase.native';
 import { identify as identifyPostHog, reset as resetPostHog } from '../lib/analytics';
+import { registerPushTokenAsync } from '../lib/pushNotifications';
 
 const AuthContext = createContext(undefined);
 
@@ -182,6 +183,7 @@ export const AuthProvider = ({ children }) => {
           identifyMonitoringUser(session.user).catch((e) =>
             console.warn('monitoring identify on init failed:', e)
           );
+          registerPushTokenAsync(session.user.id).catch(() => {});
         } else {
           setUser(null);
           resetMonitoringUser();
@@ -218,6 +220,7 @@ export const AuthProvider = ({ children }) => {
           identifyMonitoringUser(session.user).catch((e) =>
             console.warn('monitoring identify on auth change failed:', e)
           );
+          registerPushTokenAsync(session.user.id).catch(() => {});
         } else {
           const hadUser = userRef.current !== null;
           setUser(null);

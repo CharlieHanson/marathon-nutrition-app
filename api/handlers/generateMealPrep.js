@@ -3,13 +3,14 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
 import { completeJSON, isHighDemandError, OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 import { parseAIJson } from '../lib/parseAIJson.js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -82,7 +83,8 @@ export function createGenerateMealPrepHandler(provider) {
         days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workoutsByDay = {},
+        localDate,
       } = req.body;
 
       if (!userProfile || !rawMealType) {
@@ -113,14 +115,15 @@ export function createGenerateMealPrepHandler(provider) {
 
       const budgets = [];
       for (const day of days) {
-        const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-        const dayTiming = trainingPlan?.[day]?.timing || null;
-        const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+        const dayWorkouts = Array.isArray(workoutsByDay?.[day])
+          ? workoutsByDay[day]
+          : [];
+        const numericWorkouts = withNumericIntensities(dayWorkouts);
 
         const nutrition = computeNutritionTargets({
           userProfile,
-          todayWorkouts: dayWorkouts,
-          workoutTiming: timingMap[dayTiming] || null,
+          todayWorkouts: numericWorkouts,
+          workoutTiming: deriveWorkoutTiming(dayWorkouts),
           mealSlots: ['breakfast', 'lunch', 'dinner', 'dessert'],
         });
 
@@ -222,6 +225,8 @@ export function createGenerateMealPrepHandler(provider) {
       });
 
       console.log(`✅ Generated ${options.length} meal prep options (${provider})`);
+
+      await recordUserStreak(supabase, userId, localDate);
 
       res.status(200).json({
         success: true,

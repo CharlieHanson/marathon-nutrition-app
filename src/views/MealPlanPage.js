@@ -18,6 +18,7 @@ import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/se
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
 import { capture } from '../lib/posthog';
 import { macroColors } from '../../shared/lib/macroColors';
+import { recordStreakActivity } from '../dataClient';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -147,7 +148,6 @@ export const MealPlanPage = ({
     await onRegenerate(day, mealType, reason, {
       userProfile,
       foodPreferences,
-      trainingPlan,
     });
   };
 
@@ -167,6 +167,9 @@ export const MealPlanPage = ({
 
   const handleLogMeal = (day, mealType, description) => {
     onUpdate(day, mealType, description);
+    if (user?.id && !isGuest) {
+      void recordStreakActivity(user.id);
+    }
     setLocalStatusMessage(`✅ Logged ${mealType} for ${day}!`);
     setTimeout(() => setLocalStatusMessage(''), 3000);
   };
@@ -502,6 +505,11 @@ export const MealPlanPage = ({
     setTestResults(initialResults);
 
     try {
+      const dayWorkouts = trainingPlan?.[selectedTestDay]?.workouts || [];
+      const dayIdx = DAYS.indexOf(selectedTestDay);
+      const nextDay = DAYS[(dayIdx + 1) % 7];
+      const tomorrowWorkouts = trainingPlan?.[nextDay]?.workouts || [];
+
       const response = await authenticatedFetch(
         getMealGenApiUrl('/api/generate-day-web'),
         {
@@ -511,8 +519,10 @@ export const MealPlanPage = ({
             userId: user?.id,
             userProfile,
             foodPreferences,
-            trainingPlan,
-            day: selectedTestDay
+            workouts: dayWorkouts,
+            tomorrowWorkouts,
+            day: selectedTestDay,
+            localDate: getTodayDate(),
           }),
         },
         120000
@@ -614,6 +624,11 @@ export const MealPlanPage = ({
     setDailyTargets(null);
 
     try {
+      const dayWorkouts = trainingPlan?.[selectedBuildDay]?.workouts || [];
+      const dayIdx = DAYS.indexOf(selectedBuildDay);
+      const nextDay = DAYS[(dayIdx + 1) % 7];
+      const tomorrowWorkouts = trainingPlan?.[nextDay]?.workouts || [];
+
       const response = await authenticatedFetch(
         getMealGenApiUrl('/api/generate-day'),
         {
@@ -623,12 +638,14 @@ export const MealPlanPage = ({
             day: selectedBuildDay,
             userProfile,
             foodPreferences,
-            trainingPlan,
+            workouts: dayWorkouts,
+            tomorrowWorkouts,
             weekStarting: currentWeekStarting,
             existingMeals: mealPlan, // Pass current meal plan for cross-day variety
             forceRegenerate: true, // Always regenerate all meals for testing
             debug: showDebug,
             userId: user?.id,
+            localDate: getTodayDate(),
           }),
         },
         120000

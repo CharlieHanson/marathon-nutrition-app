@@ -1,146 +1,306 @@
-import React from 'react';
-import { View, Text, Modal, Pressable, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
+import {
+  AestheticSheet,
+  AestheticCard,
+  AestheticSectionLabel,
+} from '../../ui/AestheticSheet';
 
-const getStyles = (colors) => StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.modalOverlay,
-    justifyContent: 'flex-end',
-  },
-  overlayPressable: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  recipeModal: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '90%',
-    overflow: 'hidden',
-    zIndex: 1,
-  },
-  modalInner: {
-    flex: 1,
-    flexDirection: 'column',
-    pointerEvents: 'auto',
-  },
-  recipeModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  recipeModalTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-  },
-  recipeModalActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  recipeModalAction: {
-    padding: 6,
-    marginLeft: 10,
-  },
-  recipeContent: {
-    flex: 1,
-    minHeight: 0,
-    flexShrink: 1,
-  },
-  recipeContentContainer: {
-    padding: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
-    flexGrow: 1,
-  },
-  recipeText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    minHeight: 200,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-});
+/**
+ * Parse cookbook-style recipe text from the API into sections.
+ */
+const parseCookbookRecipe = (raw, fallbackTitle) => {
+  if (!raw || typeof raw !== 'string') {
+    return {
+      title: fallbackTitle || 'Recipe',
+      servings: null,
+      time: null,
+      ingredients: [],
+      steps: [],
+      notes: null,
+    };
+  }
+
+  const lines = raw.split('\n').map((l) => l.trimEnd());
+  let title = fallbackTitle || 'Recipe';
+  let servings = null;
+  let time = null;
+  const ingredients = [];
+  const steps = [];
+  let notes = null;
+  let section = 'header';
+  let titleTaken = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (/^ingredients:?$/i.test(trimmed)) {
+      section = 'ingredients';
+      continue;
+    }
+    if (/^steps:?$/i.test(trimmed)) {
+      section = 'steps';
+      continue;
+    }
+    if (/^notes:?$/i.test(trimmed)) {
+      section = 'notes';
+      continue;
+    }
+
+    if (section === 'header') {
+      const servingsMatch = trimmed.match(/^servings:\s*(.+)$/i);
+      if (servingsMatch) {
+        servings = servingsMatch[1].trim();
+        continue;
+      }
+      const timeMatch = trimmed.match(/^time:\s*(.+)$/i);
+      if (timeMatch) {
+        time = timeMatch[1].trim();
+        continue;
+      }
+      if (!titleTaken) {
+        title = trimmed;
+        titleTaken = true;
+      }
+      continue;
+    }
+
+    if (section === 'ingredients') {
+      ingredients.push(trimmed.replace(/^[-•*]\s*/, ''));
+      continue;
+    }
+
+    if (section === 'steps') {
+      steps.push(trimmed.replace(/^\d+[.)]\s*/, ''));
+      continue;
+    }
+
+    if (section === 'notes') {
+      notes = notes ? `${notes}\n${trimmed}` : trimmed;
+    }
+  }
+
+  return { title, servings, time, ingredients, steps, notes };
+};
 
 export const RecipeModal = ({ visible, recipe, mealName, onClose, onShare, loading = false }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
+  const parsed = useMemo(
+    () => parseCookbookRecipe(recipe, mealName),
+    [recipe, mealName]
+  );
+  const displayTitle = mealName || parsed.title || 'Recipe';
 
   return (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="slide"
-    onRequestClose={onClose}
-  >
-    <View style={styles.modalOverlay}>
-      <Pressable onPress={onClose} style={styles.overlayPressable} />
-      <View style={styles.recipeModal}>
-        <View style={styles.modalInner}>
-          {/* Header */}
-          <View style={styles.recipeModalHeader}>
-            <Text style={styles.recipeModalTitle}>
-              {mealName || 'Recipe'}
-            </Text>
-            <View style={styles.recipeModalActions}>
-              <TouchableOpacity 
-                onPress={onShare} 
-                style={styles.recipeModalAction}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                disabled={loading}
-              >
-                <Ionicons name="share-outline" size={22} color={loading ? colors.textTertiary : colors.textSecondary} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={onClose} 
-                style={styles.recipeModalAction}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Content */}
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading recipe...</Text>
-            </View>
-          ) : (
-            <ScrollView 
-              style={styles.recipeContent}
-              contentContainerStyle={styles.recipeContentContainer}
-              nestedScrollEnabled={true}
-              showsVerticalScrollIndicator={true}
-              bounces={true}
-              scrollEventThrottle={16}
-            >
-              <Text style={styles.recipeText}>{recipe}</Text>
-            </ScrollView>
-          )}
+    <AestheticSheet
+      visible={visible}
+      onClose={onClose}
+      title={displayTitle}
+      eyebrow="RECIPE"
+      icon="restaurant-outline"
+      onShare={onShare}
+      shareDisabled={loading || !recipe}
+      scroll={!loading}
+    >
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Preparing your recipe…</Text>
         </View>
-      </View>
-    </View>
-  </Modal>
+      ) : (
+        <>
+          {(parsed.servings || parsed.time) && (
+            <View style={styles.metaRow}>
+              {parsed.servings ? (
+                <View style={styles.metaChip}>
+                  <Ionicons name="people-outline" size={14} color={colors.primary} />
+                  <Text style={styles.metaChipText}>{parsed.servings} servings</Text>
+                </View>
+              ) : null}
+              {parsed.time ? (
+                <View style={[styles.metaChip, styles.metaChipFlex]}>
+                  <Ionicons name="time-outline" size={14} color={colors.primary} />
+                  <Text style={styles.metaChipText} numberOfLines={2}>
+                    {parsed.time}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
+          {parsed.ingredients.length > 0 ? (
+            <AestheticCard>
+              <AestheticSectionLabel>INGREDIENTS</AestheticSectionLabel>
+              {parsed.ingredients.map((item, index) => (
+                <View
+                  key={`ing-${index}`}
+                  style={[
+                    styles.ingredientRow,
+                    index < parsed.ingredients.length - 1 && styles.rowDivider,
+                  ]}
+                >
+                  <View style={styles.ingredientDot} />
+                  <Text style={styles.ingredientText}>{item}</Text>
+                </View>
+              ))}
+            </AestheticCard>
+          ) : null}
+
+          {parsed.steps.length > 0 ? (
+            <AestheticCard>
+              <AestheticSectionLabel>STEPS</AestheticSectionLabel>
+              {parsed.steps.map((step, index) => (
+                <View
+                  key={`step-${index}`}
+                  style={[
+                    styles.stepRow,
+                    index < parsed.steps.length - 1 && styles.rowDivider,
+                  ]}
+                >
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))}
+            </AestheticCard>
+          ) : null}
+
+          {parsed.notes ? (
+            <View style={styles.notesCard}>
+              <AestheticSectionLabel>NOTES</AestheticSectionLabel>
+              <Text style={styles.notesText}>{parsed.notes}</Text>
+            </View>
+          ) : null}
+
+          {!parsed.ingredients.length && !parsed.steps.length && recipe ? (
+            <AestheticCard>
+              <Text style={styles.fallbackText}>{recipe}</Text>
+            </AestheticCard>
+          ) : null}
+        </>
+      )}
+    </AestheticSheet>
   );
 };
 
+const getStyles = (colors, isDarkMode) =>
+  StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+      minHeight: 200,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    metaRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    metaChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    metaChipFlex: {
+      flexGrow: 1,
+      flexShrink: 1,
+    },
+    metaChipText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      flexShrink: 1,
+    },
+    ingredientRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      paddingVertical: 8,
+    },
+    ingredientDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+      marginTop: 5,
+    },
+    ingredientText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      lineHeight: 22,
+    },
+    stepRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      paddingVertical: 10,
+    },
+    stepBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: isDarkMode ? 'rgba(61,124,101,0.25)' : colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 1,
+    },
+    stepBadgeText: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.primary,
+    },
+    stepText: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+      lineHeight: 22,
+    },
+    rowDivider: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    notesCard: {
+      backgroundColor: colors.focusBackground,
+      borderRadius: 16,
+      padding: 16,
+    },
+    notesText: {
+      fontFamily: 'PlayfairDisplay_400Regular_Italic',
+      fontSize: 15,
+      color: colors.text,
+      lineHeight: 22,
+    },
+    fallbackText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      lineHeight: 22,
+    },
+  });

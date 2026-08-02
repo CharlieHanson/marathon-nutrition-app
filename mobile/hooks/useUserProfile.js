@@ -22,6 +22,7 @@ export const useUserProfile = (_user, _isGuest, reloadKey = 0) => {
     rawUserProfile: state.rawUserProfile,
     updateProfile: actions.updateProfile,
     saveProfile: actions.saveProfile,
+    refreshProfile: actions.refreshProfile,
     isSaving: state.isSaving,
     loadingProfile: state.loadingProfile,
     isLoading: state.isLoading,

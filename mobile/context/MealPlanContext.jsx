@@ -316,7 +316,7 @@ export function MealPlanProvider({ children }) {
     }
   };
 
-  const generateDay = async (day, userProfile, foodPreferences, trainingPlan, onDebug) => {
+  const generateDay = async (day, userProfile, foodPreferences, workoutsContext, onDebug) => {
     console.log('🟢 generateDay called with onDebug:', !!onDebug);
     if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
@@ -353,13 +353,23 @@ export function MealPlanProvider({ children }) {
       // Card loading states immediately — no top-of-screen status text
       emptyMealTypes.forEach((mt) => updateMeal(day, mt, '__generating__'));
 
+      const workouts = Array.isArray(workoutsContext?.workouts)
+        ? workoutsContext.workouts
+        : Array.isArray(workoutsContext)
+          ? workoutsContext
+          : [];
+      const tomorrowWorkouts = Array.isArray(workoutsContext?.tomorrowWorkouts)
+        ? workoutsContext.tomorrowWorkouts
+        : [];
+
       const result = await apiClient.generateDay(
         { 
           userId: user?.id,
           day,
           userProfile, 
           foodPreferences,
-          trainingPlan,
+          workouts,
+          tomorrowWorkouts,
           weekStarting: currentWeekStarting,
           ...togglePayload,
           debug: !!onDebug, // Enable debug mode if callback provided
@@ -457,7 +467,10 @@ export function MealPlanProvider({ children }) {
       // Extract context fields - ensure they're always objects (not undefined)
       const userProfile = context?.userProfile || null;
       const foodPreferences = context?.foodPreferences || null;
-      const trainingPlan = context?.trainingPlan || null;
+      const workouts = Array.isArray(context?.workouts) ? context.workouts : [];
+      const tomorrowWorkouts = Array.isArray(context?.tomorrowWorkouts)
+        ? context.tomorrowWorkouts
+        : [];
       const userId = context?.userId || null;
 
       const result = await apiClient.regenerateMeal({
@@ -468,7 +481,8 @@ export function MealPlanProvider({ children }) {
         currentMeal: currentMeal, // Always a string (empty if no meal)
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workouts,
+        tomorrowWorkouts,
         ...getDayTogglePayload(day),
       });
 
@@ -492,7 +506,7 @@ export function MealPlanProvider({ children }) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    const { userProfile, foodPreferences, trainingPlan } = context || {};
+    const { userProfile, foodPreferences, workouts, tomorrowWorkouts } = context || {};
     const previousMeal = mealPlan[day]?.[mealType] ?? '';
     updateMeal(day, mealType, '__generating__');
     
@@ -503,7 +517,8 @@ export function MealPlanProvider({ children }) {
         mealType,
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workouts: Array.isArray(workouts) ? workouts : [],
+        tomorrowWorkouts: Array.isArray(tomorrowWorkouts) ? tomorrowWorkouts : [],
         weekStarting: currentWeekStarting,
         existingMeals: mealPlan,
         userPrompt, // Optional user suggestion/preference
@@ -552,7 +567,7 @@ export function MealPlanProvider({ children }) {
   };
 
   // Clear and regenerate all meals (used when week is full)
-  const regenerateAllMeals = async (userProfile, foodPreferences, trainingPlan) => {
+  const regenerateAllMeals = async (userProfile, foodPreferences, workoutsByDay = {}) => {
     if (!user && !isGuest) {
       return { success: false, error: 'Not authenticated' };
     }
@@ -576,12 +591,21 @@ export function MealPlanProvider({ children }) {
         const activeUiTypes = getActiveMealTypes(togglePayload).filter((mt) => mt !== 'snacks');
         activeUiTypes.forEach((mt) => updateMeal(day, mt, '__generating__'));
 
+        const dayIdx = DAYS.indexOf(day);
+        const nextDay = DAYS[(dayIdx + 1) % 7];
+        const workouts = Array.isArray(workoutsByDay?.[day]) ? workoutsByDay[day] : [];
+        const tomorrowWorkouts = Array.isArray(workoutsByDay?.[nextDay])
+          ? workoutsByDay[nextDay]
+          : [];
+
         const result = await apiClient.generateDay(
           { 
             userId: user?.id,
             day,
             userProfile, 
             foodPreferences,
+            workouts,
+            tomorrowWorkouts,
             weekStarting: currentWeekStarting,
             ...togglePayload,
           },

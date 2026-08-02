@@ -3,7 +3,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { computeNutritionTargets, withNumericIntensities, deriveWorkoutTiming } from '../../shared/lib/tdeeCalc.js';
 import { estimateAndAdjust } from '../../shared/lib/macroEstimator.js';
 import { buildSingleMealPrompt, formatTrainingDay } from '../../shared/lib/mealPromptBuilder.js';
 import { validateIngredients } from '../../shared/lib/validateIngredients.js';
@@ -17,13 +17,12 @@ import {
   resolveMealToggles,
   getInactiveMealTypeError,
 } from '../../shared/lib/mealSlots.js';
+import { recordUserStreak } from '../lib/recordStreak.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
 );
-
-const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const AI_CONFIG = {
   gemini: { geminiModel: 'gemini-2.5-flash', temperature: 0.7, maxTokens: 5000 },
@@ -46,12 +45,14 @@ export function createRegenerateMealHandler(provider) {
       const {
         userProfile,
         foodPreferences,
-        trainingPlan,
+        workouts: rawWorkouts,
+        tomorrowWorkouts: rawTomorrowWorkouts,
         day,
         mealType,
         reason,
         currentMeal,
         includeDessert,
+        localDate,
       } = req.body;
 
       if (!userProfile || !mealType || !day) {
@@ -78,14 +79,14 @@ export function createRegenerateMealHandler(provider) {
       const dislikes = foodPreferences?.dislikes || '';
       const dietaryRestrictions = userProfile.dietary_restrictions || userProfile.dietaryRestrictions || '';
 
-      const dayWorkouts = trainingPlan?.[day]?.workouts || [];
-      const dayTiming = trainingPlan?.[day]?.timing || null;
-      const timingMap = { Morning: 'am', Afternoon: 'pm', Evening: 'pm' };
+      const dayWorkouts = Array.isArray(rawWorkouts) ? rawWorkouts : [];
+      const tomorrowWorkouts = Array.isArray(rawTomorrowWorkouts) ? rawTomorrowWorkouts : [];
+      const numericWorkouts = withNumericIntensities(dayWorkouts);
 
       const nutrition = computeNutritionTargets({
         userProfile,
-        todayWorkouts: dayWorkouts,
-        workoutTiming: timingMap[dayTiming] || null,
+        todayWorkouts: numericWorkouts,
+        workoutTiming: deriveWorkoutTiming(dayWorkouts),
         mealSlots,
       });
 
@@ -97,8 +98,6 @@ export function createRegenerateMealHandler(provider) {
       }
 
       const currentMealDesc = (currentMeal || '').replace(/\(Cal:.*?\).*$/, '').trim();
-      const dayIndex = DAYS.indexOf(day);
-      const tomorrowDay = DAYS[(dayIndex + 1) % 7];
 
       const prompt = buildSingleMealPrompt({
         mealType: budgetKey,
@@ -106,7 +105,7 @@ export function createRegenerateMealHandler(provider) {
         foodPreferences,
         dietaryRestrictions,
         todayTraining: formatTrainingDay(dayWorkouts),
-        tomorrowTraining: formatTrainingDay(trainingPlan?.[tomorrowDay]?.workouts || []),
+        tomorrowTraining: formatTrainingDay(tomorrowWorkouts),
         reason,
         currentMeal: currentMealDesc,
       });
@@ -134,6 +133,7 @@ export function createRegenerateMealHandler(provider) {
       ingredients = validateIngredients(ingredients, dislikes, dietaryRestrictions);
 
       if (ingredients.length === 0) {
+        await recordUserStreak(supabase, userId, localDate);
         return res.status(200).json({
           success: true,
           meal: mealData.meal_name || 'Generated meal',
@@ -152,6 +152,8 @@ export function createRegenerateMealHandler(provider) {
       const mealName = mealData.meal_name || 'Regenerated meal';
 
       console.log(`✅ ${mealName}: ${macros.calories} kcal (target: ${budget.calories}), scaled: ${result.scaled}`);
+
+      await recordUserStreak(supabase, userId, localDate);
 
       res.status(200).json({
         success: true,

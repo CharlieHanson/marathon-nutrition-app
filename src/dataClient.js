@@ -4,6 +4,41 @@ import { supabase } from './supabaseClient';
 // Helpers
 // ================================================
 
+/** Local calendar YYYY-MM-DD. Optional dayOffset: 0 = today, -1 = yesterday. */
+export function getLocalDateString(dayOffset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Record a qualifying streak activity for the user's local calendar day.
+ * @returns {{ streak: number, max_streak: number } | null}
+ */
+export async function recordStreakActivity(userId, localDate) {
+  if (!userId) return null;
+  try {
+    const date = localDate || getLocalDateString();
+    const { data, error } = await supabase.rpc('record_user_streak', {
+      p_user_id: userId,
+      p_local_date: date,
+    });
+    if (error) {
+      console.warn('recordStreakActivity:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    if (!row) return null;
+    return { streak: row.streak, max_streak: row.max_streak };
+  } catch (e) {
+    console.warn('recordStreakActivity:', e?.message || e);
+    return null;
+  }
+}
+
 /* ✅ NEW: fetch a user's base profile (name + type) from public.profiles */
 async function fetchBaseProfile(userId) {
   const { data, error } = await supabase
@@ -140,127 +175,95 @@ export async function saveFoodPreferences(userId, prefs) {
 }
 
 // ================================================
-// Training Plans (NEW SCHEMA)
+// Workout logs (daily, date-keyed)
 // ================================================
 
-export async function saveTrainingPlan(userId, planData, name, planId = null) {
-  console.log('💾 Saving training plan:', { userId, name, planId });
-
+export async function fetchWorkoutLog(userId, localDate) {
   try {
-    // If updating existing plan
-    if (planId) {
-      const { data, error } = await supabase
-        .from('training_plans')
-        .update({
-          name: name,
-          plan_data: planData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', planId)
-        .eq('user_id', userId)
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('workout_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('local_date', localDate)
+      .maybeSingle();
 
-      if (error) throw error;
-      return { data, error: null };
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching workout log:', error);
+      return { data: null, error };
     }
 
-    // Creating new plan - first deactivate all other plans
-    await supabase
-      .from('training_plans')
-      .update({ is_active: false })
-      .eq('user_id', userId);
-
-    // Insert new plan as active
-    const { data, error } = await supabase
-      .from('training_plans')
-      .insert({
-        user_id: userId,
-        name: name,
-        plan_data: planData,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    console.log('✅ Training plan saved:', data);
-    return { data, error: null };
+    return { data: data || null, error: null };
   } catch (error) {
-    console.error('❌ Save training plan error:', error);
+    console.error('Error fetching workout log:', error);
     return { data: null, error };
   }
 }
 
-export async function fetchActiveTrainingPlan(userId) {
-  const { data, error } = await supabase
-    .from('training_plans')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .maybeSingle();
-
-  if (error && error.code !== 'PGRST116') {
-    console.error('Error fetching active training plan:', error);
-    return null;
-  }
-
-  return data;
-}
-
-export async function fetchAllTrainingPlans(userId) {
-  const { data, error } = await supabase
-    .from('training_plans')
-    .select('id, name, created_at, is_active')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching all training plans:', error);
-    return [];
-  }
-
-  return data || [];
-}
-
-export async function setActiveTrainingPlan(userId, planId) {
+export async function fetchWorkoutLogsForRange(userId, startDate, endDate) {
   try {
-    // Deactivate all plans
-    await supabase
-      .from('training_plans')
-      .update({ is_active: false })
-      .eq('user_id', userId);
-
-    // Activate selected plan
     const { data, error } = await supabase
-      .from('training_plans')
-      .update({ is_active: true })
-      .eq('id', planId)
+      .from('workout_logs')
+      .select('local_date, workouts')
       .eq('user_id', userId)
-      .select()
-      .single();
+      .gte('local_date', startDate)
+      .lte('local_date', endDate);
 
-    if (error) throw error;
-    return { data, error: null };
+    if (error) {
+      console.error('Error fetching workout logs for range:', error);
+      return { data: null, error };
+    }
+
+    const byDate = {};
+    for (const row of data || []) {
+      byDate[row.local_date] = row.workouts || [];
+    }
+    return { data: byDate, error: null };
   } catch (error) {
-    console.error('Error setting active training plan:', error);
+    console.error('Error fetching workout logs for range:', error);
     return { data: null, error };
   }
 }
 
-export async function deleteTrainingPlan(userId, planId) {
+export async function upsertWorkoutLog(
+  userId,
+  localDate,
+  workouts,
+  { recordStreak = false } = {}
+) {
+  try {
+    const { data, error } = await supabase
+      .from('workout_logs')
+      .upsert(
+        {
+          user_id: userId,
+          local_date: localDate,
+          workouts,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,local_date' }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (recordStreak) {
+      void recordStreakActivity(userId);
+    }
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error upserting workout log:', error);
+    return { data: null, error };
+  }
+}
+
+export async function deleteWorkoutLog(userId, localDate) {
   const { error } = await supabase
-    .from('training_plans')
+    .from('workout_logs')
     .delete()
-    .eq('id', planId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('local_date', localDate);
 
   return { error };
-}
-
-// DEPRECATED - keeping for backwards compatibility during migration
-export async function fetchTrainingPlan(userId) {
-  return fetchActiveTrainingPlan(userId);
 }
 
 // ================================================
