@@ -447,6 +447,11 @@ export const LandingPage = () => {
                 Terms of Service
               </button>
             </Link>
+            <Link href="/support">
+              <button className="text-sm text-gray-600 hover:text-primary transition-colors">
+                Support
+              </button>
+            </Link>
           </div>
         </div>
       </footer>
