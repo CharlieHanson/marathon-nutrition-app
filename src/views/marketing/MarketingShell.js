@@ -111,14 +111,14 @@ export function MarketingShell({ children }) {
 
 export function PhoneFrame({ src, alt, className = '', size = 'md' }) {
   const sizes = {
-    sm: 'w-[140px] h-[288px] rounded-[1.5rem] p-1.5',
-    md: 'w-[200px] h-[410px] sm:w-[220px] sm:h-[452px] rounded-[2rem] p-2',
-    lg: 'w-[210px] h-[430px] sm:w-[230px] sm:h-[472px] rounded-[2.1rem] p-2.5',
+    sm: 'w-[140px] h-[288px] rounded-[1.5rem] p-[3px]',
+    md: 'w-[200px] h-[410px] sm:w-[220px] sm:h-[452px] rounded-[2rem] p-1',
+    lg: 'w-[210px] h-[430px] sm:w-[230px] sm:h-[472px] rounded-[2.1rem] p-1',
   };
   const screenRound = {
-    sm: 'rounded-[1.2rem]',
-    md: 'rounded-[1.6rem]',
-    lg: 'rounded-[1.7rem]',
+    sm: 'rounded-[1.25rem]',
+    md: 'rounded-[1.65rem]',
+    lg: 'rounded-[1.75rem]',
   };
 
   return (
@@ -135,8 +135,92 @@ export function PhoneFrame({ src, alt, className = '', size = 'md' }) {
           screenRound[size]
         )}
       >
-        <div className="absolute top-0 left-1/2 z-10 h-5 w-20 -translate-x-1/2 rounded-b-xl bg-gray-900 sm:h-6 sm:w-24" />
+        <div className="absolute top-0 left-1/2 z-10 h-4 w-16 -translate-x-1/2 rounded-b-lg bg-gray-900 sm:h-5 sm:w-20" />
         <img src={src} alt={alt} className="h-full w-full object-cover object-top" />
+      </div>
+    </div>
+  );
+}
+
+export function BrowserFrame({
+  src,
+  alt = '',
+  fileHint = '',
+  placeholderLabel = 'Screenshot',
+  className = '',
+  width,
+  height,
+}) {
+  const [failed, setFailed] = React.useState(!src);
+
+  React.useEffect(() => {
+    setFailed(!src);
+  }, [src]);
+
+  const showPlaceholder = failed || !src;
+
+  return (
+    <div
+      className={cn(
+        'w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-card',
+        className
+      )}
+    >
+      {/* Chrome bar */}
+      <div className="flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-2.5">
+        <div className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-300/90" />
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-300/90" />
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-300/90" />
+        </div>
+        <div className="ml-2 min-w-0 flex-1 truncate rounded-md border border-border/80 bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
+          app.alimenta.app
+        </div>
+      </div>
+
+      {/* Viewport — sizes to the screenshot’s natural aspect ratio */}
+      <div
+        className={cn(
+          'relative w-full bg-cream-50',
+          showPlaceholder && 'aspect-[16/9]'
+        )}
+      >
+        {!showPlaceholder ? (
+          <img
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            className="block h-auto w-full"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-mint/50 via-cream to-peach/40 px-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-dashed border-primary/30 bg-card/80 text-primary">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <circle cx="8.5" cy="10" r="1.5" />
+                <path d="M21 16l-5-5-4 4-2-2-5 5" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-800">{placeholderLabel}</p>
+            <p className="text-xs text-muted-foreground">
+              Drop a web screenshot here
+            </p>
+            {fileHint ? (
+              <code className="mt-1 max-w-full truncate rounded-md border border-border bg-card px-2 py-1 text-[11px] text-primary">
+                {fileHint}
+              </code>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );

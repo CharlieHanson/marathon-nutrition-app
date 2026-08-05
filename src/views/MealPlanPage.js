@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles } from 'lucide-react';
+import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles, Check } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
@@ -71,7 +71,9 @@ export const MealPlanPage = ({
   isGuest,
   savedMeals,
   onUseSavedMeal,
-  onDeleteSavedMeal
+  onDeleteSavedMeal,
+  completions = [],
+  onToggleMealCompletion,
 }) => {
   const { user } = useAuth();
   const [showRecipeModal, setShowRecipeModal] = useState(false);
@@ -1338,28 +1340,48 @@ export const MealPlanPage = ({
                   {(mealPlan[day]?.snacks_user_logged
                     ? ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert']
                     : ['breakfast', 'lunch', 'dinner', 'dessert']
-                  ).map((mealType) => (
-                    <MealCard
-                      key={mealType}
-                      day={day}
-                      mealType={mealType}
-                      meal={mealPlan[day][mealType]}
-                      rating={mealPlan[day][`${mealType}_rating`] || 0}
-                      onUpdate={onUpdate}
-                      onRate={onRate}
-                      onRegenerate={mealType === 'snacks' ? undefined : handleRegenerate}
-                      onGetRecipe={getRecipe}
-                      onCopy={handleCopyClick}
-                      onLogClick={handleLogClick}
-                      onGenerateSingleMeal={mealType === 'snacks' ? undefined : onGenerateSingleMeal}
-                      onMealPrepClick={mealType === 'snacks' ? undefined : handleMealPrepClick}
-                      loadingRecipe={loadingRecipe}
-                      onSaveMeal={onSaveMeal}
-                      isMealSaved={isMealSaved}
-                      isGuest={isGuest}
-                      isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
-                    />
-                  ))}
+                  ).map((mealType) => {
+                    const canComplete =
+                      !isGuest &&
+                      isCurrentWeek &&
+                      day === todayDayName &&
+                      typeof onToggleMealCompletion === 'function';
+                    const isCompleted = canComplete
+                      ? (completions || []).some(
+                          (c) => c.day_of_week === day && c.meal_type === mealType
+                        )
+                      : false;
+
+                    return (
+                      <MealCard
+                        key={mealType}
+                        day={day}
+                        mealType={mealType}
+                        meal={mealPlan[day][mealType]}
+                        rating={mealPlan[day][`${mealType}_rating`] || 0}
+                        onUpdate={onUpdate}
+                        onRate={onRate}
+                        onRegenerate={mealType === 'snacks' ? undefined : handleRegenerate}
+                        onGetRecipe={getRecipe}
+                        onCopy={handleCopyClick}
+                        onLogClick={handleLogClick}
+                        onGenerateSingleMeal={mealType === 'snacks' ? undefined : onGenerateSingleMeal}
+                        onMealPrepClick={mealType === 'snacks' ? undefined : handleMealPrepClick}
+                        loadingRecipe={loadingRecipe}
+                        onSaveMeal={onSaveMeal}
+                        isMealSaved={isMealSaved}
+                        isGuest={isGuest}
+                        isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
+                        showComplete={canComplete}
+                        isCompleted={isCompleted}
+                        onToggleComplete={
+                          canComplete
+                            ? () => onToggleMealCompletion(day, mealType)
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 flex justify-center sm:justify-start">
@@ -1483,8 +1505,12 @@ const MealCard = ({
   isMealSaved,
   isGuest,
   isAdjusted = false,
+  showComplete = false,
+  isCompleted = false,
+  onToggleComplete,
 }) => {
   const [showAddOptions, setShowAddOptions] = React.useState(false);
+  const [togglingComplete, setTogglingComplete] = React.useState(false);
   const isLoadingRecipe = loadingRecipe?.day === day && loadingRecipe?.mealType === mealType;
   const isSaved = isMealSaved?.(mealType, meal);
   const isGeneratingMeal = meal === '__generating__';
@@ -1519,6 +1545,19 @@ const MealCard = ({
   const handleSave = async () => {
     if (!meal || isGuest) return;
     await onSaveMeal(mealType, meal);
+  };
+
+  const handleToggleComplete = async (e) => {
+    e?.stopPropagation?.();
+    if (!showComplete || !onToggleComplete || togglingComplete) return;
+    setTogglingComplete(true);
+    try {
+      await onToggleComplete();
+    } catch (err) {
+      console.error('MealCard: toggle complete failed', err);
+    } finally {
+      setTogglingComplete(false);
+    }
   };
 
   if (isGeneratingMeal) {
@@ -1608,12 +1647,41 @@ const MealCard = ({
   }
 
   return (
-    <div className="group space-y-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] p-3.5 sm:p-4">
+    <div
+      className={`group space-y-2.5 rounded-xl border p-3.5 sm:p-4 ${
+        isCompleted
+          ? 'border-primary/35 bg-primary/10'
+          : 'border-primary/20 bg-primary/[0.06]'
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
+          {showComplete ? (
+            <Tooltip text={isCompleted ? 'Mark incomplete' : 'Mark complete'}>
+              <button
+                type="button"
+                onClick={handleToggleComplete}
+                disabled={togglingComplete}
+                aria-pressed={isCompleted}
+                aria-label={isCompleted ? 'Mark meal incomplete' : 'Mark meal complete'}
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                  isCompleted
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-primary/35 bg-transparent text-transparent hover:border-primary hover:bg-primary/10'
+                } ${togglingComplete ? 'opacity-60' : ''}`}
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </button>
+            </Tooltip>
+          ) : null}
           <span className="text-[11px] font-bold uppercase tracking-wider text-primary/80">
             {mealLabel}
           </span>
+          {isCompleted ? (
+            <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+              Done
+            </span>
+          ) : null}
           {isAdjusted ? (
             <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
               Adjusted

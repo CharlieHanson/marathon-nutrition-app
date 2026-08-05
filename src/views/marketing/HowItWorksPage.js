@@ -1,7 +1,7 @@
 import React from 'react';
-import Link from 'next/link';
-import { Button } from '@/src/components/shared/Button';
 import { FinalCta, MarketingShell, PhoneFrame } from './MarketingShell';
+import { RevealOnScroll } from './RevealOnScroll';
+import { cn } from '@/src/lib/utils';
 
 const STEPS = [
   {
@@ -33,14 +33,14 @@ const STEPS = [
 export const HowItWorksPage = () => (
   <MarketingShell>
     <section className="px-4 pb-6 pt-12 sm:px-6 sm:pt-16 lg:px-8">
-      <div className="mx-auto max-w-3xl text-center">
+      <RevealOnScroll className="mx-auto max-w-3xl text-center" y={28}>
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
           How it works
         </h1>
         <p className="mt-4 text-lg text-gray-600">
           From empty week to a plan you can cook—in three steps.
         </p>
-      </div>
+      </RevealOnScroll>
     </section>
 
     <section className="px-4 pb-20 sm:px-6 lg:px-8">
@@ -50,7 +50,11 @@ export const HowItWorksPage = () => (
             key={step.number}
             className="grid items-center gap-10 md:grid-cols-2 md:gap-14"
           >
-            <div className={index % 2 === 1 ? 'md:order-2' : undefined}>
+            <RevealOnScroll
+              className={cn(index % 2 === 1 ? 'md:order-2' : undefined)}
+              y={36}
+              delayMs={40}
+            >
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                 {step.number}
               </div>
@@ -60,28 +64,25 @@ export const HowItWorksPage = () => (
               <p className="mt-3 text-lg leading-relaxed text-gray-600">
                 {step.description}
               </p>
-            </div>
-            <div
-              className={
-                index % 2 === 1 ? 'md:order-1 flex justify-center' : 'flex justify-center'
-              }
+            </RevealOnScroll>
+            <RevealOnScroll
+              className={cn(
+                'flex justify-center',
+                index % 2 === 1 ? 'md:order-1' : undefined
+              )}
+              y={48}
+              delayMs={120}
             >
               <PhoneFrame src={step.screen} alt={step.screenAlt} size="md" />
-            </div>
+            </RevealOnScroll>
           </div>
         ))}
       </div>
-
-      <div className="mt-16 text-center">
-        <Link href="/login">
-          <Button variant="primary" size="lg">
-            Get started
-          </Button>
-        </Link>
-      </div>
     </section>
 
-    <FinalCta headline="Your week of training. Your meals." />
+    <RevealOnScroll y={32}>
+      <FinalCta headline="Your week of training. Your meals." />
+    </RevealOnScroll>
   </MarketingShell>
 );
 

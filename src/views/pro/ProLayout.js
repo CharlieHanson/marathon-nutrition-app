@@ -124,7 +124,7 @@ export const ProLayout = ({ children, userName, userEmail, onSignOut }) => {
     <div className="relative min-h-screen bg-background">
       <div className="relative z-10 flex min-h-screen">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex lg:w-60 xl:w-64 shrink-0 flex-col bg-card shadow-soft sticky top-0 h-screen self-start overflow-hidden">
+        <aside className="hidden lg:flex lg:w-52 xl:w-56 shrink-0 flex-col bg-card shadow-soft sticky top-0 h-screen self-start overflow-hidden">
           <div className="flex h-14 shrink-0 items-center gap-2 px-5 border-b border-border bg-card/90 backdrop-blur-md">
             <Link
               href="/pro/dashboard"

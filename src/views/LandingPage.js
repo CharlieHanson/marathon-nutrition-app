@@ -16,7 +16,8 @@ import {
 } from './marketing/MarketingShell';
 import { RevealOnScroll } from './marketing/RevealOnScroll';
 
-const HERO_SCREEN = '/mobile-screenshots/dashboard.png';
+const HERO_MOBILE = '/mobile-screenshots/dashboard.png';
+const HERO_WEB = '/web-screenshots/dashboard.png';
 
 const OUTCOMES = [
   'Plans that follow your training week',
@@ -119,9 +120,9 @@ function MobileAppCarousel() {
 
           <div className="flex items-center justify-center">
             <div className="relative">
-              <div className="relative mx-auto h-[470px] w-[228px] rounded-[2.5rem] bg-gray-900 p-2.5 shadow-card sm:h-[490px] sm:w-[238px]">
-                <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-white">
-                  <div className="absolute left-1/2 top-0 z-10 h-6 w-24 -translate-x-1/2 rounded-b-2xl bg-gray-900" />
+              <div className="relative mx-auto h-[470px] w-[228px] rounded-[2.5rem] bg-gray-900 p-1 shadow-card sm:h-[490px] sm:w-[238px]">
+                <div className="relative h-full w-full overflow-hidden rounded-[2.1rem] bg-white">
+                  <div className="absolute left-1/2 top-0 z-10 h-5 w-20 -translate-x-1/2 rounded-b-xl bg-gray-900" />
 
                   <div className="relative h-full w-full">
                     {CAROUSEL_SLIDES.map((slide, index) => (
@@ -189,18 +190,6 @@ function MobileAppCarousel() {
             ))}
           </div>
         </div>
-
-        <div className="mt-10 flex justify-center">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-cream-300 bg-peach px-6 py-3">
-            <div className="text-2xl" aria-hidden="true">
-              🍎
-            </div>
-            <div className="text-left">
-              <p className="text-xs font-medium text-gray-500">Coming Soon on</p>
-              <p className="text-lg font-bold text-gray-900">App Store</p>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -228,7 +217,8 @@ export const LandingPage = () => {
         <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <RevealOnScroll className="text-center lg:text-left" y={28}>
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
-              Weekly meals matched to how you train.
+              Fuel Your Training with{' '}
+              <span className="text-primary">AI-Powered Nutrition</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-gray-600 lg:mx-0">
               Set your training, set what you&apos;ll eat, get a plan that follows both.
@@ -257,19 +247,31 @@ export const LandingPage = () => {
           </RevealOnScroll>
 
           <RevealOnScroll
-            className="relative flex flex-col items-center"
+            className="relative flex items-center justify-center"
             delayMs={120}
             y={48}
           >
-            <PhoneFrame
-              src={HERO_SCREEN}
-              alt="Alimenta Nutrition app dashboard"
-              size="lg"
-            />
-            <p className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Smartphone className="h-4 w-4 text-primary" />
-              Coming soon to iOS
-            </p>
+            {/* Web left, phone right — phone overlaps the web screenshot */}
+            <div className="relative mx-auto flex w-full max-w-[600px] items-end justify-center sm:max-w-[680px] lg:max-w-[720px]">
+              <div className="relative z-10 min-w-0 flex-1 pb-6 sm:pb-10">
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  <img
+                    src={HERO_WEB}
+                    alt="Alimenta web dashboard"
+                    width={1963}
+                    height={1114}
+                    className="block h-auto w-full"
+                  />
+                </div>
+              </div>
+              <div className="relative z-20 shrink-0 translate-y-1 -ml-10 sm:-ml-14">
+                <PhoneFrame
+                  src={HERO_MOBILE}
+                  alt="Alimenta mobile dashboard"
+                  size="lg"
+                />
+              </div>
+            </div>
           </RevealOnScroll>
         </div>
       </section>
