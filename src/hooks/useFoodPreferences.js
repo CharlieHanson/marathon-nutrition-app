@@ -11,6 +11,7 @@ const EMPTY_PREFERENCES = {
 export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(() => Boolean(user && !isGuest));
 
   useEffect(() => {
     let cancelled = false;
@@ -18,11 +19,13 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     // If logged out or guest → clear preferences
     if (!user || isGuest) {
       setPreferences(EMPTY_PREFERENCES);
+      setIsLoading(false);
       return () => {
         cancelled = true;
       };
     }
 
+    setIsLoading(true);
     (async () => {
       try {
         console.log('useFoodPreferences: fetching via /api/preferences', {
@@ -76,6 +79,8 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
         if (!cancelled) {
           setPreferences(EMPTY_PREFERENCES);
         }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
 
@@ -129,6 +134,7 @@ export const useFoodPreferences = (user, isGuest, reloadKey = 0) => {
     updatePreferences,
     savePreferences,
     isSaving,
+    isLoading,
   };
 };
 

@@ -1,8 +1,14 @@
 // src/components/modals/LogMealModal.js
 import React, { useState, useEffect } from 'react';
-import { X, UtensilsCrossed, Check, Loader2, Heart, Trash2 } from 'lucide-react';
+import { UtensilsCrossed, Check, Loader2, Heart, Trash2 } from 'lucide-react';
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/src/components/ui/dialog';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'dessert'];
 
@@ -30,8 +36,6 @@ export const LogMealModal = ({
     if (defaultDay) setSelectedDay(defaultDay);
     if (defaultMealType) setSelectedMealType(defaultMealType);
   }, [defaultDay, defaultMealType]);
-
-  if (!isOpen) return null;
 
   // Filter saved meals by selected meal type
   const filteredSavedMeals = savedMeals.filter(m => m.meal_type === selectedMealType);
@@ -120,20 +124,14 @@ export const LogMealModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="flex items-center gap-2">
             <UtensilsCrossed className="w-5 h-5 text-primary" />
             Log Meal
-          </h3>
-          <button
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Tabs */}
         {!isGuest && savedMeals.length > 0 && (
@@ -388,7 +386,7 @@ export const LogMealModal = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

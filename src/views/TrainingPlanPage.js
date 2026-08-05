@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Calendar,
   Plus,
   Trash2,
   ChevronLeft,
@@ -12,6 +11,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { DAYS, addDaysToDateString, getMondayOfCurrentWeek } from '../hooks/useWorkoutLog';
+import { Button } from '@/src/components/shared/Button';
+import { Input } from '@/src/components/shared/Input';
+import { Select } from '@/src/components/shared/Select';
+import { Label } from '@/src/components/ui/label';
+import { TrainingPlanSkeleton } from '../components/shared/LoadingSkeleton';
+
 
 const WORKOUT_TYPES = [
   'Rest',
@@ -52,6 +57,179 @@ function getWeekDateNumbers(weekStarting) {
   });
 }
 
+function ordinalSuffix(n) {
+  const j = n % 10;
+  const k = n % 100;
+  if (j === 1 && k !== 11) return 'st';
+  if (j === 2 && k !== 12) return 'nd';
+  if (j === 3 && k !== 13) return 'rd';
+  return 'th';
+}
+
+function formatSelectedDateLabel(localDate) {
+  if (!localDate) return '';
+  const d = new Date(`${localDate}T00:00:00`);
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+  const month = d.toLocaleDateString('en-US', { month: 'long' });
+  const day = d.getDate();
+  return `${weekday}, ${month} ${day}${ordinalSuffix(day)}`;
+}
+
+function formatWeekOfLabel(weekStarting) {
+  if (!weekStarting) return '';
+  const d = new Date(`${weekStarting}T00:00:00`);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+const getWorkoutIcon = (type) => {
+  const iconProps = { className: 'w-4 h-4 text-gray-700' };
+  switch (type) {
+    case 'Swim':
+      return <Waves {...iconProps} />;
+    case 'Bike Ride':
+      return <Bike {...iconProps} />;
+    case 'Strength Training':
+      return <Dumbbell {...iconProps} />;
+    case 'Distance Run':
+    case 'Walk/Hike':
+      return <Footprints {...iconProps} />;
+    case 'Speed or Agility Training':
+      return <Zap {...iconProps} />;
+    default:
+      return null;
+  }
+};
+
+function DayWorkoutsEditor({
+  date,
+  workouts,
+  onUpdateDay,
+  showDayLabel = false,
+  dayLabel = '',
+}) {
+  const selectedWorkouts = workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }];
+
+  const commitWorkouts = (next) => {
+    onUpdateDay(date, next);
+  };
+
+  const addWorkout = () => {
+    if (selectedWorkouts.length >= MAX_WORKOUTS) return;
+    commitWorkouts([...selectedWorkouts, { ...DEFAULT_WORKOUT }]);
+  };
+
+  const removeWorkout = (index) => {
+    const next = [...selectedWorkouts];
+    next.splice(index, 1);
+    commitWorkouts(next.length ? next : [{ ...DEFAULT_WORKOUT }]);
+  };
+
+  const updateWorkout = (index, field, value) => {
+    const next = selectedWorkouts.map((w, i) =>
+      i === index ? { ...w, [field]: value } : w
+    );
+    commitWorkouts(next);
+  };
+
+  return (
+    <div className={showDayLabel ? 'space-y-3' : 'space-y-3'}>
+      {showDayLabel ? (
+        <h3 className="text-lg font-bold text-gray-900 capitalize">{dayLabel}</h3>
+      ) : null}
+
+      {selectedWorkouts.map((workout, index) => (
+        <div
+          key={index}
+          className="flex gap-3 p-3 bg-cream-50 border border-cream-300 rounded-card shadow-soft"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1">Workout</label>
+              <div className="flex items-center gap-2">
+                {workout.type ? getWorkoutIcon(workout.type) : null}
+                <select
+                  value={workout.type || ''}
+                  onChange={(e) => updateWorkout(index, 'type', e.target.value)}
+                  className="flex-1 text-sm px-3 py-1.5 border border-cream-300 rounded-md bg-cream-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary h-9"
+                >
+                  <option value="">Select workout</option>
+                  {WORKOUT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <Label className="text-xs text-muted-foreground mb-1">Distance/Duration</Label>
+              <Input
+                type="text"
+                placeholder="e.g. 5k, 30 min"
+                value={workout.distance || ''}
+                onChange={(e) => updateWorkout(index, 'distance', e.target.value)}
+                className="h-9 text-sm bg-cream-200"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Select
+                label="Intensity"
+                value={workout.intensity || 'Medium'}
+                onChange={(e) => updateWorkout(index, 'intensity', e.target.value)}
+                options={INTENSITY_LEVELS.map((level) => ({ value: level, label: level }))}
+                placeholder="Intensity"
+                className="[&_button]:h-9 [&_button]:text-sm [&_button]:bg-cream-200 [&_label]:text-xs [&_label]:text-muted-foreground [&_label]:mb-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Select
+                label="Workout Time"
+                value={workout.timing || undefined}
+                onChange={(e) => updateWorkout(index, 'timing', e.target.value)}
+                options={[
+                  { value: 'Morning', label: 'Morning' },
+                  { value: 'Afternoon', label: 'Afternoon' },
+                  { value: 'Evening', label: 'Evening' },
+                ]}
+                placeholder="—"
+                className="[&_button]:h-9 [&_button]:text-sm [&_button]:bg-cream-200 [&_label]:text-xs [&_label]:text-muted-foreground [&_label]:mb-1"
+              />
+            </div>
+          </div>
+          {selectedWorkouts.length > 1 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => removeWorkout(index)}
+              className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 self-start"
+              title="Remove workout"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          ) : null}
+        </div>
+      ))}
+
+      {selectedWorkouts.length < MAX_WORKOUTS ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addWorkout}
+          className="w-full border-dashed border-cream-300 text-primary hover:bg-primary/5"
+          icon={Plus}
+        >
+          {selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export const TrainingPlanPage = ({
   selectedDate,
   weekStarting,
@@ -67,6 +245,7 @@ export const TrainingPlanPage = ({
 }) => {
   const [showSaved, setShowSaved] = useState(false);
   const [wasSaving, setWasSaving] = useState(false);
+  const [viewMode, setViewMode] = useState('day');
 
   const selectedDay = useMemo(() => weekdayFromLocalDate(selectedDate), [selectedDate]);
   const weekDates = useMemo(() => getWeekDateNumbers(weekStarting), [weekStarting]);
@@ -80,9 +259,6 @@ export const TrainingPlanPage = ({
       return `${y}-${m}-${day}`;
     })()
   );
-
-  const rawWorkouts = getWorkoutsForDate(selectedDate);
-  const selectedWorkouts = rawWorkouts.length ? rawWorkouts : [{ ...DEFAULT_WORKOUT }];
 
   useEffect(() => {
     if (isSaving) {
@@ -110,109 +286,69 @@ export const TrainingPlanPage = ({
     onClearError?.();
   }, [error, onClearError]);
 
-  const commitWorkouts = (workouts) => {
-    updateDayWorkouts(selectedDate, workouts);
-  };
-
-  const addWorkout = () => {
-    if (selectedWorkouts.length >= MAX_WORKOUTS) return;
-    commitWorkouts([...selectedWorkouts, { ...DEFAULT_WORKOUT }]);
-  };
-
-  const removeWorkout = (index) => {
-    const workouts = [...selectedWorkouts];
-    workouts.splice(index, 1);
-    commitWorkouts(workouts.length ? workouts : [{ ...DEFAULT_WORKOUT }]);
-  };
-
-  const updateWorkout = (index, field, value) => {
-    const workouts = selectedWorkouts.map((w, i) =>
-      i === index ? { ...w, [field]: value } : w
-    );
-    commitWorkouts(workouts);
-  };
-
-  const getWorkoutIcon = (type) => {
-    const iconProps = { className: 'w-4 h-4 text-gray-700' };
-    switch (type) {
-      case 'Swim':
-        return <Waves {...iconProps} />;
-      case 'Bike Ride':
-        return <Bike {...iconProps} />;
-      case 'Strength Training':
-        return <Dumbbell {...iconProps} />;
-      case 'Distance Run':
-      case 'Walk/Hike':
-        return <Footprints {...iconProps} />;
-      case 'Speed or Agility Training':
-        return <Zap {...iconProps} />;
-      default:
-        return null;
-    }
-  };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <p className="text-gray-500">Loading workouts…</p>
-      </div>
-    );
+    return <TrainingPlanSkeleton />;
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto px-4">
-      <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          <button
-            type="button"
-            onClick={goToPreviousWeek}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-            aria-label="Previous week"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div className="flex flex-1 justify-center gap-1 sm:gap-2">
-            {DAYS.map((day, index) => {
-              const isSelected = selectedDay === day;
-              const isToday = isCurrentWeek && day === todayDay;
-              return (
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 min-h-[28px]">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-900">
+              {viewMode === 'day'
+                ? formatSelectedDateLabel(selectedDate)
+                : `Week of ${formatWeekOfLabel(weekStarting)}`}
+            </h2>
+            <div
+              className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-0.5"
+              role="group"
+              aria-label="Training plan view"
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('day')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-colors ${
+                  viewMode === 'day'
+                    ? 'bg-cream-paper text-primary shadow-soft'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                Day
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-colors ${
+                  viewMode === 'week'
+                    ? 'bg-cream-paper text-primary shadow-soft'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                Full week
+              </button>
+            </div>
+            {viewMode === 'week' ? (
+              <div className="flex items-center gap-1">
                 <button
-                  key={day}
                   type="button"
-                  onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
-                  className={`flex flex-col items-center px-2 py-2 rounded-xl min-w-[44px] transition-colors ${
-                    isSelected
-                      ? 'bg-primary text-white'
-                      : isToday
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-gray-50 text-gray-700'
-                  }`}
+                  onClick={goToPreviousWeek}
+                  className="p-2 rounded-lg hover:bg-cream-200 text-gray-600"
+                  aria-label="Previous week"
                 >
-                  <span className="text-[10px] font-bold uppercase tracking-wide">
-                    {DAY_LABELS[index]}
-                  </span>
-                  <span className="text-sm font-semibold">{weekDates[index]}</span>
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-              );
-            })}
+                <button
+                  type="button"
+                  onClick={goToNextWeek}
+                  className="p-2 rounded-lg hover:bg-cream-200 text-gray-600"
+                  aria-label="Next week"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            ) : null}
           </div>
-
-          <button
-            type="button"
-            onClick={goToNextWeek}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-            aria-label="Next week"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between min-h-[28px]">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 capitalize">
-            <Calendar className="w-4 h-4 text-gray-600" />
-            {selectedDay}
-          </h2>
           <div className="text-xs font-semibold text-gray-500">
             {isSaving ? (
               <span>Saving…</span>
@@ -221,95 +357,84 @@ export const TrainingPlanPage = ({
             ) : null}
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 space-y-3">
-        {selectedWorkouts.map((workout, index) => (
-          <div
-            key={index}
-            className="flex gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Workout</label>
-                <div className="flex items-center gap-2">
-                  {workout.type ? getWorkoutIcon(workout.type) : null}
-                  <select
-                    value={workout.type || ''}
-                    onChange={(e) => updateWorkout(index, 'type', e.target.value)}
-                    className="flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                  >
-                    <option value="">Select workout</option>
-                    {WORKOUT_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Distance/Duration</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 5k, 30 min"
-                  value={workout.distance || ''}
-                  onChange={(e) => updateWorkout(index, 'distance', e.target.value)}
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Intensity</label>
-                <select
-                  value={workout.intensity || 'Medium'}
-                  onChange={(e) => updateWorkout(index, 'intensity', e.target.value)}
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                >
-                  {INTENSITY_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600 mb-1">Workout Time</label>
-                <select
-                  value={workout.timing ?? ''}
-                  onChange={(e) => updateWorkout(index, 'timing', e.target.value)}
-                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary h-9"
-                >
-                  <option value="">—</option>
-                  <option value="Morning">Morning</option>
-                  <option value="Afternoon">Afternoon</option>
-                  <option value="Evening">Evening</option>
-                </select>
-              </div>
-            </div>
-            {selectedWorkouts.length > 1 ? (
+        {viewMode === 'day' ? (
+          <div className="w-fit max-w-full mx-auto rounded-xl border border-cream-300 bg-cream-paper px-1.5 py-1.5 shadow-soft">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => removeWorkout(index)}
-                className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md flex items-center justify-center p-2 transition-colors self-start"
-                title="Remove workout"
+                onClick={goToPreviousWeek}
+                className="p-2 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                aria-label="Previous week"
               >
-                <Trash2 className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            ) : null}
-          </div>
-        ))}
 
-        {selectedWorkouts.length < MAX_WORKOUTS ? (
-          <button
-            type="button"
-            onClick={addWorkout}
-            className="w-full text-sm px-3 py-2.5 rounded-lg border border-dashed border-gray-300 text-primary hover:bg-primary/5 flex items-center justify-center gap-1 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout'}
-          </button>
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                {DAYS.map((day, index) => {
+                  const isSelected = selectedDay === day;
+                  const isToday = isCurrentWeek && day === todayDay;
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
+                      className={`flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg min-w-[2.75rem] sm:min-w-[3rem] transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-white'
+                          : isToday
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-cream-200 text-gray-700'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+                        {DAY_LABELS[index]}
+                      </span>
+                      <span className="text-sm font-semibold leading-tight mt-1">{weekDates[index]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={goToNextWeek}
+                className="p-2 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                aria-label="Next week"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
+
+      {viewMode === 'day' ? (
+        <div className="warm-card p-4">
+          <DayWorkoutsEditor
+            date={selectedDate}
+            workouts={getWorkoutsForDate(selectedDate)}
+            onUpdateDay={updateDayWorkouts}
+          />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {DAYS.map((day, index) => {
+            const date = addDaysToDateString(weekStarting, index);
+            return (
+              <div key={day} className="warm-card p-4">
+                <DayWorkoutsEditor
+                  date={date}
+                  workouts={getWorkoutsForDate(date)}
+                  onUpdateDay={updateDayWorkouts}
+                  showDayLabel
+                  dayLabel={day}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

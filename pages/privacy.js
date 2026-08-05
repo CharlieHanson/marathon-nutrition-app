@@ -256,18 +256,19 @@ export default function PrivacyPage() {
 }
 
 const styles = {
-  main: { padding: "48px 16px", background: "#F7F8F9", minHeight: "100vh" },
+  main: { padding: "48px 16px", background: "#F7F4EC", minHeight: "100vh" },
   container: {
     maxWidth: 900,
     margin: "0 auto",
     background: "#FFFFFF",
-    border: "1px solid #E3E6E8",
-    borderRadius: 16,
+    border: "1px solid #E8E2D6",
+    borderRadius: 18,
     padding: "32px 24px",
+    boxShadow: "0 2px 8px rgba(26, 26, 26, 0.05)",
   },
   header: { marginBottom: 24 },
-  h1: { margin: 0, fontSize: 32, lineHeight: 1.2 },
-  h2: { margin: "24px 0 8px", fontSize: 20, lineHeight: 1.3 },
+  h1: { margin: 0, fontSize: 32, lineHeight: 1.2, fontFamily: 'Quicksand, ui-sans-serif, system-ui, sans-serif' },
+  h2: { margin: "24px 0 8px", fontSize: 20, lineHeight: 1.3, fontFamily: 'Quicksand, ui-sans-serif, system-ui, sans-serif' },
   p: { margin: "8px 0", fontSize: 16, lineHeight: 1.6, color: "#0B0D0E" },
   meta: { margin: "12px 0 0", fontSize: 14, color: "#5C666B" },
   section: { marginTop: 8 },

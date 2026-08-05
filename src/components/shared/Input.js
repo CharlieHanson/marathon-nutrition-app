@@ -1,31 +1,39 @@
-// components/shared/Input.js
-export const Input = ({ 
-  label, 
-  error, 
+import React from 'react';
+import { Input as ShadcnInput } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
+import { cn } from '@/src/lib/utils';
+
+export const Input = ({
+  label,
+  error,
   helperText,
   className = '',
-  disabled, // Add this
-  ...props 
+  wrapperClassName = '',
+  disabled,
+  id,
+  ...props
 }) => {
+  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+
   return (
-    <div className={className}>
+    <div className={cn('space-y-2', wrapperClassName)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {label}
-        </label>
+        <Label htmlFor={inputId}>{label}</Label>
       )}
-      <input
-        disabled={disabled} // Add this
-        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-          error ? 'border-red-500' : 'border-gray-300'
-        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      <ShadcnInput
+        id={inputId}
+        disabled={disabled}
+        className={cn(
+          error && 'border-red-500 focus-visible:ring-red-200 focus-visible:border-red-500',
+          className
+        )}
         {...props}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 font-medium">{error}</p>
       )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p className="text-sm text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

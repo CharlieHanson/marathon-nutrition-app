@@ -1,16 +1,22 @@
 import React from 'react';
-import { X, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/shared/Button';
 
 export const GroceryModal = ({ isOpen, onClose, groceryList }) => {
-  if (!isOpen) return null;
-
   const downloadList = () => {
     const text = groceryList
-      .map(category => 
-        `${category.category}\n${category.items.map(item => `  - ${item}`).join('\n')}`
+      .map((category) =>
+        `${category.category}\n${category.items.map((item) => `  - ${item}`).join('\n')}`
       )
       .join('\n\n');
-    
+
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -20,23 +26,15 @@ export const GroceryModal = ({ isOpen, onClose, groceryList }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Weekly Grocery List
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle>Weekly Grocery List</DialogTitle>
+        </DialogHeader>
+
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           <div className="space-y-4">
-            {groceryList.map((category, index) => (
+            {(groceryList || []).map((category, index) => (
               <div key={index}>
                 <h4 className="font-semibold text-gray-800 mb-2">
                   {category.category}
@@ -52,23 +50,16 @@ export const GroceryModal = ({ isOpen, onClose, groceryList }) => {
             ))}
           </div>
         </div>
-        
-        <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-          <button
-            onClick={downloadList}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
+
+        <DialogFooter className="p-4 border-t bg-muted/50 gap-2">
+          <Button onClick={downloadList} variant="outline" icon={Download}>
             Download
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-          >
+          </Button>
+          <Button onClick={onClose} variant="primary">
             Close
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

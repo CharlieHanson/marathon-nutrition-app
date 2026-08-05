@@ -211,13 +211,13 @@ function SettingsPage({ user }) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="p-4 bg-primary-50 border border-primary-200 rounded-card flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm text-blue-900 font-medium">
+                <p className="text-sm text-primary-900 font-medium">
                   Not connected to a nutritionist
                 </p>
-                <p className="text-xs text-blue-700 mt-1">
+                <p className="text-xs text-primary-700 mt-1">
                   Enter an invite code from your nutritionist to connect and receive personalized
                   macro guidance.
                 </p>
@@ -268,7 +268,7 @@ function SettingsPage({ user }) {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="warm-input"
               placeholder="Enter new password"
             />
           </div>
@@ -279,7 +279,7 @@ function SettingsPage({ user }) {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
+              className="warm-input"
               placeholder="Confirm new password"
             />
           </div>

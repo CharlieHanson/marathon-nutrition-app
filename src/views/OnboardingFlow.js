@@ -6,6 +6,7 @@ import { PreferencesStep } from '../components/onboarding/PreferencesStep';
 import { ProgressIndicator } from '../components/onboarding/ProgressIndicator';
 import { saveUserProfile, saveFoodPreferences } from '../dataClient';
 import { capture } from '../lib/posthog';
+import { PageDecor } from '../components/shared/PageDecor';
 
 const daysSinceSignup = (user) => {
   const createdAt = user?.created_at ? new Date(user.created_at).getTime() : Date.now();
@@ -86,7 +87,9 @@ export const OnboardingFlow = ({ user, onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4">
+    <div className="relative min-h-screen bg-cream py-12 px-4 overflow-hidden">
+      <PageDecor />
+      <div className="relative z-10">
       {currentStep > 1 && (
         <ProgressIndicator currentStep={currentStep} totalSteps={3} />
       )}
@@ -112,6 +115,7 @@ export const OnboardingFlow = ({ user, onComplete }) => {
           isSaving={isSaving}
         />
       )}
+      </div>
     </div>
   );
 };

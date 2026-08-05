@@ -3,6 +3,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import { ProfilePage } from '../src/views/ProfilePage';
 import { Layout } from '../src/components/layout/Layout';
+import { ProfileSkeleton } from '../src/components/shared/LoadingSkeleton';
 import { authenticatedFetch, getApiUrl } from '../shared/services/api';
 
 const defaultProfile = {
@@ -142,7 +143,7 @@ export default function Profile() {
   // ===== Render =====
   if (loading || checkingAuth) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );
@@ -164,9 +165,7 @@ export default function Profile() {
       onViewChange={(view) => router.push(`/${view}`)}
     >
       {profileLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-600">Loading profile...</div>
-        </div>
+        <ProfileSkeleton />
       ) : (
         <ProfilePage
           profile={profile}

@@ -58,7 +58,7 @@ export default function ClientsPage() {
         '), redirecting to /training'
       );
       setCheckingAuth(false);
-      router.replace('/training');
+      router.replace('/dashboard');
       return;
     }
 
@@ -89,7 +89,7 @@ export default function ClientsPage() {
   console.log('ClientsPage: rendering ProLayout + ClientListPage');
 
   return (
-    <ProLayout userName={userName} onSignOut={signOut}>
+    <ProLayout userName={userName} userEmail={user?.email} onSignOut={signOut}>
       {/* ✅ pass the current user down instead of calling supabase.auth.getUser() inside */}
       <ClientListPage currentUser={user} />
     </ProLayout>

@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { X, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/shared/Button';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -7,31 +14,29 @@ export const CopyMealModal = ({ isOpen, onClose, meal, mealType, currentDay, onC
   const [selectedDays, setSelectedDays] = useState([]);
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen) return null;
-
   const toggleDay = (day) => {
-    setSelectedDays(prev => 
-      prev.includes(day) 
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
 
   const selectAll = () => {
-    setSelectedDays(DAYS.filter(d => d !== currentDay));
+    setSelectedDays(DAYS.filter((d) => d !== currentDay));
   };
 
   const selectWeekdays = () => {
-    setSelectedDays(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter(d => d !== currentDay));
+    setSelectedDays(
+      ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter((d) => d !== currentDay)
+    );
   };
 
   const handleCopy = () => {
     if (selectedDays.length === 0) return;
-    
-    selectedDays.forEach(day => {
+
+    selectedDays.forEach((day) => {
       onCopy(day, mealType, meal);
     });
-    
+
     setCopied(true);
     setTimeout(() => {
       setCopied(false);
@@ -40,69 +45,68 @@ export const CopyMealModal = ({ isOpen, onClose, meal, mealType, currentDay, onC
     }, 1000);
   };
 
-  // Extract just the meal name (without macros) for display
   const mealName = meal?.replace(/\(Cal:.*?\).*$/, '').trim() || '';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setSelectedDays([]);
+          setCopied(false);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="flex items-center gap-2">
             <Copy className="w-5 h-5 text-primary" />
             Copy Meal
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="p-4">
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Copying:</p>
-            <p className="font-medium text-gray-900">{mealName}</p>
-            <p className="text-xs text-gray-500 mt-1 capitalize">
-              {currentDay}'s {mealType}
+          <div className="mb-4 p-3 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground mb-1">Copying:</p>
+            <p className="font-medium text-foreground">{mealName}</p>
+            <p className="text-xs text-muted-foreground mt-1 capitalize">
+              {currentDay}&apos;s {mealType}
             </p>
           </div>
 
-          <p className="text-sm font-medium text-gray-700 mb-3">Copy to which days?</p>
-          
+          <p className="text-sm font-medium text-foreground mb-3">Copy to which days?</p>
+
           <div className="flex gap-2 mb-3">
-            <button
-              onClick={selectAll}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
+            <Button onClick={selectAll} variant="ghost" size="sm" className="h-8 text-xs">
               Select All
-            </button>
-            <button
-              onClick={selectWeekdays}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
+            </Button>
+            <Button onClick={selectWeekdays} variant="ghost" size="sm" className="h-8 text-xs">
               Weekdays
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setSelectedDays([])}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
             >
               Clear
-            </button>
+            </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-4">
-            {DAYS.map(day => (
+            {DAYS.map((day) => (
               <button
                 key={day}
+                type="button"
                 onClick={() => toggleDay(day)}
                 disabled={day === currentDay}
                 className={`p-2 rounded-lg text-sm font-medium transition-colors capitalize ${
                   day === currentDay
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
                     : selectedDays.includes(day)
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-cream-200 text-foreground'
                 }`}
               >
                 {day === currentDay ? `${day} (current)` : day}
@@ -110,31 +114,19 @@ export const CopyMealModal = ({ isOpen, onClose, meal, mealType, currentDay, onC
             ))}
           </div>
 
-          <button
+          <Button
             onClick={handleCopy}
             disabled={selectedDays.length === 0 || copied}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-              copied
-                ? 'bg-green-500 text-white'
-                : selectedDays.length === 0
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary/90'
-            }`}
+            variant={copied ? 'primary' : 'primary'}
+            className={`w-full ${copied ? 'bg-green-500 hover:bg-green-500' : ''}`}
+            icon={copied ? Check : Copy}
           >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" />
-                Copy to {selectedDays.length} day{selectedDays.length !== 1 ? 's' : ''}
-              </>
-            )}
-          </button>
+            {copied
+              ? 'Copied!'
+              : `Copy to ${selectedDays.length} day${selectedDays.length !== 1 ? 's' : ''}`}
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

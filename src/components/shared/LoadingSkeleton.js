@@ -1,56 +1,229 @@
 import React from 'react';
+import { Skeleton } from '@/src/components/ui/skeleton';
 
 export const MealCardSkeleton = () => (
-  <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-gray-300 shadow-sm animate-pulse">
-    {/* Meal type label */}
-    <div className="h-4 bg-gray-300 rounded w-1/3"></div>
-    
-    {/* Textarea placeholder */}
-    <div className="h-20 bg-gray-300 rounded"></div>
-    
-    {/* Star rating placeholder */}
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="w-5 h-5 bg-gray-300 rounded-full"></div>
-      ))}
+  <div className="space-y-2">
+    <Skeleton className="h-3 w-16" />
+    <Skeleton className="h-16 w-full" />
+    <div className="flex justify-between">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-4 w-16" />
     </div>
-    
-    {/* Get Recipe button placeholder */}
-    <div className="h-9 bg-gray-300 rounded-md"></div>
   </div>
 );
 
 export const DayCardSkeleton = () => (
-  <div className="border rounded-lg p-6 shadow-md animate-pulse">
-    {/* Day header */}
-    <div className="flex justify-between items-center mb-4">
-      <div className="h-6 bg-gray-300 rounded w-24"></div>
-      <div className="flex gap-2">
-        <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-        <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-        <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-        <div className="h-6 w-20 bg-gray-300 rounded-full"></div>
-      </div>
+  <div className="space-y-5">
+    <div className="flex items-baseline justify-between gap-4">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-5 w-40" />
     </div>
-
-    {/* Main Meals (3 cards) */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <MealCardSkeleton />
-      <MealCardSkeleton />
-      <MealCardSkeleton />
-    </div>
-
-    {/* Dessert (1 card) */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <MealCardSkeleton />
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-16 w-full" />
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        </div>
+      ))}
     </div>
   </div>
 );
 
+/** Day strip (week picker) + one day card — matches day view */
 export const MealPlanSkeleton = () => (
+  <div className="space-y-6">
+    <div className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-9 w-40 rounded-xl" />
+        <Skeleton className="h-5 w-44" />
+      </div>
+      <div className="flex flex-wrap gap-2 pb-5 border-b border-border">
+        <Skeleton className="h-9 w-24 rounded-xl" />
+        <Skeleton className="h-9 w-28 rounded-xl" />
+        <Skeleton className="h-9 w-24 rounded-xl" />
+      </div>
+    </div>
+
+    <div className="flex w-fit max-w-full mx-auto items-center gap-1 rounded-xl border border-border bg-card px-1.5 py-1.5">
+      <Skeleton className="h-8 w-8 rounded-lg" />
+      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <Skeleton key={i} className="h-12 w-11 sm:w-12 rounded-lg" />
+      ))}
+      <Skeleton className="h-8 w-8 rounded-lg" />
+    </div>
+
+    <DayCardSkeleton />
+  </div>
+);
+
+export const DashboardSkeleton = () => (
+  <div className="mx-auto space-y-4 max-w-3xl">
+    <div className="mb-1 space-y-2">
+      <Skeleton className="h-9 w-56 max-w-full" />
+      <Skeleton className="h-5 w-48" />
+    </div>
+
+    <div className="flex items-center gap-3.5 rounded-2xl bg-muted/80 px-4 py-4 sm:px-[18px]">
+      <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-4 w-56 max-w-full" />
+      </div>
+    </div>
+
+    <div className="rounded-card border border-border bg-card overflow-hidden">
+      <div className="p-4 sm:p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-6 w-16 rounded-lg" />
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+          <Skeleton className="h-36 w-36 rounded-full shrink-0" />
+          <div className="w-full sm:flex-1 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between py-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 pb-4 sm:px-5 sm:pb-5">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[72px] rounded-xl" />
+        ))}
+      </div>
+    </div>
+
+    <Skeleton className="h-[76px] w-full rounded-2xl" />
+  </div>
+);
+
+export const TrainingPlanSkeleton = () => (
+  <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="h-9 w-36 rounded-xl" />
+        </div>
+        <Skeleton className="h-5 w-20" />
+      </div>
+
+      <div className="flex w-fit max-w-full mx-auto items-center gap-1 rounded-xl border border-border bg-card px-1.5 py-1.5 shadow-soft">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <Skeleton key={i} className="h-12 w-11 sm:w-12 rounded-lg" />
+        ))}
+        <Skeleton className="h-8 w-8 rounded-lg" />
+      </div>
+    </div>
+
+    <div className="rounded-card border border-border bg-card p-4 space-y-4 shadow-soft">
+      <div className="flex gap-3 p-3 rounded-card border border-border bg-muted/40">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <Skeleton className="h-11 w-full rounded-lg" />
+    </div>
+  </div>
+);
+
+export const PreferencesSkeleton = () => (
   <div className="space-y-8">
-    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-      <DayCardSkeleton key={i} />
-    ))}
+    <div className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-4 w-full max-w-xl" />
+          <Skeleton className="h-4 w-3/4 max-w-lg" />
+        </div>
+        <Skeleton className="h-9 w-20 rounded-lg shrink-0" />
+      </div>
+
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className="rounded-card border border-border overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/50">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-5 rounded" />
+            </div>
+            {i === 1 ? (
+              <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((j) => (
+                  <Skeleton key={j} className="h-12 rounded-lg" />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-4">
+      <Skeleton className="h-6 w-40" />
+      <div className="flex flex-wrap gap-2">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <Skeleton key={i} className="h-9 w-24 rounded-full" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+export const ProfileSkeleton = () => (
+  <div className="space-y-8">
+    <div className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+        </div>
+        <Skeleton className="h-9 w-20 rounded-lg shrink-0" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-11 w-full rounded-[13px]" />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-56 max-w-full" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-11 w-full rounded-[13px]" />
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 );

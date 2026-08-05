@@ -1,40 +1,79 @@
-// components/shared/Select.js
-export const Select = ({ 
-  label, 
-  options = [], 
+import React from 'react';
+import {
+  Select as ShadcnSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/src/components/ui/select';
+import { Label } from '@/src/components/ui/label';
+import { cn } from '@/src/lib/utils';
+
+/**
+ * Form select facade that preserves the previous native-select API
+ * (value, onChange with event.target.value, options array).
+ */
+export const Select = ({
+  label,
+  options = [],
   error,
   helperText,
   placeholder = 'Select an option',
   className = '',
-  disabled, // Add this
-  ...props 
+  disabled,
+  value,
+  onChange,
+  name,
+  id,
+  ...props
 }) => {
+  const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const stringValue = value === undefined || value === null || value === ''
+    ? undefined
+    : String(value);
+
+  const handleValueChange = (next) => {
+    if (!onChange) return;
+    onChange({
+      target: {
+        name,
+        value: next,
+      },
+    });
+  };
+
   return (
-    <div className={className}>
+    <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {label}
-        </label>
+        <Label htmlFor={selectId}>{label}</Label>
       )}
-      <select
-        disabled={disabled} // Add this
-        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-          error ? 'border-red-500' : 'border-gray-300'
-        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      <ShadcnSelect
+        value={stringValue}
+        onValueChange={handleValueChange}
+        disabled={disabled}
         {...props}
       >
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          id={selectId}
+          className={cn(
+            error && 'border-red-500 focus:ring-red-200 focus:border-red-500'
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={String(option.value)} value={String(option.value)}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </ShadcnSelect>
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 font-medium">{error}</p>
       )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p className="text-sm text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

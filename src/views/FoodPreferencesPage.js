@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/src/components/ui/collapsible';
+
 import { Save, Lock, ThumbsUp, ThumbsDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { PreferencesSkeleton } from '../components/shared/LoadingSkeleton';
 
 // Food categories (matches mobile structure)
 const FOOD_CATEGORIES = [
@@ -59,6 +66,7 @@ export const FoodPreferencesPage = ({
   onUpdate, 
   onSave, 
   isSaving,
+  isLoading = false,
   isGuest 
 }) => {
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -209,26 +217,28 @@ useEffect(() => {
     }
   };
 
+  if (isLoading) {
+    return <PreferencesSkeleton />;
+  }
+
   return (
     <div className="space-y-8">
-      <h2 className="text-3xl font-bold text-gray-900 text-center mb-6">
-        Food Preferences
-      </h2>
-      
       <Card>
         <div className="flex items-start justify-between gap-4 mb-6">
           <p className="text-gray-600">
             Select foods you like or dislike using the thumbs up/down buttons. Add any other foods in the &quot;Other&quot; sections below. Click save to save your preferences.
           </p>
           {!isGuest && (
-            <button
+            <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+              variant="primary"
+              size="sm"
+              icon={Save}
+              className="shrink-0"
             >
-              <Save className="w-4 h-4" />
               {isSaving ? 'Saving...' : 'Save'}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -237,21 +247,27 @@ useEffect(() => {
           {FOOD_CATEGORIES.map((category) => {
             const isExpanded = expandedCategories.has(category.id);
             return (
-              <div key={category.id} className="rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => toggleCategory(category.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
-                >
-                  <h3 className="text-base font-semibold text-gray-900">{category.name}</h3>
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-gray-500 shrink-0" />
-                  )}
-                </button>
-                {isExpanded && (
-                  <div className="p-4 bg-white">
+              <Collapsible
+                key={category.id}
+                open={isExpanded}
+                onOpenChange={() => toggleCategory(category.id)}
+                className="rounded-card border border-border overflow-hidden shadow-soft"
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 py-3 bg-cream-200 hover:bg-cream-300 text-left transition-colors"
+                  >
+                    <h3 className="text-base font-semibold text-foreground">{category.name}</h3>
+                    {isExpanded ? (
+                      <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="p-4 bg-cream-50">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       {category.foods.map((food) => {
                         const isLiked = likedFoods.has(food);
@@ -259,54 +275,58 @@ useEffect(() => {
                         return (
                           <div
                             key={food}
-                            className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
                               isLiked
-                                ? 'bg-green-50 border-green-300'
+                                ? 'bg-primary-50 border-primary-200'
                                 : isDisliked
-                                ? 'bg-red-50 border-red-300'
-                                : 'bg-gray-50 border-gray-200'
-                            } ${isGuest ? 'opacity-60' : 'hover:border-primary/50'}`}
+                                ? 'bg-[#F5E9E6] border-[#D4B5AE]'
+                                : 'bg-cream-200 border-border'
+                            } ${isGuest ? 'opacity-60' : 'hover:border-primary/40'}`}
                           >
-                            <span className="text-sm font-medium text-gray-700 flex-1 truncate">{food}</span>
+                            <span className="text-sm font-medium text-foreground flex-1 truncate">{food}</span>
                             <div className="flex gap-1 ml-2 shrink-0">
-                              <button
+                              <Button
                                 onClick={() => toggleLike(food)}
                                 disabled={isGuest}
-                                className={`p-1 rounded transition-all ${
+                                variant={isLiked ? 'primary' : 'ghost'}
+                                size="icon"
+                                className={`h-8 w-8 ${
                                   isLiked
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-white text-gray-400 hover:bg-green-100 hover:text-green-600'
-                                } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    ? ''
+                                    : 'bg-card text-muted-foreground hover:bg-primary-50 hover:text-primary'
+                                }`}
                                 title={isLiked ? 'Remove from likes' : 'Add to likes'}
                               >
                                 <ThumbsUp className="w-4 h-4" />
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={() => toggleDislike(food)}
                                 disabled={isGuest}
-                                className={`p-1 rounded transition-all ${
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${
                                   isDisliked
-                                    ? 'bg-red-500 text-white'
-                                    : 'bg-white text-gray-400 hover:bg-red-100 hover:text-red-600'
-                                } ${isGuest ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    ? 'bg-[#A66D63] text-white hover:bg-[#A66D63]'
+                                    : 'bg-card text-muted-foreground hover:bg-[#F5E9E6] hover:text-[#A66D63]'
+                                }`}
                                 title={isDisliked ? 'Remove from dislikes' : 'Add to dislikes'}
                               >
                                 <ThumbsDown className="w-4 h-4" />
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                )}
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
 
         {/* Other Foods Section */}
-        <div className="space-y-6 border-t border-gray-200 pt-6">
+        <div className="space-y-6 border-t border-cream-300 pt-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Other Foods I Like
@@ -316,8 +336,8 @@ useEffect(() => {
               value={otherLikes}
               onChange={(e) => setOtherLikes(e.target.value)}
               disabled={isGuest}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
+              className={`w-full px-4 py-3 border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200 hover:border-primary/50'
               }`}
               rows="3"
             />
@@ -335,8 +355,8 @@ useEffect(() => {
               value={otherDislikes}
               onChange={(e) => setOtherDislikes(e.target.value)}
               disabled={isGuest}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
+              className={`w-full px-4 py-3 border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200 hover:border-primary/50'
               }`}
               rows="3"
             />
@@ -348,7 +368,7 @@ useEffect(() => {
         </div>
 
         {/* Favorite Cuisines Section */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-cream-300">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Favorite Cuisines</h3>
           
           {/* Common Cuisines Selection */}
@@ -363,7 +383,7 @@ useEffect(() => {
                     className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
                       isFavorite
                         ? 'bg-primary/10 border-primary'
-                        : 'bg-gray-50 border-gray-200'
+                        : 'bg-cream-200 border-cream-300'
                     } ${isGuest ? 'opacity-60' : 'hover:border-primary/50'}`}
                   >
                     <span className="text-sm font-medium text-gray-700 flex-1">{cuisine}</span>
@@ -395,8 +415,8 @@ useEffect(() => {
               value={otherCuisines}
               onChange={(e) => setOtherCuisines(e.target.value)}
               disabled={isGuest}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
+              className={`w-full px-4 py-3 border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200 hover:border-primary/50'
               }`}
               rows="3"
             />
@@ -406,7 +426,7 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-cream-300">
           {!isGuest ? (
             <div className="flex items-center gap-4">
               <Button onClick={handleSave} disabled={isSaving} icon={Save} size="lg">
@@ -414,7 +434,7 @@ useEffect(() => {
               </Button>
 
               {showSaveConfirmation && (
-                <div className="px-4 py-3 bg-green-50 border border-green-500 rounded-lg text-green-700 flex items-center gap-2 shadow-sm">
+                <div className="px-4 py-3 bg-primary-50 border border-primary-200 rounded-lg text-primary-700 flex items-center gap-2 shadow-sm">
                   <span className="text-xl">✓</span>
                   <span className="font-medium">Preferences saved successfully!</span>
                 </div>

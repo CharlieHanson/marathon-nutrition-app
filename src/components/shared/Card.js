@@ -1,24 +1,30 @@
 import React from 'react';
+import {
+  Card as ShadcnCard,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/src/components/ui/card';
+import { cn } from '@/src/lib/utils';
 
 export const Card = ({ children, title, subtitle, className = '', headerAction }) => {
   return (
-    <div className={`bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-200 ${className}`}>
+    <ShadcnCard className={cn(className)}>
       {(title || headerAction) && (
-        <div className="flex justify-between items-center p-6 border-b">
+        <CardHeader className="flex flex-row justify-between items-center space-y-0">
           <div>
-            {title && (
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-            )}
+            {title && <CardTitle>{title}</CardTitle>}
             {subtitle && (
-              <p className="text-gray-600 mt-1">{subtitle}</p>
+              <CardDescription className="mt-1">{subtitle}</CardDescription>
             )}
           </div>
           {headerAction && <div>{headerAction}</div>}
-        </div>
+        </CardHeader>
       )}
-      <div className="p-6">
+      <CardContent className={!title && !headerAction ? undefined : undefined}>
         {children}
-      </div>
-    </div>
+      </CardContent>
+    </ShadcnCard>
   );
 };

@@ -4,6 +4,12 @@ import { ProLandingPage } from '../../src/views/pro/ProLandingPage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'next/router';
 
+// Force request-time rendering so Next does not treat this route as SSG
+// (avoids a Next+async-module bug where hoist() returns a Promise for getStaticPaths).
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
 export default function ProHome() {
   const router = useRouter();
   const { user, loading, getUserRole } = useAuth();
@@ -55,7 +61,7 @@ export default function ProHome() {
 
   if (loading || checkingRole) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );

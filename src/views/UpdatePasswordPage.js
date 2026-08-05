@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
+import { PageDecor } from '../components/shared/PageDecor';
 
 export const UpdatePasswordPage = () => {
   const [newPassword, setNewPassword] = useState('');
@@ -67,14 +68,16 @@ export const UpdatePasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full">
+    <div className="relative min-h-screen bg-cream flex items-center justify-center p-4 overflow-hidden">
+      <PageDecor />
+      <div className="relative z-10 w-full max-w-md">
+      <Card className="w-full">
         <div className="text-center mb-6">
-          <span className="block text-3xl font-bold tracking-tight mb-4" aria-label="Alimenta">
+          <span className="brand-wordmark block text-3xl mb-4" aria-label="Alimenta">
             <span className="text-primary">Al</span>
             <span className="text-gray-800">imenta</span>
           </span>
-          <h2 className="text-2xl font-bold text-gray-900">Update Password</h2>
+          <h2 className="text-2xl text-gray-900">Update Password</h2>
           <p className="text-gray-600 mt-2">Enter your new password</p>
         </div>
 
@@ -86,7 +89,7 @@ export const UpdatePasswordPage = () => {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+              className="warm-input"
               required
             />
           </div>
@@ -98,7 +101,7 @@ export const UpdatePasswordPage = () => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+              className="warm-input"
               required
             />
           </div>
@@ -110,7 +113,7 @@ export const UpdatePasswordPage = () => {
 
         {message && (
           <div
-            className={`mt-4 p-4 rounded-lg text-center ${
+            className={`mt-4 p-4 rounded-xl text-center ${
               message.includes('✅') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
             }`}
           >
@@ -118,6 +121,7 @@ export const UpdatePasswordPage = () => {
           </div>
         )}
       </Card>
+      </div>
     </div>
   );
 };

@@ -1,18 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Plus, MoreHorizontal, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
+import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
+import { Tooltip } from '../components/shared/Tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
 import { RecipeModal } from '../components/modals/RecipeModal';
 import { GroceryModal } from '../components/modals/GroceryModal';
 import { CopyMealModal } from '../components/modals/CopyMealModal';
 import { LogMealModal } from '../components/modals/LogMealModal';
 import { LogSnackModal } from '../components/modals/LogSnackModal';
-import { calculateDayMacros } from '../services/mealService';
-import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
-import { Tooltip } from '../components/shared/Tooltip';
+import { calculateDayMacros, formatMealWithMacros } from '../services/mealService';
 import { MealPrepModal } from '../components/modals/MealPrepModal';
 import { AnalyticsModal } from '../components/modals/AnalyticsModal';
-import { Dropdown } from '../components/shared/Dropdown';
+import { parseMeal } from '../utils/mealHelpers';
 import { useAuth } from '../context/AuthContext';
 import { authenticatedFetch, getApiUrl, getMealGenApiUrl } from '../../shared/services/api';
 import { ServingsPickerModal } from '../components/modals/ServingsPickerModal';
@@ -21,6 +22,22 @@ import { macroColors } from '../../shared/lib/macroColors';
 import { recordStreakActivity } from '../dataClient';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const getTodayDayName = () => {
+  const today = new Date().getDay(); // 0=Sun … 6=Sat
+  return DAYS[today === 0 ? 6 : today - 1];
+};
+
+const getWeekDateNumbers = (weekStarting) => {
+  if (!weekStarting) return DAYS.map(() => 0);
+  const monday = new Date(`${weekStarting}T00:00:00`);
+  return DAYS.map((_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return date.getDate();
+  });
+};
 
 /** Client local calendar date — same formula as meal_completions getTodayDate. */
 const getTodayDate = () => {
@@ -86,8 +103,9 @@ export const MealPlanPage = ({
   const [showServingsPicker, setShowServingsPicker] = useState(false);
   const [recipeContext, setRecipeContext] = useState({ day: '', mealType: '' });
 
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
+  // Day / week presentation (default: day-by-day like mobile)
+  const [viewMode, setViewMode] = useState('day');
+  const [selectedDay, setSelectedDay] = useState(() => getTodayDayName());
 
   // Test day generation state
   const [selectedTestDay, setSelectedTestDay] = useState('monday');
@@ -109,17 +127,6 @@ export const MealPlanPage = ({
   const [buildStatus, setBuildStatus] = useState('');
   const [showBuildResults, setShowBuildResults] = useState(false);
   const [debugTab, setDebugTab] = useState('prompt');
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Use either the passed statusMessage or local one
   const displayMessage = statusMessage || localStatusMessage;
@@ -265,14 +272,6 @@ export const MealPlanPage = ({
   const handleMealPrepClick = (day, mealType) => {
     setMealPrepDefaults({ mealType, days: [day] });
     setShowMealPrepModal(true);
-  };
-
-  const isDayFull = (day) => {
-    const mealTypes = ['breakfast', 'lunch', 'dinner', 'dessert'];
-    return mealTypes.every((mt) => {
-      const meal = mealPlan?.[day]?.[mt];
-      return meal && typeof meal === 'string' && meal.trim() && meal !== '__generating__';
-    });
   };
 
   // Count how many meals are filled vs total
@@ -447,6 +446,11 @@ export const MealPlanPage = ({
       year: 'numeric' 
     });
   };
+
+  const weekDateNumbers = getWeekDateNumbers(currentWeekStarting);
+  const isCurrentWeek = currentWeekStarting === getMondayOfCurrentWeek();
+  const todayDayName = getTodayDayName();
+  const daysToShow = viewMode === 'day' ? [selectedDay] : DAYS;
 
   const getPreviousWeek = () => {
     if (!currentWeekStarting) return null;
@@ -746,173 +750,108 @@ export const MealPlanPage = ({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Left: Title + Week controls underneath */}
-            <div className="min-w-0">
-              <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
-
-              {currentWeekStarting && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={handlePreviousWeek}
-                    className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                    disabled={!onLoadWeek}
-                    title="Previous week"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-
-                  <span className="text-sm font-semibold text-gray-700 px-3 whitespace-nowrap">
-                    Week of {formatWeekDate(currentWeekStarting)}
-                  </span>
-
-                  <button
-                    onClick={handleNextWeek}
-                    className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                    disabled={!onLoadWeek}
-                    title="Next week"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-
-                  {currentWeekStarting !== getMondayOfCurrentWeek() && (
-                    <button
-                      onClick={handleCurrentWeek}
-                      className="px-3 py-1 text-xs text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20 whitespace-nowrap"
-                    >
-                      Go to Current Week
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Right: Action buttons */}
-            <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
-              {isPlanComplete ? (
-                <>
-                  <Button
-                    onClick={() => setShowAnalyticsModal(true)}
-                    icon={BarChart3}
-                    size="lg"
-                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-                  >
-                    Analytics
-                  </Button>
-
-                  {hasMeals && (
-                    <Button
-                      onClick={generateGroceryList}
-                      icon={ShoppingCart}
-                      size="lg"
-                      className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-                    >
-                      Grocery List
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Button
-                    onClick={() => setShowMealPrepModal(true)}
-                    icon={ChefHat}
-                    size="lg"
-                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-                  >
-                    Meal Prep
-                  </Button>
-
-                  <Button
-                    onClick={() => handleLogClick()}
-                    icon={UtensilsCrossed}
-                    size="lg"
-                    className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
-                  >
-                    Log Meal
-                  </Button>
-                </>
-              )}
-
-              <Button
-                onClick={() => handleOpenLogSnack(selectedTestDay || 'monday')}
-                icon={Sparkles}
-                size="lg"
-                className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary shadow-md hover:shadow-lg transition-all"
+    <div className="space-y-6">
+      <Card>
+        {/* Title + view mode */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <Tabs value={viewMode} onValueChange={setViewMode}>
+            <TabsList className="bg-cream-100 border border-border h-auto p-0.5">
+              <TabsTrigger
+                value="day"
+                className="px-3 py-1.5 text-xs font-bold rounded-[10px] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-soft"
               >
-                Log Snack
+                Day
+              </TabsTrigger>
+              <TabsTrigger
+                value="week"
+                className="px-3 py-1.5 text-xs font-bold rounded-[10px] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-soft"
+              >
+                Full week
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {currentWeekStarting ? (
+            <div className="flex flex-wrap items-center gap-1.5 text-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handlePreviousWeek}
+                className="h-8 w-8"
+                disabled={!onLoadWeek}
+                title="Previous week"
+              >
+                <ChevronLeft className="w-4 h-4" />
               </Button>
-
-              {/* More Actions Dropdown */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-                  title="More actions"
+              <span className="font-semibold text-foreground px-1">
+                Week of {formatWeekDate(currentWeekStarting)}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleNextWeek}
+                className="h-8 w-8"
+                disabled={!onLoadWeek}
+                title="Next week"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              {!isCurrentWeek ? (
+                <Button
+                  type="button"
+                  onClick={handleCurrentWeek}
+                  variant="outline"
+                  size="sm"
+                  className="ml-1 h-7 text-xs border-primary/20 text-primary"
                 >
-                  <MoreHorizontal className="w-5 h-5 text-gray-600" />
-                </button>
-
-                {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50 py-1">
-                    {isPlanComplete ? (
-                      <>
-                        <button
-                          onClick={() => { setShowMealPrepModal(true); setShowDropdown(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <ChefHat className="w-4 h-4" />
-                          Meal Prep
-                        </button>
-                        <button
-                          onClick={() => { handleLogClick(); setShowDropdown(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <UtensilsCrossed className="w-4 h-4" />
-                          Log Meal
-                        </button>
-                        <button
-                          onClick={() => { handleOpenLogSnack(); setShowDropdown(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          Log Snack
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => { setShowAnalyticsModal(true); setShowDropdown(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          Analytics
-                        </button>
-                        <button
-                          onClick={() => { handleOpenLogSnack(); setShowDropdown(false); }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          Log Snack
-                        </button>
-                        {hasMeals && (
-                          <button
-                            onClick={() => { generateGroceryList(); setShowDropdown(false); }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            Grocery List
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+                  This week
+                </Button>
+              ) : null}
             </div>
-          </div>
+          ) : null}
+        </div>
+
+        {/* Actions toolbar */}
+        <div className="flex flex-wrap items-center gap-2 pb-5 mb-5 border-b border-cream-300">
+          {[
+            {
+              id: 'analytics',
+              label: 'Analytics',
+              icon: BarChart3,
+              onClick: () => setShowAnalyticsModal(true),
+              show: true,
+            },
+            {
+              id: 'grocery',
+              label: 'Grocery list',
+              icon: ShoppingCart,
+              onClick: generateGroceryList,
+              show: hasMeals,
+            },
+            {
+              id: 'prep',
+              label: 'Meal prep',
+              icon: ChefHat,
+              onClick: () => setShowMealPrepModal(true),
+              show: true,
+            },
+          ]
+            .filter((a) => a.show)
+            .map(({ id, label, icon: Icon, onClick }) => (
+              <Button
+                key={id}
+                type="button"
+                onClick={onClick}
+                variant="outline"
+                size="sm"
+                className="border-border bg-card text-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+                icon={Icon}
+              >
+                {label}
+              </Button>
+            ))}
         </div>
 
         {(displayMessage || isGenerating) && (
@@ -921,11 +860,11 @@ export const MealPlanPage = ({
               ? 'bg-green-50 border-green-500 text-green-800'
               : displayMessage.includes('❌')
               ? 'bg-red-50 border-red-500 text-red-800'
-              : 'bg-blue-50 border-blue-500 text-blue-800'
+              : 'bg-primary-50 border-primary text-primary-800'
           }`}>
             <div className="flex items-center gap-2">
               {(displayMessage.includes('🔄') || isGenerating) && (
-                <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
               )}
               <span className="font-medium">
                 {isGenerating && !displayMessage ? '🔄 Generating personalized meal plan...' : displayMessage}
@@ -1322,96 +1261,103 @@ export const MealPlanPage = ({
         )}
         </>)}
 
-        <div className="space-y-8">
-          {DAYS.map((day) => {
+        <div className="space-y-6">
+          {viewMode === 'day' && currentWeekStarting ? (
+            <div className="flex w-fit max-w-full mx-auto items-center gap-1 rounded-xl border border-cream-300 bg-cream-50 px-1.5 py-1.5">
+              <button
+                type="button"
+                onClick={handlePreviousWeek}
+                className="p-2 rounded-lg text-gray-600 hover:bg-cream-200 hover:text-primary disabled:opacity-40 shrink-0"
+                disabled={!onLoadWeek}
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                {DAYS.map((day, index) => {
+                  const isSelected = selectedDay === day;
+                  const isToday = isCurrentWeek && day === todayDayName;
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setSelectedDay(day)}
+                      className={`flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg min-w-[2.75rem] sm:min-w-[3rem] transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-white shadow-sm'
+                          : isToday
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-cream-200 text-gray-700'
+                      }`}
+                      aria-label={`${DAY_LABELS[index]} ${weekDateNumbers[index]}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+                        {DAY_LABELS[index]}
+                      </span>
+                      <span className="text-sm font-semibold leading-tight mt-1">{weekDateNumbers[index]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextWeek}
+                className="p-2 rounded-lg text-gray-600 hover:bg-cream-200 hover:text-primary disabled:opacity-40 shrink-0"
+                disabled={!onLoadWeek}
+                aria-label="Next week"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : null}
+
+          {daysToShow.map((day, dayIndex) => {
             const dayMacros = calculateDayMacros(mealPlan[day]);
-            const dayFull = isDayFull(day);
             
             return (
-              <div key={day} className="border rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-gray-900 capitalize">
-                      {day}
-                    </h3>
-                    {/* Temporarily disabled: removing the "+ Generate Day" action for now */}
-                    {/* {!dayFull && !isGenerating && (
-                      <button
-                        onClick={() => onGenerateDay && onGenerateDay(day)}
-                        disabled={isGenerating}
-                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Generate Day
-                      </button>
-                    )} */}
-                  </div>
-                  
-                  {dayMacros.hasData && (
-                    <div className="flex gap-2 text-sm flex-wrap">
-                      <span
-                        className="px-3 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: `${macroColors.calories}26`, color: macroColors.calories }}
-                      >
-                        Cal: {dayMacros.calories}
+              <section
+                key={day}
+                className={
+                  dayIndex > 0
+                    ? 'pt-8 mt-2 border-t border-border/70'
+                    : undefined
+                }
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 mb-5">
+                  <h3 className="text-xl font-semibold tracking-tight text-foreground capitalize">
+                    {day}
+                  </h3>
+
+                  {dayMacros.hasData ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                      <span className="font-semibold tabular-nums" style={{ color: macroColors.calories }}>
+                        {dayMacros.calories}
+                        <span className="ml-1 font-medium text-muted-foreground">cal</span>
                       </span>
-                      <span
-                        className="px-3 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: `${macroColors.protein}26`, color: macroColors.protein }}
-                      >
-                        P: {dayMacros.protein}g
+                      <span className="text-border">·</span>
+                      <span className="font-medium tabular-nums" style={{ color: macroColors.protein }}>
+                        {dayMacros.protein}g
+                        <span className="ml-1 text-muted-foreground">P</span>
                       </span>
-                      <span
-                        className="px-3 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: `${macroColors.carbs}26`, color: macroColors.carbs }}
-                      >
-                        C: {dayMacros.carbs}g
+                      <span className="font-medium tabular-nums" style={{ color: macroColors.carbs }}>
+                        {dayMacros.carbs}g
+                        <span className="ml-1 text-muted-foreground">C</span>
                       </span>
-                      <span
-                        className="px-3 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: `${macroColors.fat}26`, color: macroColors.fat }}
-                      >
-                        F: {dayMacros.fat}g
+                      <span className="font-medium tabular-nums" style={{ color: macroColors.fat }}>
+                        {dayMacros.fat}g
+                        <span className="ml-1 text-muted-foreground">F</span>
                       </span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  {['breakfast', 'lunch', 'dinner'].map((mealType) => (
-                    <MealCard
-                      key={mealType}
-                      day={day}
-                      mealType={mealType}
-                      meal={mealPlan[day][mealType]}
-                      rating={mealPlan[day][`${mealType}_rating`] || 0}
-                      onUpdate={onUpdate}
-                      onRate={onRate}
-                      onRegenerate={handleRegenerate}
-                      onGetRecipe={getRecipe}
-                      onCopy={handleCopyClick}
-                      onLogClick={handleLogClick}
-                      onGenerateSingleMeal={onGenerateSingleMeal}
-                      onMealPrepClick={handleMealPrepClick}
-                      loadingRecipe={loadingRecipe}
-                      onSaveMeal={onSaveMeal}
-                      isMealSaved={isMealSaved}
-                      isGuest={isGuest}
-                      isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
-                    />
-                  ))}
-                </div>
-
-                {mealPlan[day]?.over_budget ? (
-                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-                    Over daily budget — some meals kept at minimum targets
-                  </div>
-                ) : null}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 sm:gap-y-8">
                   {(mealPlan[day]?.snacks_user_logged
-                    ? ['snacks', 'dessert']
-                    : ['dessert']
+                    ? ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert']
+                    : ['breakfast', 'lunch', 'dinner', 'dessert']
                   ).map((mealType) => (
                     <MealCard
                       key={mealType}
@@ -1435,11 +1381,30 @@ export const MealPlanPage = ({
                     />
                   ))}
                 </div>
-              </div>
+
+                <div className="mt-6 flex justify-center sm:justify-start">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon={Sparkles}
+                    onClick={() => handleOpenLogSnack(day)}
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    {mealPlan[day]?.snacks_user_logged ? 'Edit snack' : 'Log snack'}
+                  </Button>
+                </div>
+
+                {mealPlan[day]?.over_budget ? (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                    Over daily budget — some meals kept at minimum targets
+                  </div>
+                ) : null}
+              </section>
             );
           })}
         </div>
-      </div>
+      </Card>
 
       <RecipeModal
         isOpen={showRecipeModal}
@@ -1517,6 +1482,9 @@ export const MealPlanPage = ({
   );
 };
 
+const mealActionBtnClass =
+  'inline-flex h-7 w-7 items-center justify-center rounded-md text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary disabled:cursor-default disabled:opacity-50';
+
 const MealCard = ({ 
   day, 
   mealType, 
@@ -1541,77 +1509,116 @@ const MealCard = ({
   const isSaved = isMealSaved?.(mealType, meal);
   const isGeneratingMeal = meal === '__generating__';
   const isEmpty = !meal || (typeof meal === 'string' && !meal.trim());
+  const mealLabel = mealType === 'snacks' ? 'Snack' : mealType;
+  const parsedMeal = !isEmpty && !isGeneratingMeal ? parseMeal(meal) : null;
+  const hasMacros = Boolean(
+    parsedMeal &&
+      (parsedMeal.calories > 0 ||
+        parsedMeal.protein > 0 ||
+        parsedMeal.carbs > 0 ||
+        parsedMeal.fat > 0)
+  );
+
+  const handleMealTextChange = (value) => {
+    if (hasMacros && parsedMeal) {
+      onUpdate(
+        day,
+        mealType,
+        formatMealWithMacros(value, {
+          calories: parsedMeal.calories,
+          protein: parsedMeal.protein,
+          carbs: parsedMeal.carbs,
+          fat: parsedMeal.fat,
+        })
+      );
+      return;
+    }
+    onUpdate(day, mealType, value);
+  };
 
   const handleSave = async () => {
     if (!meal || isGuest) return;
     await onSaveMeal(mealType, meal);
   };
 
-  // Show loading spinner while generating
   if (isGeneratingMeal) {
     return (
-      <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm">
-        <div className="flex justify-between items-center">
-          <label className="block text-sm font-semibold text-gray-700 capitalize">
-            {mealType}
-          </label>
-        </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3 text-sm text-gray-600">Generating {mealType}...</span>
+      <div className="space-y-2.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {mealLabel}
+        </span>
+        <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          Generating…
         </div>
       </div>
     );
   }
 
-  // Show collapsed placeholder or expanded options when meal slot is empty
   if (isEmpty) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 overflow-hidden transition-all h-full">
-        {/* Collapsed: click-to-add placeholder */}
+      <div className="h-full min-h-[5.5rem]">
         {!showAddOptions ? (
           <button
+            type="button"
             onClick={() => setShowAddOptions(true)}
-            className="w-full h-full min-h-[80px] flex flex-col items-center justify-center gap-1.5 py-5 text-gray-400 hover:text-gray-500 hover:bg-gray-50 transition-colors"
+            className="group flex h-full min-h-[5.5rem] w-full flex-col items-start justify-center gap-1 rounded-lg border border-dashed border-border/80 px-3 py-4 text-left transition-colors hover:border-primary/35 hover:bg-primary/[0.03]"
           >
-            <span className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center">
-              <Plus className="w-4 h-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary/80">
+              {mealLabel}
             </span>
-            <span className="text-xs capitalize">{mealType}</span>
+            <span className="flex items-center gap-1.5 text-sm text-muted-foreground/80 group-hover:text-primary">
+              <Plus className="h-3.5 w-3.5" />
+              Add meal
+            </span>
           </button>
         ) : (
-          /* Expanded: show the 3 options */
-          <div className="p-3 bg-gray-50">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-semibold text-gray-500 capitalize">{mealType}</span>
+          <div className="space-y-2.5 rounded-lg border border-dashed border-primary/25 bg-primary/[0.03] p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                {mealLabel}
+              </span>
               <button
+                type="button"
                 onClick={() => setShowAddOptions(false)}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
-                ✕
+                Cancel
               </button>
             </div>
             <div className="flex flex-col gap-1.5">
               <button
-                onClick={() => { setShowAddOptions(false); onGenerateSingleMeal && onGenerateSingleMeal(day, mealType); }}
-                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                type="button"
+                onClick={() => {
+                  setShowAddOptions(false);
+                  onGenerateSingleMeal?.(day, mealType);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="h-3.5 w-3.5" />
                 Generate with AI
               </button>
               <button
-                onClick={() => { setShowAddOptions(false); onLogClick(day, mealType); }}
-                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                type="button"
+                onClick={() => {
+                  setShowAddOptions(false);
+                  onLogClick(day, mealType);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
-                <UtensilsCrossed className="w-3.5 h-3.5" />
-                Log Meal
+                <UtensilsCrossed className="h-3.5 w-3.5" />
+                Log meal
               </button>
               <button
-                onClick={() => { setShowAddOptions(false); onMealPrepClick && onMealPrepClick(day, mealType); }}
-                className="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                type="button"
+                onClick={() => {
+                  setShowAddOptions(false);
+                  onMealPrepClick?.(day, mealType);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
-                <ChefHat className="w-3.5 h-3.5" />
-                Meal Prep
+                <ChefHat className="h-3.5 w-3.5" />
+                Meal prep
               </button>
             </div>
           </div>
@@ -1621,107 +1628,133 @@ const MealCard = ({
   }
 
   return (
-    <div className="space-y-3 p-4 rounded-lg bg-gray-50 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-center">
-        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 capitalize">
-          {mealType}
+    <div className="group space-y-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] p-3.5 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-primary/80">
+            {mealLabel}
+          </span>
           {isAdjusted ? (
-            <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
               Adjusted
             </span>
           ) : null}
-        </label>
-        <div className="flex gap-1">
-          {/* Save/Heart Button */}
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
           {!isGuest && (
-            <Tooltip text={isSaved ? "Saved!" : "Save meal"}>
+            <Tooltip text={isSaved ? 'Saved!' : 'Save meal'}>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={isSaved}
-                className={`text-xs px-2 py-1 rounded flex items-center gap-1 transition-colors ${
-                  isSaved
-                    ? 'bg-red-100 text-red-500 cursor-default'
-                    : 'bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-500'
+                className={`${mealActionBtnClass} ${
+                  isSaved ? 'text-red-500 hover:bg-red-50 hover:text-red-500' : ''
                 }`}
               >
-                <Heart className={`w-3 h-3 ${isSaved ? 'fill-red-500' : ''}`} />
+                <Heart className={`h-3.5 w-3.5 ${isSaved ? 'fill-red-500' : ''}`} />
               </button>
             </Tooltip>
           )}
-
-          <Tooltip text="Copy meal">
-            <button
-              onClick={() => onCopy(day, mealType, meal)}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
-            >
-              <Copy className="w-3 h-3" />
-            </button>
-          </Tooltip>
-
-          <Tooltip text="Regenerate meal">
-            <button
-              onClick={() => onRegenerate(day, mealType)}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 flex items-center gap-1 transition-colors"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </Tooltip>
+          {onCopy ? (
+            <Tooltip text="Copy meal">
+              <button
+                type="button"
+                onClick={() => onCopy(day, mealType, meal)}
+                className={mealActionBtnClass}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          ) : null}
+          {onRegenerate ? (
+            <Tooltip text="Regenerate meal">
+              <button
+                type="button"
+                onClick={() => onRegenerate(day, mealType)}
+                className={mealActionBtnClass}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          ) : null}
         </div>
       </div>
 
       <textarea
-        value={meal || ''}
-        onChange={(e) => onUpdate(day, mealType, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-        rows="3"
-        placeholder={`Enter ${mealType}...`}
+        value={hasMacros ? parsedMeal.name : meal || ''}
+        onChange={(e) => handleMealTextChange(e.target.value)}
+        rows={3}
+        placeholder={`Enter ${mealLabel.toLowerCase()}…`}
+        className="w-full resize-y rounded-lg border-0 bg-transparent px-0 py-1 text-[15px] leading-relaxed text-foreground shadow-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0"
       />
 
-      {meal && (
-        <>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => onRate(day, mealType, star)}
-                className="focus:outline-none hover:scale-110 transition-transform"
-              >
-                <Star
-                  className={`w-5 h-5 ${
-                    star <= rating
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                />
-              </button>
-            ))}
-            {rating > 0 && (
-              <span className="text-xs text-gray-600 ml-2 font-medium">
-                ({rating}/5)
-              </span>
-            )}
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5">
+        <div className="flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onRate(day, mealType, star)}
+              className="rounded p-0.5 text-muted-foreground/40 transition-colors hover:text-secondary focus:outline-none"
+              aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
+            >
+              <Star
+                className={`h-4 w-4 ${
+                  star <= rating
+                    ? 'fill-secondary text-secondary'
+                    : ''
+                }`}
+              />
+            </button>
+          ))}
+          {rating > 0 ? (
+            <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
+              {rating}/5
+            </span>
+          ) : null}
+        </div>
 
-          <button
-            onClick={() => onGetRecipe(day, mealType)}
-            disabled={isLoadingRecipe}
-            className={`w-full text-sm px-3 py-2 rounded-md font-medium transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
-              isLoadingRecipe
-                ? 'bg-yellow-200 text-yellow-800 cursor-wait'
-                : 'bg-yellow-100 hover:bg-yellow-200 text-gray-900'
-            }`}
-          >
-            {isLoadingRecipe ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-yellow-800 border-t-transparent rounded-full" />
-                Loading recipe...
-              </>
-            ) : (
-              'Get Recipe'
-            )}
-          </button>
-        </>
-      )}
+        <button
+          type="button"
+          onClick={() => onGetRecipe(day, mealType)}
+          disabled={isLoadingRecipe}
+          className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors ${
+            isLoadingRecipe
+              ? 'cursor-wait text-muted-foreground'
+              : 'text-primary hover:text-primary/80'
+          }`}
+        >
+          {isLoadingRecipe ? (
+            <>
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              Loading…
+            </>
+          ) : (
+            'Get recipe'
+          )}
+        </button>
+      </div>
+
+      {hasMacros ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-primary/15 pt-2.5 text-xs font-semibold tabular-nums">
+          <span style={{ color: macroColors.calories }}>
+            {parsedMeal.calories}
+            <span className="ml-1 font-medium opacity-75">cal</span>
+          </span>
+          <span style={{ color: macroColors.protein }}>
+            {parsedMeal.protein}g
+            <span className="ml-1 font-medium opacity-75">P</span>
+          </span>
+          <span style={{ color: macroColors.carbs }}>
+            {parsedMeal.carbs}g
+            <span className="ml-1 font-medium opacity-75">C</span>
+          </span>
+          <span style={{ color: macroColors.fat }}>
+            {parsedMeal.fat}g
+            <span className="ml-1 font-medium opacity-75">F</span>
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 };

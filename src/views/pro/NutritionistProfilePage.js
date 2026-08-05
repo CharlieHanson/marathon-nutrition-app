@@ -5,6 +5,7 @@ import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import { Save, Copy, Check, User, Briefcase, Globe, MapPin } from 'lucide-react';
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
+import { Skeleton } from '@/src/components/ui/skeleton';
 
 export const NutritionistProfile = ({ currentUser }) => {
   const [profile, setProfile] = useState({
@@ -154,10 +155,48 @@ export const NutritionistProfile = ({ currentUser }) => {
   };
 
   if (loading) {
-    console.log('NutritionistProfile: showing "Loading profile..."');
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading profile...</div>
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-9 w-48 mb-2" />
+          <Skeleton className="h-5 w-96 max-w-full" />
+        </div>
+
+        {/* Invite code card */}
+        <div className="rounded-card border-2 border-primary-200 bg-primary-50/50 p-6 sm:p-8 space-y-6">
+          <div className="text-center space-y-3">
+            <Skeleton className="h-8 w-64 max-w-full mx-auto" />
+            <Skeleton className="h-4 w-80 max-w-full mx-auto" />
+          </div>
+          <div className="bg-card rounded-lg p-6 shadow-sm flex flex-col items-center gap-4">
+            <Skeleton className="h-12 w-56 max-w-full" />
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+          <div className="bg-card/50 rounded-lg p-4 space-y-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+
+        {/* Professional info form */}
+        <div className="rounded-card border border-border bg-card">
+          <div className="p-5 sm:p-6 border-b border-border space-y-2">
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          <div className="p-5 sm:p-6 space-y-5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-11 w-full rounded-[13px]" />
+              </div>
+            ))}
+            <Skeleton className="h-11 w-36 rounded-xl mt-2" />
+          </div>
+        </div>
       </div>
     );
   }

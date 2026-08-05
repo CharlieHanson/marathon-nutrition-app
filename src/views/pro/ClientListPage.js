@@ -3,8 +3,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
+import { Input } from '../../components/shared/Input';
 import { Users, Search, UserPlus, Calendar, Mail, ArrowRight } from 'lucide-react';
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/src/components/ui/table';
+import { Badge } from '@/src/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/src/components/ui/avatar';
+import { Skeleton } from '@/src/components/ui/skeleton';
 
 // currentUser is passed from ClientsPage (AuthContext.user)
 export const ClientListPage = ({ currentUser }) => {
@@ -102,10 +114,39 @@ export const ClientListPage = ({ currentUser }) => {
   };
 
   if (loading) {
-    console.log('ClientListPage: showing "Loading clients..."');
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading clients...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-9 w-48 mb-2" />
+            <Skeleton className="h-5 w-80 max-w-full" />
+          </div>
+          <Skeleton className="h-10 w-28 rounded-lg shrink-0" />
+        </div>
+        <Skeleton className="h-14 w-full rounded-card" />
+        <div className="rounded-card border border-border bg-card p-2 sm:p-4 space-y-3">
+          <div className="hidden sm:grid grid-cols-5 gap-4 px-2 pb-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-4 w-20" />
+            ))}
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 px-2 py-3 border-t border-border first:border-t-0"
+            >
+              <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+              <div className="flex-1 space-y-2 min-w-0">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-48 max-w-full" />
+              </div>
+              <Skeleton className="hidden md:block h-4 w-16" />
+              <Skeleton className="hidden sm:block h-4 w-24" />
+              <Skeleton className="hidden lg:block h-6 w-20 rounded-full" />
+              <Skeleton className="h-9 w-16 rounded-xl shrink-0" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -158,13 +199,13 @@ export const ClientListPage = ({ currentUser }) => {
           {/* Search Bar */}
           <Card>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+              <Input
                 type="text"
                 placeholder="Search clients by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="pl-10"
               />
             </div>
           </Card>
@@ -172,107 +213,95 @@ export const ClientListPage = ({ currentUser }) => {
           {/* Client Table */}
           {filteredClients.length === 0 ? (
             <Card>
-              <p className="text-center text-gray-600 py-8">
-                No clients found matching "{searchQuery}"
+              <p className="text-center text-muted-foreground py-8">
+                No clients found matching &quot;{searchQuery}&quot;
               </p>
             </Card>
           ) : (
             <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                        Client Name
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                        Details
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                        Connected
-                      </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                        Status
-                      </th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClients.map((client) => (
-                      <tr
-                        key={client.id}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => handleViewClient(client.id)}
-                      >
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                              <span className="text-primary font-semibold">
-                                {client.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {client.name}
-                              </p>
-                              {client.email && (
-                                <p className="text-sm text-gray-500 flex items-center gap-1">
-                                  <Mail className="w-3 h-3" />
-                                  {client.email}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="text-sm">
-                            {client.age && (
-                              <p className="text-gray-600">Age: {client.age}</p>
-                            )}
-                            {client.goal && (
-                              <p className="text-gray-600 capitalize">
-                                Goal: {client.goal.replace('_', ' ')}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>Connected</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredClients.map((client) => (
+                    <TableRow
+                      key={client.id}
+                      className="cursor-pointer"
+                      onClick={() => handleViewClient(client.id)}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary-100 text-primary font-semibold">
+                              {client.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {client.name}
+                            </p>
+                            {client.email && (
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                {client.email}
                               </p>
                             )}
                           </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="w-4 h-4" />
-                            {formatDate(client.connected_at)}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          {client.has_macro_bounds ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Bounds Set
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              No Bounds
-                            </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.age && (
+                            <p className="text-muted-foreground">Age: {client.age}</p>
                           )}
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewClient(client.id);
-                            }}
-                            icon={ArrowRight}
-                          >
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          {client.goal && (
+                            <p className="text-muted-foreground capitalize">
+                              Goal: {client.goal.replace('_', ' ')}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(client.connected_at)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {client.has_macro_bounds ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-0">
+                            Bounds Set
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-0">
+                            No Bounds
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewClient(client.id);
+                          }}
+                          icon={ArrowRight}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
           )}
         </>

@@ -1,34 +1,114 @@
 import React from 'react';
-import { Calendar, Utensils, CheckCircle, User } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Calendar,
+  Utensils,
+  Heart,
+  User,
+  Settings,
+} from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/src/components/ui/sheet';
+import { cn } from '@/src/lib/utils';
 
-const NAV_ITEMS = [
-  { id: 'training', label: 'Training Plan', icon: Calendar },
+export const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'training', label: 'Training', icon: Calendar },
+  { id: 'meals', label: 'Meals', icon: Utensils },
+  { id: 'preferences', label: 'Preferences', icon: Heart },
   { id: 'profile', label: 'Profile', icon: User },
-  { id: 'preferences', label: 'Food Preferences', icon: CheckCircle },
-  { id: 'meals', label: 'Meal Plan', icon: Utensils },
 ];
 
-export const Navigation = ({ currentView, onViewChange }) => {
+export const Navigation = ({
+  currentView,
+  onViewChange,
+  variant = 'sidebar',
+  mobileOpen = false,
+  onMobileClose,
+}) => {
+  if (variant === 'mobile-drawer') {
+    return (
+      <Sheet open={mobileOpen} onOpenChange={(open) => !open && onMobileClose?.()}>
+        <SheetContent side="left" className="w-72 p-0 bg-card border-r border-border lg:hidden">
+          <SheetHeader className="flex flex-row items-center justify-between px-5 py-4 border-b border-border space-y-0 text-left">
+            <SheetTitle className="brand-wordmark text-2xl font-normal">
+              <span className="text-primary">Al</span>
+              <span className="text-gray-800">imenta</span>
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-3 py-4">
+            <NavList
+              currentView={currentView}
+              onViewChange={(id) => {
+                onViewChange(id);
+                onMobileClose?.();
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex space-x-8">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => onViewChange(id)}
-              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                currentView === id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Icon className="w-4 h-4 inline mr-2" />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <nav className="flex flex-1 flex-col min-h-0 px-3 py-4">
+      <NavList currentView={currentView} onViewChange={onViewChange} />
     </nav>
   );
 };
+
+function NavList({ currentView, onViewChange }) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+        const active = currentView === id;
+        return (
+          <li key={id}>
+            <button
+              type="button"
+              onClick={() => onViewChange(id)}
+              className={cn(
+                'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                active
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-cream-200 hover:text-foreground'
+              )}
+            >
+              <Icon
+                className={cn(
+                  'w-[18px] h-[18px] shrink-0',
+                  active ? 'text-primary-foreground' : 'text-muted-foreground'
+                )}
+              />
+              {label}
+            </button>
+          </li>
+        );
+      })}
+      <li className="mt-2 pt-2 border-t border-border">
+        <button
+          type="button"
+          onClick={() => onViewChange('settings')}
+          className={cn(
+            'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+            currentView === 'settings'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-cream-200 hover:text-foreground'
+          )}
+        >
+          <Settings
+            className={cn(
+              'w-[18px] h-[18px] shrink-0',
+              currentView === 'settings' ? 'text-primary-foreground' : 'text-muted-foreground'
+            )}
+          />
+          Settings
+        </button>
+      </li>
+    </ul>
+  );
+}

@@ -1,6 +1,6 @@
 // src/components/modals/AnalyticsModal.js
 import React from 'react';
-import { X, TrendingUp, Flame, Dumbbell, Beef, Wheat, Droplet } from 'lucide-react';
+import { TrendingUp, Flame, Dumbbell, Beef, Wheat, Droplet } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -13,6 +13,14 @@ import {
   Cell
 } from 'recharts';
 import { macroColors } from '../../../shared/lib/macroColors';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/shared/Button';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
@@ -101,8 +109,6 @@ export const AnalyticsModal = ({
   userProfile,
   trainingPlan
 }) => {
-  if (!isOpen) return null;
-
   const { dayStats, totals, averages, daysWithData } = calculateWeekStats(mealPlan);
   
   // Macro distribution for pie chart (calories from each macro)
@@ -205,21 +211,15 @@ export const AnalyticsModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
+        <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary-50">
+          <DialogTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
             Weekly Analytics
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Content */}
         <div className="p-4 overflow-y-auto flex-1 space-y-6">
@@ -398,15 +398,12 @@ export const AnalyticsModal = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-gray-50">
-          <button
-            onClick={onClose}
-            className="w-full py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-          >
+        <DialogFooter className="p-4 border-t bg-muted/50 sm:space-x-0">
+          <Button onClick={onClose} variant="outline" className="w-full">
             Close
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

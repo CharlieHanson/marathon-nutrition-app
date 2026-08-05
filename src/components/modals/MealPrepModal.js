@@ -1,9 +1,15 @@
 // src/components/modals/MealPrepModal.js
 import React, { useState, useEffect } from 'react';
-import { X, ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
+import { ChefHat, Check, Loader2, Clock, Refrigerator, ChevronLeft, Heart } from 'lucide-react';
 import { authenticatedFetch, getMealGenApiUrl } from '../../../shared/services/api';
 import { macroColors } from '../../../shared/lib/macroColors';
 import { getLocalDateString } from '../../dataClient';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/src/components/ui/dialog';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -44,8 +50,6 @@ export const MealPrepModal = ({
       setApplied(false);
     }
   }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const toggleDay = (day) => {
     setSelectedDays(prev =>
@@ -132,21 +136,15 @@ export const MealPrepModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b bg-gradient-to-r from-primary/10 to-primary-100">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary-100">
+          <DialogTitle className="flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
             Meal Prep Mode
-          </h3>
-          <button
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Progress Indicator */}
         <div className="px-4 pt-4">
@@ -391,7 +389,7 @@ export const MealPrepModal = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -55,7 +55,7 @@ export default function ProSettings() {
         '), redirecting to /training'
       );
       setCheckingAuth(false);
-      router.replace('/training');
+      router.replace('/dashboard');
       return;
     }
 
@@ -70,7 +70,7 @@ export default function ProSettings() {
       checkingAuth,
     });
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );
@@ -84,7 +84,7 @@ export default function ProSettings() {
   console.log('ProSettings: rendering ProLayout + ProSettingsPage');
 
   return (
-    <ProLayout userName={userName} onSignOut={signOut}>
+    <ProLayout userName={userName} userEmail={user?.email} onSignOut={signOut}>
       <ProSettingsPage currentUser={user} />
     </ProLayout>
   );

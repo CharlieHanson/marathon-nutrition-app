@@ -21,7 +21,7 @@ export default function Preferences() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );
@@ -46,6 +46,7 @@ export default function Preferences() {
         onUpdate={preferences.updatePreferences}
         onSave={preferences.savePreferences}
         isSaving={preferences.isSaving}
+        isLoading={preferences.isLoading}
         isGuest={isGuest}
       />
     </Layout>

@@ -203,10 +203,6 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
 
   return (
     <div className="space-y-8">
-      <h2 className="text-3xl font-bold text-gray-900 text-center mb-6">
-        User Profile
-      </h2>
-      
       <Card>
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4 mb-2">
@@ -278,7 +274,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                     onChange={(e) => setHeightMeters(e.target.value)}
                     onBlur={updateHeightInProfile}
                     disabled={isGuest}
-                    className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary border-gray-300 ${
+                    className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary border-cream-300 bg-cream-200 ${
                       isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
                     }`}
                   />
@@ -320,7 +316,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                     onChange={(e) => setHeightFeet(e.target.value.replace(/\D/g, '').slice(0, 2))}
                     onBlur={updateHeightInProfile}
                     disabled={isGuest}
-                    className={`w-16 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary border-gray-300 ${
+                    className={`w-16 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary border-cream-300 bg-cream-200 ${
                       isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
                     }`}
                   />
@@ -333,7 +329,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                     onChange={(e) => setHeightInches(e.target.value.replace(/[^\d.]/g, '').slice(0, 5))}
                     onBlur={updateHeightInProfile}
                     disabled={isGuest}
-                    className={`w-16 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary border-gray-300 ${
+                    className={`w-16 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary border-cream-300 bg-cream-200 ${
                       isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
                     }`}
                   />
@@ -377,9 +373,9 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 onChange={(e) => setWeightValue(e.target.value)}
                 onBlur={updateWeightInProfile}
                 disabled={isGuest}
-                className={`flex-1 min-w-0 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
-                  isGuest ? 'bg-gray-100 cursor-not-allowed' : ''
-                } border-gray-300`}
+                className={`flex-1 min-w-0 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${
+                  isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200'
+                } border-cream-300`}
               />
               <Select
                 options={WEIGHT_UNITS}
@@ -417,7 +413,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
         </div>
 
         {/* Training & Goals Section */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-cream-300">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
               <Target className="w-5 h-5 text-primary" />
@@ -434,8 +430,8 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               value={profile.objective}
               onChange={(e) => onUpdate('objective', e.target.value)}
               disabled={isGuest}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
+              className={`w-full px-4 py-3 border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200 hover:border-primary/50'
               }`}
               rows="3"
             />
@@ -446,7 +442,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
         </div>
 
         {/* Dietary Preferences Section */}
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="mt-6 pt-6 border-t border-cream-300">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
               <FileText className="w-5 h-5 text-primary" />
@@ -463,8 +459,8 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               value={profile.dietaryRestrictions}
               onChange={(e) => onUpdate('dietaryRestrictions', e.target.value)}
               disabled={isGuest}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'hover:border-primary/50'
+              className={`w-full px-4 py-3 border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
+                isGuest ? 'bg-gray-100 cursor-not-allowed' : 'bg-cream-200 hover:border-primary/50'
               }`}
               rows="3"
             />
@@ -474,7 +470,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="mt-8 pt-6 border-t border-cream-300">
           {!isGuest ? (
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-4">
@@ -517,12 +513,12 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
           </div>
 
           {/* Rest Day */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-primary-100 shadow-sm">
+          <div className="mb-6 p-4 bg-white rounded-card border border-primary-100 shadow-soft">
             <h4 className="font-semibold text-gray-900 mb-3">Rest days</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 bg-blue-50 rounded">
+              <div className="text-center p-3 bg-primary-50 rounded">
                 <div className="text-xs text-gray-600 mb-1">Base metabolism (BMR)</div>
-                <div className="text-2xl font-bold text-blue-600">{tdeeResults.noWorkouts.bmr}</div>
+                <div className="text-2xl font-bold text-primary-600">{tdeeResults.noWorkouts.bmr}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
               <div className="text-center p-3 bg-green-50 rounded">
@@ -536,7 +532,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
-            <div className="p-3 bg-gray-50 rounded">
+            <div className="p-3 bg-cream-200 rounded">
               <div className="text-sm font-semibold text-gray-700 mb-2">Daily macros</div>
               <div className="flex gap-4 text-sm">
                 <span><strong>Protein:</strong> {tdeeResults.noWorkouts.dailyMacros.protein}g</span>
@@ -547,12 +543,12 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
           </div>
 
           {/* Training Day */}
-          <div className="mb-6 p-4 bg-white rounded-lg border border-primary-100 shadow-sm">
+          <div className="mb-6 p-4 bg-white rounded-card border border-primary-100 shadow-soft">
             <h4 className="font-semibold text-gray-900 mb-3">Training days (example: 10k run)</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 bg-blue-50 rounded">
+              <div className="text-center p-3 bg-primary-50 rounded">
                 <div className="text-xs text-gray-600 mb-1">Base metabolism (BMR)</div>
-                <div className="text-2xl font-bold text-blue-600">{tdeeResults.withWorkouts.bmr}</div>
+                <div className="text-2xl font-bold text-primary-600">{tdeeResults.withWorkouts.bmr}</div>
                 <div className="text-xs text-gray-500">cal/day</div>
               </div>
               <div className="text-center p-3 bg-green-50 rounded">
@@ -566,7 +562,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
                 <div className="text-xs text-gray-500">cal/day (for your goal)</div>
               </div>
             </div>
-            <div className="p-3 bg-gray-50 rounded mb-3">
+            <div className="p-3 bg-cream-200 rounded mb-3">
               <div className="text-sm font-semibold text-gray-700 mb-2">Daily macros</div>
               <div className="flex gap-4 text-sm">
                 <span><strong>Protein:</strong> {tdeeResults.withWorkouts.dailyMacros.protein}g</span>
@@ -578,7 +574,7 @@ export const ProfilePage = ({ profile, onUpdate, onSave, isSaving, isGuest }) =>
               <div className="text-sm font-semibold text-gray-700 mb-2">Per-meal targets (morning workout)</div>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                 {Object.entries(tdeeResults.withWorkouts.mealBudgets).map(([meal, macros]) => (
-                  <div key={meal} className="p-2 bg-white rounded border">
+                  <div key={meal} className="p-2 bg-cream-50 rounded border border-cream-300">
                     <div className="font-semibold text-gray-800 mb-1 capitalize">{meal}</div>
                     <div className="text-gray-600">
                       <div>Protein: {macros.protein}g</div>
@@ -646,7 +642,7 @@ const ProfileCompletionCard = ({ profile }) => {
             </p>
             
             {/* Progress Bar */}
-            <div className="mb-4 bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+            <div className="mb-4 bg-cream-300 rounded-full h-3 overflow-hidden shadow-inner">
               <div
                 className="bg-gradient-to-r from-primary to-primary-600 h-full transition-all duration-500 rounded-full"
                 style={{ width: `${completionPercentage}%` }}
