@@ -274,28 +274,6 @@ export const MealPlanPage = ({
     setShowMealPrepModal(true);
   };
 
-  // Count how many meals are filled vs total
-  const countMeals = () => {
-    let filled = 0;
-    let total = 0;
-    const mealTypes = ['breakfast', 'lunch', 'dinner', 'dessert'];
-    
-    DAYS.forEach(day => {
-      mealTypes.forEach(mt => {
-        total++;
-        const meal = mealPlan?.[day]?.[mt];
-        if (meal && typeof meal === 'string' && meal.trim()) {
-          filled++;
-        }
-      });
-    });
-    
-    return { filled, total, hasPartial: filled > 0 && filled < total };
-  };
-
-  const { filled, total, hasPartial } = countMeals();
-  const isPlanComplete = filled === total && total > 0;
-
   const getRecipe = async (day, mealType) => {
     // Show servings picker first
     setRecipeContext({ day, mealType });
@@ -561,22 +539,23 @@ export const MealPlanPage = ({
           if (line.startsWith('data:')) {
             try {
               const data = JSON.parse(line.slice(5).trim());
+              const eventType = currentEvent;
               
               setTestResults(prev => {
                 const updated = { ...prev };
 
-                if (currentEvent === 'nutrition') {
+                if (eventType === 'nutrition') {
                   updated.nutrition = data;
                   setTestStatus(`📊 Calculated TDEE: ${data.adjustedTdee} kcal/day`);
                 }
-                else if (currentEvent === 'status') {
+                else if (eventType === 'status') {
                   updated.mealStatuses = {
                     ...updated.mealStatuses,
                     [data.mealType]: data.status
                   };
                   setTestStatus(`🔄 Generating ${data.mealType}...`);
                 }
-                else if (currentEvent === 'meal') {
+                else if (eventType === 'meal') {
                   updated.meals = {
                     ...updated.meals,
                     [data.mealType]: data.meal
@@ -587,12 +566,12 @@ export const MealPlanPage = ({
                   };
                   setTestStatus(`✅ ${data.mealType} complete!`);
                 }
-                else if (currentEvent === 'complete') {
+                else if (eventType === 'complete') {
                   updated.dailyTotals = data.dailyTotals;
                   updated.dailyTargets = data.dailyTargets;
                   setTestStatus(`✅ All meals generated for ${selectedTestDay}!`);
                 }
-                else if (currentEvent === 'error') {
+                else if (eventType === 'error') {
                   updated.error = data.message;
                   setTestStatus(`❌ Error: ${data.message}`);
                 }
@@ -683,13 +662,14 @@ export const MealPlanPage = ({
           if (line.startsWith('data:')) {
             try {
               const data = JSON.parse(line.slice(6).trim());
+              const eventType = currentEvent;
 
-              if (currentEvent === 'debug') {
+              if (eventType === 'debug') {
                 setDebugData(data);
-              } else if (currentEvent === 'nutrition') {
+              } else if (eventType === 'nutrition') {
                 setNutritionData(data);
                 setBuildStatus(`📊 Nutrition calculated`);
-              } else if (currentEvent === 'status') {
+              } else if (eventType === 'status') {
                 if (data.mealType && data.status === 'processing') {
                   // Show loading indicator for this specific meal slot
                   onUpdate(selectedBuildDay, data.mealType, '__generating__');
@@ -698,7 +678,7 @@ export const MealPlanPage = ({
                   setMealStatuses(prev => ({ ...prev, [data.mealType]: data.status }));
                 }
                 setBuildStatus(`🔄 ${data.message || `Generating ${data.mealType}...`}`);
-              } else if (currentEvent === 'meal') {
+              } else if (eventType === 'meal') {
                 // Immediately update the meal plan for this slot
                 if (data.meal && data.mealType && !data.error) {
                   onUpdate(selectedBuildDay, data.mealType, data.meal);
@@ -706,11 +686,11 @@ export const MealPlanPage = ({
                 setBuiltMeals(prev => [...prev, { mealType: data.mealType, meal: data.meal, error: data.error }]);
                 setMealStatuses(prev => ({ ...prev, [data.mealType]: data.error ? 'error' : 'done' }));
                 setBuildStatus(data.error ? `❌ ${data.mealType} failed` : `✅ ${data.mealType} complete`);
-              } else if (currentEvent === 'done') {
+              } else if (eventType === 'done') {
                 setDailyTotals(data.dailyTotals);
                 setDailyTargets(data.dailyTargets);
                 setBuildStatus(`✅ ${selectedBuildDay} complete!`);
-              } else if (currentEvent === 'error') {
+              } else if (eventType === 'error') {
                 setBuildStatus(`❌ Error: ${data.message}`);
               }
 

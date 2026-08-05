@@ -133,7 +133,6 @@ function MobileAppCarousel() {
                         )}
                       >
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-mint/40 to-cream">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={slide.image}
                             alt={`${slide.title} screen`}
@@ -213,12 +212,17 @@ export const LandingPage = () => {
       {/* Hero */}
       <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8">
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 bg-gradient-animated-hero"
           aria-hidden="true"
-          style={{
-            background:
-              'radial-gradient(ellipse 70% 60% at 70% 40%, rgba(61, 124, 101, 0.14) 0%, transparent 55%), radial-gradient(ellipse 50% 45% at 20% 70%, rgba(247, 233, 218, 0.55) 0%, transparent 50%)',
-          }}
+        />
+        {/* Soft floating washes for extra depth while the base gradient moves */}
+        <div
+          className="pointer-events-none absolute -right-16 top-0 h-[70%] w-[55%] rounded-full bg-primary/15 blur-3xl animate-blob"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -left-20 bottom-0 h-[55%] w-[50%] rounded-full bg-peach/70 blur-3xl animate-blob animation-delay-2000"
+          aria-hidden="true"
         />
 
         <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2 lg:gap-16">

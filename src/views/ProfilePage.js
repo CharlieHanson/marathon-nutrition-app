@@ -4,7 +4,7 @@ import { Button } from '../components/shared/Button';
 import { Input } from '../components/shared/Input';
 import { Select } from '../components/shared/Select';
 import { Save, Lock, User, Target, FileText, AlertCircle, Calculator } from 'lucide-react';
-import { parseHeightCm, parseWeightKg, computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
+import { parseHeightCm, computeNutritionTargets } from '../../shared/lib/tdeeCalc.js';
 
 const GOAL_OPTIONS = [
   { value: 'lose', label: 'Lose weight' },
@@ -64,9 +64,8 @@ function parseHeightForDisplay(raw) {
   if (!raw || typeof raw !== 'string') return emptyFt;
   const s = raw.trim().toLowerCase();
   
-  // Check if string has unit markers even without numbers (e.g., " m" or "ft in")
+  // Check if string has unit markers even without numbers (e.g., " m")
   const hasMetricMarker = /\s*(m|meters?|cm)\s*$/i.test(s);
-  const hasImperialMarker = /(?:'|'|'|′|ft|feet|foot)|(?:"|"|"|″|in|inches)|['"″]/i.test(s);
   
   const cm = parseHeightCm(raw);
   

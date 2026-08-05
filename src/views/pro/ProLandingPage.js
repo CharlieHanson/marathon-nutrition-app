@@ -131,12 +131,16 @@ export const ProLandingPage = () => {
       <main className="pt-16">
         <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8">
           <div
-            className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 bg-gradient-animated-hero"
             aria-hidden="true"
-            style={{
-              background:
-                'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(61, 124, 101, 0.14) 0%, transparent 55%), radial-gradient(ellipse 45% 40% at 80% 70%, rgba(247, 233, 218, 0.5) 0%, transparent 50%)',
-            }}
+          />
+          <div
+            className="pointer-events-none absolute -right-16 top-0 h-[70%] w-[55%] rounded-full bg-primary/15 blur-3xl animate-blob"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -left-20 bottom-0 h-[55%] w-[50%] rounded-full bg-peach/70 blur-3xl animate-blob animation-delay-2000"
+            aria-hidden="true"
           />
 
           <RevealOnScroll

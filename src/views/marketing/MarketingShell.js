@@ -136,7 +136,6 @@ export function PhoneFrame({ src, alt, className = '', size = 'md' }) {
         )}
       >
         <div className="absolute top-0 left-1/2 z-10 h-5 w-20 -translate-x-1/2 rounded-b-xl bg-gray-900 sm:h-6 sm:w-24" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={alt} className="h-full w-full object-cover object-top" />
       </div>
     </div>

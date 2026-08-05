@@ -128,6 +128,7 @@
   }
 }
 
+/* Soft marketing gradient (subtle) */
 .bg-gradient-animated {
   background: linear-gradient(
     -45deg,
@@ -141,6 +142,31 @@
   );
   background-size: 400% 400%;
   animation: gradient-flow 18s ease infinite;
+}
+
+/* Hero — higher contrast mint/peach so motion is readable */
+.bg-gradient-animated-hero {
+  background: linear-gradient(
+    125deg,
+    #f7f4ec 0%,
+    #d5ebe3 18%,
+    #c8e0d4 32%,
+    #f0e2d2 48%,
+    #e0ecde 62%,
+    #f7e9da 78%,
+    #ebf4f0 90%,
+    #f7f4ec 100%
+  );
+  background-size: 280% 280%;
+  animation: gradient-flow 10s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-gradient-animated,
+  .bg-gradient-animated-hero {
+    animation: none;
+    background-size: 100% 100%;
+  }
 }
 
 /* Intensity Slider */
