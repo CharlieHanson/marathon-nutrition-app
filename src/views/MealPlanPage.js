@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles, Check } from 'lucide-react';
+import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles, Apple, Check } from 'lucide-react';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
@@ -1387,11 +1387,10 @@ export const MealPlanPage = ({
                 <div className="mt-6 flex justify-center sm:justify-start">
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    icon={Sparkles}
+                    variant="outline"
+                    size="md"
+                    icon={Apple}
                     onClick={() => handleOpenLogSnack(day)}
-                    className="text-muted-foreground hover:text-primary"
                   >
                     {mealPlan[day]?.snacks_user_logged ? 'Edit snack' : 'Log snack'}
                   </Button>

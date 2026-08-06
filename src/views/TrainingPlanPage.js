@@ -86,7 +86,7 @@ function formatWeekOfLabel(weekStarting) {
 }
 
 const getWorkoutIcon = (type) => {
-  const iconProps = { className: 'w-4 h-4 text-gray-700' };
+  const iconProps = { className: 'w-5 h-5 text-gray-700' };
   switch (type) {
     case 'Swim':
       return <Waves {...iconProps} />;
@@ -136,25 +136,25 @@ function DayWorkoutsEditor({
   };
 
   return (
-    <div className={showDayLabel ? 'space-y-3' : 'space-y-3'}>
+    <div className={showDayLabel ? 'space-y-4' : 'space-y-4'}>
       {showDayLabel ? (
-        <h3 className="text-lg font-bold text-gray-900 capitalize">{dayLabel}</h3>
+        <h3 className="text-xl font-bold text-gray-900 capitalize">{dayLabel}</h3>
       ) : null}
 
       {selectedWorkouts.map((workout, index) => (
         <div
           key={index}
-          className="flex gap-3 p-3 bg-cream-50 border border-cream-300 rounded-card shadow-soft"
+          className="flex gap-4 p-4 bg-cream-50 border border-cream-300 rounded-card shadow-soft"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 min-w-0">
             <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1">Workout</label>
+              <label className="text-sm text-gray-600 mb-1.5">Workout</label>
               <div className="flex items-center gap-2">
                 {workout.type ? getWorkoutIcon(workout.type) : null}
                 <select
                   value={workout.type || ''}
                   onChange={(e) => updateWorkout(index, 'type', e.target.value)}
-                  className="flex-1 text-sm px-3 py-1.5 border border-cream-300 rounded-md bg-cream-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary h-9"
+                  className="flex-1 text-base px-3 py-2 border border-cream-300 rounded-md bg-cream-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary h-11"
                 >
                   <option value="">Select workout</option>
                   {WORKOUT_TYPES.map((type) => (
@@ -166,13 +166,13 @@ function DayWorkoutsEditor({
               </div>
             </div>
             <div className="flex flex-col">
-              <Label className="text-xs text-muted-foreground mb-1">Distance/Duration</Label>
+              <Label className="text-sm text-muted-foreground mb-1.5">Distance/Duration</Label>
               <Input
                 type="text"
                 placeholder="e.g. 5k, 30 min"
                 value={workout.distance || ''}
                 onChange={(e) => updateWorkout(index, 'distance', e.target.value)}
-                className="h-9 text-sm bg-cream-200"
+                className="h-11 text-base bg-cream-200"
               />
             </div>
             <div className="flex flex-col">
@@ -182,7 +182,7 @@ function DayWorkoutsEditor({
                 onChange={(e) => updateWorkout(index, 'intensity', e.target.value)}
                 options={INTENSITY_LEVELS.map((level) => ({ value: level, label: level }))}
                 placeholder="Intensity"
-                className="[&_button]:h-9 [&_button]:text-sm [&_button]:bg-cream-200 [&_label]:text-xs [&_label]:text-muted-foreground [&_label]:mb-1"
+                className="[&_button]:h-11 [&_button]:text-base [&_button]:bg-cream-200 [&_label]:text-sm [&_label]:text-muted-foreground [&_label]:mb-1.5"
               />
             </div>
             <div className="flex flex-col">
@@ -196,7 +196,7 @@ function DayWorkoutsEditor({
                   { value: 'Evening', label: 'Evening' },
                 ]}
                 placeholder="—"
-                className="[&_button]:h-9 [&_button]:text-sm [&_button]:bg-cream-200 [&_label]:text-xs [&_label]:text-muted-foreground [&_label]:mb-1"
+                className="[&_button]:h-11 [&_button]:text-base [&_button]:bg-cream-200 [&_label]:text-sm [&_label]:text-muted-foreground [&_label]:mb-1.5"
               />
             </div>
           </div>
@@ -209,7 +209,7 @@ function DayWorkoutsEditor({
               className="flex-shrink-0 text-red-600 hover:text-red-800 hover:bg-red-50 self-start"
               title="Remove workout"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-5 h-5" />
             </Button>
           ) : null}
         </div>
@@ -219,8 +219,9 @@ function DayWorkoutsEditor({
         <Button
           type="button"
           variant="outline"
+          size="lg"
           onClick={addWorkout}
-          className="w-full border-dashed border-cream-300 text-primary hover:bg-primary/5"
+          className="w-full border-dashed border-cream-300 text-primary hover:bg-primary/5 text-base"
           icon={Plus}
         >
           {selectedWorkouts.length > 1 ? 'Add another workout' : 'Add workout'}
@@ -291,24 +292,24 @@ export const TrainingPlanPage = ({
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 min-h-[28px]">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900">
               {viewMode === 'day'
                 ? formatSelectedDateLabel(selectedDate)
                 : `Week of ${formatWeekOfLabel(weekStarting)}`}
             </h2>
             <div
-              className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-0.5"
+              className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-1"
               role="group"
               aria-label="Training plan view"
             >
               <button
                 type="button"
                 onClick={() => setViewMode('day')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-colors ${
+                className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
                   viewMode === 'day'
                     ? 'bg-cream-paper text-primary shadow-soft'
                     : 'text-gray-500 hover:text-gray-800'
@@ -319,7 +320,7 @@ export const TrainingPlanPage = ({
               <button
                 type="button"
                 onClick={() => setViewMode('week')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-colors ${
+                className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
                   viewMode === 'week'
                     ? 'bg-cream-paper text-primary shadow-soft'
                     : 'text-gray-500 hover:text-gray-800'
@@ -333,23 +334,23 @@ export const TrainingPlanPage = ({
                 <button
                   type="button"
                   onClick={goToPreviousWeek}
-                  className="p-2 rounded-lg hover:bg-cream-200 text-gray-600"
+                  className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
                   aria-label="Previous week"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   type="button"
                   onClick={goToNextWeek}
-                  className="p-2 rounded-lg hover:bg-cream-200 text-gray-600"
+                  className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
                   aria-label="Next week"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-6 h-6" />
                 </button>
               </div>
             ) : null}
           </div>
-          <div className="text-xs font-semibold text-gray-500">
+          <div className="text-sm font-semibold text-gray-500">
             {isSaving ? (
               <span>Saving…</span>
             ) : showSaved ? (
@@ -359,18 +360,18 @@ export const TrainingPlanPage = ({
         </div>
 
         {viewMode === 'day' ? (
-          <div className="w-fit max-w-full mx-auto rounded-xl border border-cream-300 bg-cream-paper px-1.5 py-1.5 shadow-soft">
+          <div className="w-fit max-w-full mx-auto rounded-xl border border-cream-300 bg-cream-paper px-2 py-2 shadow-soft">
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={goToPreviousWeek}
-                className="p-2 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
                 aria-label="Previous week"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
 
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 {DAYS.map((day, index) => {
                   const isSelected = selectedDay === day;
                   const isToday = isCurrentWeek && day === todayDay;
@@ -379,7 +380,7 @@ export const TrainingPlanPage = ({
                       key={day}
                       type="button"
                       onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
-                      className={`flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg min-w-[2.75rem] sm:min-w-[3rem] transition-colors ${
+                      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg min-w-[3.25rem] sm:min-w-[3.75rem] transition-colors ${
                         isSelected
                           ? 'bg-primary text-white'
                           : isToday
@@ -387,10 +388,10 @@ export const TrainingPlanPage = ({
                             : 'hover:bg-cream-200 text-gray-700'
                       }`}
                     >
-                      <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+                      <span className="text-xs font-bold uppercase tracking-wide leading-none">
                         {DAY_LABELS[index]}
                       </span>
-                      <span className="text-sm font-semibold leading-tight mt-1">{weekDates[index]}</span>
+                      <span className="text-base font-semibold leading-tight mt-1.5">{weekDates[index]}</span>
                     </button>
                   );
                 })}
@@ -399,10 +400,10 @@ export const TrainingPlanPage = ({
               <button
                 type="button"
                 onClick={goToNextWeek}
-                className="p-2 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
                 aria-label="Next week"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -410,7 +411,7 @@ export const TrainingPlanPage = ({
       </div>
 
       {viewMode === 'day' ? (
-        <div className="warm-card p-4">
+        <div className="warm-card p-6">
           <DayWorkoutsEditor
             date={selectedDate}
             workouts={getWorkoutsForDate(selectedDate)}
@@ -418,11 +419,11 @@ export const TrainingPlanPage = ({
           />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {DAYS.map((day, index) => {
             const date = addDaysToDateString(weekStarting, index);
             return (
-              <div key={day} className="warm-card p-4">
+              <div key={day} className="warm-card p-6">
                 <DayWorkoutsEditor
                   date={date}
                   workouts={getWorkoutsForDate(date)}

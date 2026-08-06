@@ -60,7 +60,7 @@ export const Header = ({
   const initials = resolveInitials(effectiveName, user, isGuest);
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/90 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/90 px-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center gap-3 min-w-0">
         <Button
           type="button"
