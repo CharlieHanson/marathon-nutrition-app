@@ -1,5 +1,29 @@
 /** Helpers shared by the web dashboard (aligned with mobile/utils/mealHelpers). */
 
+/** Trailing macros block; starts at `(` so name trailing spaces are preserved. */
+const MEAL_MACRO_SUFFIX_RE =
+  /\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i;
+
+/**
+ * Format is `${name} (Cal: …)`. Split so intentional trailing spaces in `name` survive
+ * (controlled meal editors need them while typing).
+ */
+export const splitMealNameAndMacros = (mealString) => {
+  if (!mealString || typeof mealString !== 'string') {
+    return { name: '', macroSuffix: null };
+  }
+  const macroSuffixMatch = mealString.match(MEAL_MACRO_SUFFIX_RE);
+  if (!macroSuffixMatch) {
+    return { name: mealString, macroSuffix: null };
+  }
+  let name = mealString.slice(0, macroSuffixMatch.index);
+  // Drop the single spacer written by formatMealWithMacros before `(`.
+  if (name.endsWith(' ')) {
+    name = name.slice(0, -1);
+  }
+  return { name, macroSuffix: macroSuffixMatch[0] };
+};
+
 export const parseMeal = (mealString) => {
   if (!mealString || typeof mealString !== 'string') {
     return { name: '', calories: 0, protein: 0, carbs: 0, fat: 0 };
@@ -9,8 +33,7 @@ export const parseMeal = (mealString) => {
   const proteinMatch = mealString.match(/P:\s*(\d+)g/);
   const carbsMatch = mealString.match(/C:\s*(\d+)g/);
   const fatMatch = mealString.match(/F:\s*(\d+)g/);
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
-  const name = nameMatch ? nameMatch[1].trim() : mealString;
+  const { name } = splitMealNameAndMacros(mealString);
 
   return {
     name,

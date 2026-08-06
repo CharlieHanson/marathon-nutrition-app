@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -83,14 +84,21 @@ Return JSON that matches this structure:
   ]
 }`;
 
-    // ── OpenAI (commented out) ──
-    const resp = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 900,
-      response_format: { type: "json_schema", json_schema: grocerySchema() }
-    });
+    // ── OpenAI ──
+    const isGpt5 = String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('gpt-5');
+    const request = {
+      model: OPENAI_MEAL_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_completion_tokens: Math.max(900, isGpt5 ? 4000 : 900),
+      response_format: { type: 'json_schema', json_schema: grocerySchema() },
+    };
+    if (!(isGpt5 || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o'))) {
+      request.temperature = 0.4;
+    }
+    if (isGpt5 || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o')) {
+      request.reasoning_effort = 'low';
+    }
+    const resp = await openai.chat.completions.create(request);
     let text = resp.choices?.[0]?.message?.content ?? '';
 
     // ── Gemini ──

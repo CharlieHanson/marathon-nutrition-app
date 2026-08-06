@@ -101,10 +101,13 @@ export function MarketingFooter() {
 
 export function MarketingShell({ children }) {
   return (
-    <div className="min-h-screen bg-cream text-foreground">
-      <MarketingNav />
-      <main className="pt-16">{children}</main>
-      <MarketingFooter />
+    <div className="relative min-h-screen overflow-hidden text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-animated" aria-hidden="true" />
+      <div className="relative z-10">
+        <MarketingNav />
+        <main className="pt-16">{children}</main>
+        <MarketingFooter />
+      </div>
     </div>
   );
 }
@@ -150,6 +153,7 @@ export function BrowserFrame({
   className = '',
   width,
   height,
+  showChrome = true,
 }) {
   const [failed, setFailed] = React.useState(!src);
 
@@ -166,19 +170,20 @@ export function BrowserFrame({
         className
       )}
     >
-      {/* Chrome bar */}
-      <div className="flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-2.5">
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-300/90" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-300/90" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-300/90" />
+      {showChrome ? (
+        <div className="flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-2.5">
+          <div className="flex gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-300/90" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-300/90" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-300/90" />
+          </div>
+          <div className="ml-2 min-w-0 flex-1 truncate rounded-md border border-border/80 bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
+            app.alimenta.app
+          </div>
         </div>
-        <div className="ml-2 min-w-0 flex-1 truncate rounded-md border border-border/80 bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
-          app.alimenta.app
-        </div>
-      </div>
+      ) : null}
 
-      {/* Viewport — sizes to the screenshot’s natural aspect ratio */}
+      {/* Viewport sizes to the screenshot’s natural aspect ratio */}
       <div
         className={cn(
           'relative w-full bg-cream-50',

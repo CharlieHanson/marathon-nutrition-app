@@ -21,12 +21,12 @@ export const OPENAI_MEAL_MODELS = {
 };
 
 /** <<< Change this to switch meal models: '5.4-nano' | '5-mini' | '5.4-mini' | '5.6-sol' >>> */
-const ACTIVE_OPENAI_MEAL_MODEL = '5.6-sol';
+const ACTIVE_OPENAI_MEAL_MODEL = '5.4-mini';
 
 export const OPENAI_MEAL_MODEL =
   OPENAI_MEAL_MODELS[ACTIVE_OPENAI_MEAL_MODEL] ||
   process.env.OPENAI_MEAL_MODEL ||
-  OPENAI_MEAL_MODELS['5.6-sol'];
+  OPENAI_MEAL_MODELS['5.4-mini'];
 
 /** Models that only accept the default temperature (omit the param). */
 function isGpt5Family(model) {

@@ -57,24 +57,6 @@ function getWeekDateNumbers(weekStarting) {
   });
 }
 
-function ordinalSuffix(n) {
-  const j = n % 10;
-  const k = n % 100;
-  if (j === 1 && k !== 11) return 'st';
-  if (j === 2 && k !== 12) return 'nd';
-  if (j === 3 && k !== 13) return 'rd';
-  return 'th';
-}
-
-function formatSelectedDateLabel(localDate) {
-  if (!localDate) return '';
-  const d = new Date(`${localDate}T00:00:00`);
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
-  const month = d.toLocaleDateString('en-US', { month: 'long' });
-  const day = d.getDate();
-  return `${weekday}, ${month} ${day}${ordinalSuffix(day)}`;
-}
-
 function formatWeekOfLabel(weekStarting) {
   if (!weekStarting) return '';
   const d = new Date(`${weekStarting}T00:00:00`);
@@ -293,121 +275,122 @@ export const TrainingPlanPage = ({
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 min-h-[28px]">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {viewMode === 'day'
-                ? formatSelectedDateLabel(selectedDate)
-                : `Week of ${formatWeekOfLabel(weekStarting)}`}
-            </h2>
-            <div
-              className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-1"
-              role="group"
-              aria-label="Training plan view"
-            >
-              <button
-                type="button"
-                onClick={() => setViewMode('day')}
-                className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
-                  viewMode === 'day'
-                    ? 'bg-cream-paper text-primary shadow-soft'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                Day
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('week')}
-                className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
-                  viewMode === 'week'
-                    ? 'bg-cream-paper text-primary shadow-soft'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                Full week
-              </button>
-            </div>
-            {viewMode === 'week' ? (
-              <div className="flex items-center gap-1">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-bold text-gray-900">Training Plan</h2>
+        <p className="text-gray-600">
+          Log your workouts so meals can match your training load.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 min-h-[28px]">
+        <div className="flex flex-wrap items-center gap-3">
+          {viewMode === 'day' ? (
+            <div className="w-fit max-w-full rounded-lg border border-cream-300 bg-cream-paper px-1.5 py-1.5 shadow-soft">
+              <div className="flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={goToPreviousWeek}
-                  className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
+                  className="p-1.5 rounded-md hover:bg-cream-200 text-gray-600 shrink-0"
                   aria-label="Previous week"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
+
+                <div className="flex items-center gap-1">
+                  {DAYS.map((day, index) => {
+                    const isSelected = selectedDay === day;
+                    const isToday = isCurrentWeek && day === todayDay;
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
+                        className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-md min-w-[2.5rem] sm:min-w-[2.75rem] transition-colors ${
+                          isSelected
+                            ? 'bg-primary text-white'
+                            : isToday
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-cream-200 text-gray-700'
+                        }`}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+                          {DAY_LABELS[index]}
+                        </span>
+                        <span className="text-sm font-semibold leading-tight mt-1">{weekDates[index]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <button
                   type="button"
                   onClick={goToNextWeek}
-                  className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
+                  className="p-1.5 rounded-md hover:bg-cream-200 text-gray-600 shrink-0"
                   aria-label="Next week"
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-            ) : null}
-          </div>
-          <div className="text-sm font-semibold text-gray-500">
-            {isSaving ? (
-              <span>Saving…</span>
-            ) : showSaved ? (
-              <span className="text-green-700">Saved</span>
-            ) : null}
-          </div>
-        </div>
-
-        {viewMode === 'day' ? (
-          <div className="w-fit max-w-full mx-auto rounded-xl border border-cream-300 bg-cream-paper px-2 py-2 shadow-soft">
+            </div>
+          ) : (
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={goToPreviousWeek}
-                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
                 aria-label="Previous week"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-6 h-6" />
               </button>
-
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {DAYS.map((day, index) => {
-                  const isSelected = selectedDay === day;
-                  const isToday = isCurrentWeek && day === todayDay;
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setSelectedDate(addDaysToDateString(weekStarting, index))}
-                      className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg min-w-[3.25rem] sm:min-w-[3.75rem] transition-colors ${
-                        isSelected
-                          ? 'bg-primary text-white'
-                          : isToday
-                            ? 'bg-primary/10 text-primary'
-                            : 'hover:bg-cream-200 text-gray-700'
-                      }`}
-                    >
-                      <span className="text-xs font-bold uppercase tracking-wide leading-none">
-                        {DAY_LABELS[index]}
-                      </span>
-                      <span className="text-base font-semibold leading-tight mt-1.5">{weekDates[index]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
+              <h2 className="text-2xl font-bold text-gray-900 px-1">
+                Week of {formatWeekOfLabel(weekStarting)}
+              </h2>
               <button
                 type="button"
                 onClick={goToNextWeek}
-                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 shrink-0"
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600"
                 aria-label="Next week"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-6 h-6" />
               </button>
             </div>
+          )}
+          <div
+            className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-1"
+            role="group"
+            aria-label="Training plan view"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('day')}
+              className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
+                viewMode === 'day'
+                  ? 'bg-cream-paper text-primary shadow-soft'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-cream-paper text-primary shadow-soft'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Full week
+            </button>
           </div>
-        ) : null}
+        </div>
+        <div className="text-sm font-semibold text-gray-500">
+          {isSaving ? (
+            <span>Saving…</span>
+          ) : showSaved ? (
+            <span className="text-green-700">Saved</span>
+          ) : null}
+        </div>
       </div>
 
       {viewMode === 'day' ? (

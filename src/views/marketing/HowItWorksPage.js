@@ -8,7 +8,7 @@ const STEPS = [
     number: '1',
     title: 'Tell us this week’s training',
     description:
-      'Log workouts, intensity, and when you train so fuel matches the load—morning long runs and evening lifts don’t get the same plate.',
+      'Log workouts, intensity, and when you train so fuel matches the load. Morning long runs and evening lifts don’t get the same plate.',
     screen: '/mobile-screenshots/training.png',
     screenAlt: 'Training day in the app',
   },
@@ -38,7 +38,7 @@ export const HowItWorksPage = () => (
           How it works
         </h1>
         <p className="mt-4 text-lg text-gray-600">
-          From empty week to a plan you can cook—in three steps.
+          From empty week to a plan you can cook, in three steps.
         </p>
       </RevealOnScroll>
     </section>

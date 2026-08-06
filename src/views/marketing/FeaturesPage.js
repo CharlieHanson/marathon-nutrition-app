@@ -4,6 +4,7 @@ import {
   Heart,
   ShoppingCart,
   Utensils,
+  ChefHat,
   BarChart3,
 } from 'lucide-react';
 import { BrowserFrame, FinalCta, MarketingShell } from './MarketingShell';
@@ -19,11 +20,11 @@ const FEATURES = [
   {
     icon: Activity,
     title: 'Training-synced nutrition',
-    body: 'Intensity drives fuel. Your plan shifts when the week does—hard sessions get the right support, recovery days stay light.',
+    body: 'Intensity drives fuel. Your plan shifts when the week does. Hard sessions get the right support, recovery days stay light.',
     screenshot: '/web-screenshots/training.png',
     fileHint: 'public/web-screenshots/training.png',
-    width: 2391,
-    height: 1354,
+    width: 1618,
+    height: 1084,
   },
   {
     icon: Heart,
@@ -31,17 +32,26 @@ const FEATURES = [
     body: 'Likes, dislikes, allergies, and cuisine tastes. Set them once so every plan respects what you’ll actually eat.',
     screenshot: '/web-screenshots/preferences.png',
     fileHint: 'public/web-screenshots/preferences.png',
-    width: 2361,
-    height: 1351,
+    width: 1690,
+    height: 1098,
   },
   {
     icon: Utensils,
-    title: 'Meals that learn, macros that show',
-    body: 'Calories, protein, carbs, and fat on each meal—then rate what you cooked so next week’s plan gets sharper. Stay on track without spreadsheet math.',
+    title: 'Meals that learn',
+    body: 'Calories, protein, carbs, and fat on each meal. Then rate what you cooked so next week’s plan gets sharper. Stay on track without spreadsheet math.',
     screenshot: '/web-screenshots/meals.png',
     fileHint: 'public/web-screenshots/meals.png',
-    width: 2374,
-    height: 1353,
+    width: 1593,
+    height: 1030,
+  },
+  {
+    icon: ChefHat,
+    title: 'Recipes from any meal',
+    body: 'Open a meal and get a full recipe: servings, ingredients, steps, and timing so you can cook what the plan called for without hunting elsewhere.',
+    screenshot: '/web-screenshots/recipe.png',
+    fileHint: 'public/web-screenshots/recipe.png',
+    width: 1668,
+    height: 1255,
   },
   {
     icon: ShoppingCart,
@@ -49,8 +59,8 @@ const FEATURES = [
     body: 'Turn a full plan into a shoppable list so you spend less time hunting recipes and more time training.',
     screenshot: '/web-screenshots/grocery.png',
     fileHint: 'public/web-screenshots/grocery.png',
-    width: 1846,
-    height: 1117,
+    width: 1308,
+    height: 1021,
   },
   {
     icon: BarChart3,
@@ -58,8 +68,8 @@ const FEATURES = [
     body: 'See how the week balances out. Spot over/under patterns and adjust without starting from scratch.',
     screenshot: '/web-screenshots/analytics.png',
     fileHint: 'public/web-screenshots/analytics.png',
-    width: 2364,
-    height: 1348,
+    width: 1650,
+    height: 1258,
   },
 ];
 
@@ -71,7 +81,7 @@ export const FeaturesPage = () => (
           Features
         </h1>
         <p className="mt-4 text-lg text-gray-600">
-          Everything you need to eat for the week you&apos;re actually training—not a
+          Everything you need to eat for the week you&apos;re actually training, not a
           generic calendar of chicken and rice.
         </p>
       </RevealOnScroll>
@@ -114,11 +124,12 @@ export const FeaturesPage = () => (
               >
                 <BrowserFrame
                   src={feature.screenshot}
-                  alt={`${feature.title} — web app`}
+                  alt={`${feature.title} web app`}
                   fileHint={feature.fileHint}
                   placeholderLabel={feature.title}
                   width={feature.width}
                   height={feature.height}
+                  showChrome={false}
                   className="max-w-none"
                 />
               </RevealOnScroll>

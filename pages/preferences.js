@@ -19,6 +19,19 @@ export default function Preferences() {
     }
   }, [user, loading, isGuest, router, router.asPath]);
 
+  // Flush pending preference saves on route leave
+  React.useEffect(() => {
+    const handleRouteChange = () => {
+      void preferences.flushPendingSave();
+    };
+    router.events?.on?.('routeChangeStart', handleRouteChange);
+    return () => {
+      router.events?.off?.('routeChangeStart', handleRouteChange);
+      void preferences.flushPendingSave();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.events]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-cream">
@@ -44,7 +57,6 @@ export default function Preferences() {
       <FoodPreferencesPage
         preferences={preferences.preferences}
         onUpdate={preferences.updatePreferences}
-        onSave={preferences.savePreferences}
         isSaving={preferences.isSaving}
         isLoading={preferences.isLoading}
         isGuest={isGuest}

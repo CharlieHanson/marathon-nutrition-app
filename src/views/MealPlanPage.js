@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCcw, BarChart3, Star, ShoppingCart, ChevronLeft, ChevronRight, Copy, UtensilsCrossed, Heart, ChefHat, Sparkles, Apple, Check } from 'lucide-react';
-import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
 import { MealPlanSkeleton } from '../components/shared/LoadingSkeleton';
 import { Tooltip } from '../components/shared/Tooltip';
-import { Tabs, TabsList, TabsTrigger } from '@/src/components/ui/tabs';
 import { RecipeModal } from '../components/modals/RecipeModal';
 import { GroceryModal } from '../components/modals/GroceryModal';
 import { CopyMealModal } from '../components/modals/CopyMealModal';
@@ -291,8 +289,7 @@ export const MealPlanPage = ({
 
     try {
       const mealString = mealPlan[day][mealType];
-      const nameMatch = typeof mealString === 'string' ? mealString.match(/^(.+?)\s*\(/) : null;
-      const description = nameMatch ? nameMatch[1].trim() : String(mealString || '').trim();
+      const description = parseMeal(mealString).name || String(mealString || '').trim();
       const calMatch = typeof mealString === 'string' ? mealString.match(/Cal:\s*(\d+)/i) : null;
       const proteinMatch = typeof mealString === 'string' ? mealString.match(/P:\s*(\d+)g/i) : null;
       const carbsMatch = typeof mealString === 'string' ? mealString.match(/C:\s*(\d+)g/i) : null;
@@ -724,138 +721,202 @@ export const MealPlanPage = ({
 
   // ✅ Only show skeleton if loading AND we *don't* have meals yet
   if (isLoading && !hasMeals) {
-    return (
-      <div className="space-y-8">
-        <MealPlanSkeleton />
-      </div>
-    );
+    return <MealPlanSkeleton />;
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        {/* Title + view mode */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <Tabs value={viewMode} onValueChange={setViewMode}>
-            <TabsList className="bg-cream-100 border border-border h-auto p-0.5">
-              <TabsTrigger
-                value="day"
-                className="px-3 py-1.5 text-xs font-bold rounded-[10px] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-soft"
-              >
-                Day
-              </TabsTrigger>
-              <TabsTrigger
-                value="week"
-                className="px-3 py-1.5 text-xs font-bold rounded-[10px] data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-soft"
-              >
-                Full week
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-bold text-gray-900">Meal Plan</h2>
+        <p className="text-gray-600">
+          Your personalized meals for the week, tuned to your training.
+        </p>
+      </div>
 
-          {currentWeekStarting ? (
-            <div className="flex flex-wrap items-center gap-1.5 text-sm">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handlePreviousWeek}
-                className="h-8 w-8"
-                disabled={!onLoadWeek}
-                title="Previous week"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="font-semibold text-foreground px-1">
-                Week of {formatWeekDate(currentWeekStarting)}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleNextWeek}
-                className="h-8 w-8"
-                disabled={!onLoadWeek}
-                title="Next week"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              {!isCurrentWeek ? (
-                <Button
+      <div className="flex flex-wrap items-center justify-between gap-3 min-h-[28px]">
+        <div className="flex flex-wrap items-center gap-3">
+          {viewMode === 'day' && currentWeekStarting ? (
+            <div className="w-fit max-w-full rounded-lg border border-cream-300 bg-cream-paper px-1.5 py-1.5 shadow-soft">
+              <div className="flex items-center gap-0.5">
+                <button
                   type="button"
-                  onClick={handleCurrentWeek}
-                  variant="outline"
-                  size="sm"
-                  className="ml-1 h-7 text-xs border-primary/20 text-primary"
+                  onClick={handlePreviousWeek}
+                  className="p-1.5 rounded-md hover:bg-cream-200 text-gray-600 shrink-0 disabled:opacity-40"
+                  disabled={!onLoadWeek}
+                  aria-label="Previous week"
                 >
-                  This week
-                </Button>
-              ) : null}
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {DAYS.map((day, index) => {
+                    const isSelected = selectedDay === day;
+                    const isToday = isCurrentWeek && day === todayDayName;
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setSelectedDay(day)}
+                        className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-md min-w-[2.5rem] sm:min-w-[2.75rem] transition-colors ${
+                          isSelected
+                            ? 'bg-primary text-white'
+                            : isToday
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-cream-200 text-gray-700'
+                        }`}
+                        aria-label={`${DAY_LABELS[index]} ${weekDateNumbers[index]}`}
+                        aria-pressed={isSelected}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
+                          {DAY_LABELS[index]}
+                        </span>
+                        <span className="text-sm font-semibold leading-tight mt-1">{weekDateNumbers[index]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleNextWeek}
+                  className="p-1.5 rounded-md hover:bg-cream-200 text-gray-600 shrink-0 disabled:opacity-40"
+                  disabled={!onLoadWeek}
+                  aria-label="Next week"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ) : currentWeekStarting ? (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handlePreviousWeek}
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 disabled:opacity-40"
+                disabled={!onLoadWeek}
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <h3 className="text-2xl font-bold text-gray-900 px-1">
+                Week of {formatWeekDate(currentWeekStarting)}
+              </h3>
+              <button
+                type="button"
+                onClick={handleNextWeek}
+                className="p-2.5 rounded-lg hover:bg-cream-200 text-gray-600 disabled:opacity-40"
+                disabled={!onLoadWeek}
+                aria-label="Next week"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
             </div>
           ) : null}
-        </div>
 
-        {/* Actions toolbar */}
-        <div className="flex flex-wrap items-center gap-2 pb-5 mb-5 border-b border-cream-300">
-          {[
-            {
-              id: 'analytics',
-              label: 'Analytics',
-              icon: BarChart3,
-              onClick: () => setShowAnalyticsModal(true),
-              show: true,
-            },
-            {
-              id: 'grocery',
-              label: 'Grocery list',
-              icon: ShoppingCart,
-              onClick: generateGroceryList,
-              show: hasMeals,
-            },
-            {
-              id: 'prep',
-              label: 'Meal prep',
-              icon: ChefHat,
-              onClick: () => setShowMealPrepModal(true),
-              show: true,
-            },
-          ]
-            .filter((a) => a.show)
-            .map(({ id, label, icon: Icon, onClick }) => (
-              <Button
-                key={id}
-                type="button"
-                onClick={onClick}
-                variant="outline"
-                size="sm"
-                className="border-border bg-card text-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-                icon={Icon}
-              >
-                {label}
-              </Button>
-            ))}
-        </div>
-
-        {(displayMessage || isGenerating) && (
-          <div className={`mb-4 p-4 rounded-lg border ${
-            displayMessage.includes('✅') 
-              ? 'bg-green-50 border-green-500 text-green-800'
-              : displayMessage.includes('❌')
-              ? 'bg-red-50 border-red-500 text-red-800'
-              : 'bg-primary-50 border-primary text-primary-800'
-          }`}>
-            <div className="flex items-center gap-2">
-              {(displayMessage.includes('🔄') || isGenerating) && (
-                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
-              )}
-              <span className="font-medium">
-                {isGenerating && !displayMessage ? '🔄 Generating personalized meal plan...' : displayMessage}
-              </span>
-            </div>
+          <div
+            className="inline-flex rounded-xl border border-cream-300 bg-cream-100 p-1"
+            role="group"
+            aria-label="Meal plan view"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('day')}
+              className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
+                viewMode === 'day'
+                  ? 'bg-cream-paper text-primary shadow-soft'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 text-sm font-bold rounded-[10px] transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-cream-paper text-primary shadow-soft'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              Full week
+            </button>
           </div>
-        )}
 
-        {false && (<>
+          {currentWeekStarting && !isCurrentWeek ? (
+            <Button
+              type="button"
+              onClick={handleCurrentWeek}
+              variant="outline"
+              size="sm"
+              className="border-primary/20 text-primary"
+            >
+              This week
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Actions toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          {
+            id: 'analytics',
+            label: 'Analytics',
+            icon: BarChart3,
+            onClick: () => setShowAnalyticsModal(true),
+            show: true,
+          },
+          {
+            id: 'grocery',
+            label: 'Grocery list',
+            icon: ShoppingCart,
+            onClick: generateGroceryList,
+            show: hasMeals,
+          },
+          {
+            id: 'prep',
+            label: 'Meal prep',
+            icon: ChefHat,
+            onClick: () => setShowMealPrepModal(true),
+            show: true,
+          },
+        ]
+          .filter((a) => a.show)
+          .map(({ id, label, icon: Icon, onClick }) => (
+            <Button
+              key={id}
+              type="button"
+              onClick={onClick}
+              variant="outline"
+              size="sm"
+              className="border-border bg-card text-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+              icon={Icon}
+            >
+              {label}
+            </Button>
+          ))}
+      </div>
+
+      {(displayMessage || isGenerating) && (
+        <div className={`p-4 rounded-lg border ${
+          displayMessage.includes('✅') 
+            ? 'bg-green-50 border-green-500 text-green-800'
+            : displayMessage.includes('❌')
+            ? 'bg-red-50 border-red-500 text-red-800'
+            : 'bg-primary-50 border-primary text-primary-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {(displayMessage.includes('🔄') || isGenerating) && (
+              <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+            )}
+            <span className="font-medium">
+              {isGenerating && !displayMessage ? '🔄 Generating personalized meal plan...' : displayMessage}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {false && (<>
         {/* TEST: Generate Day with New Architecture */}
         <div className="mb-6 p-4 bg-indigo-50 border-2 border-indigo-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
@@ -1243,169 +1304,62 @@ export const MealPlanPage = ({
         )}
         </>)}
 
-        <div className="space-y-6">
-          {viewMode === 'day' && currentWeekStarting ? (
-            <div className="flex w-fit max-w-full mx-auto items-center gap-1 rounded-xl border border-cream-300 bg-cream-50 px-1.5 py-1.5">
-              <button
-                type="button"
-                onClick={handlePreviousWeek}
-                className="p-2 rounded-lg text-gray-600 hover:bg-cream-200 hover:text-primary disabled:opacity-40 shrink-0"
-                disabled={!onLoadWeek}
-                aria-label="Previous week"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1 sm:gap-1.5">
-                {DAYS.map((day, index) => {
-                  const isSelected = selectedDay === day;
-                  const isToday = isCurrentWeek && day === todayDayName;
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setSelectedDay(day)}
-                      className={`flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg min-w-[2.75rem] sm:min-w-[3rem] transition-colors ${
-                        isSelected
-                          ? 'bg-primary text-white shadow-sm'
-                          : isToday
-                            ? 'bg-primary/10 text-primary'
-                            : 'hover:bg-cream-200 text-gray-700'
-                      }`}
-                      aria-label={`${DAY_LABELS[index]} ${weekDateNumbers[index]}`}
-                      aria-pressed={isSelected}
-                    >
-                      <span className="text-[10px] font-bold uppercase tracking-wide leading-none">
-                        {DAY_LABELS[index]}
-                      </span>
-                      <span className="text-sm font-semibold leading-tight mt-1">{weekDateNumbers[index]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNextWeek}
-                className="p-2 rounded-lg text-gray-600 hover:bg-cream-200 hover:text-primary disabled:opacity-40 shrink-0"
-                disabled={!onLoadWeek}
-                aria-label="Next week"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          ) : null}
-
-          {daysToShow.map((day, dayIndex) => {
-            const dayMacros = calculateDayMacros(mealPlan[day]);
-            
-            return (
-              <section
-                key={day}
-                className={
-                  dayIndex > 0
-                    ? 'pt-8 mt-2 border-t border-border/70'
-                    : undefined
-                }
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 mb-5">
-                  <h3 className="text-xl font-semibold tracking-tight text-foreground capitalize">
-                    {day}
-                  </h3>
-
-                  {dayMacros.hasData ? (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                      <span className="font-semibold tabular-nums" style={{ color: macroColors.calories }}>
-                        {dayMacros.calories}
-                        <span className="ml-1 font-medium text-muted-foreground">cal</span>
-                      </span>
-                      <span className="text-border">·</span>
-                      <span className="font-medium tabular-nums" style={{ color: macroColors.protein }}>
-                        {dayMacros.protein}g
-                        <span className="ml-1 text-muted-foreground">P</span>
-                      </span>
-                      <span className="font-medium tabular-nums" style={{ color: macroColors.carbs }}>
-                        {dayMacros.carbs}g
-                        <span className="ml-1 text-muted-foreground">C</span>
-                      </span>
-                      <span className="font-medium tabular-nums" style={{ color: macroColors.fat }}>
-                        {dayMacros.fat}g
-                        <span className="ml-1 text-muted-foreground">F</span>
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 sm:gap-y-8">
-                  {(mealPlan[day]?.snacks_user_logged
-                    ? ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert']
-                    : ['breakfast', 'lunch', 'dinner', 'dessert']
-                  ).map((mealType) => {
-                    const canComplete =
-                      !isGuest &&
-                      isCurrentWeek &&
-                      day === todayDayName &&
-                      typeof onToggleMealCompletion === 'function';
-                    const isCompleted = canComplete
-                      ? (completions || []).some(
-                          (c) => c.day_of_week === day && c.meal_type === mealType
-                        )
-                      : false;
-
-                    return (
-                      <MealCard
-                        key={mealType}
-                        day={day}
-                        mealType={mealType}
-                        meal={mealPlan[day][mealType]}
-                        rating={mealPlan[day][`${mealType}_rating`] || 0}
-                        onUpdate={onUpdate}
-                        onRate={onRate}
-                        onRegenerate={mealType === 'snacks' ? undefined : handleRegenerate}
-                        onGetRecipe={getRecipe}
-                        onCopy={handleCopyClick}
-                        onLogClick={handleLogClick}
-                        onGenerateSingleMeal={mealType === 'snacks' ? undefined : onGenerateSingleMeal}
-                        onMealPrepClick={mealType === 'snacks' ? undefined : handleMealPrepClick}
-                        loadingRecipe={loadingRecipe}
-                        onSaveMeal={onSaveMeal}
-                        isMealSaved={isMealSaved}
-                        isGuest={isGuest}
-                        isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
-                        showComplete={canComplete}
-                        isCompleted={isCompleted}
-                        onToggleComplete={
-                          canComplete
-                            ? () => onToggleMealCompletion(day, mealType)
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="mt-6 flex justify-center sm:justify-start">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="md"
-                    icon={Apple}
-                    onClick={() => handleOpenLogSnack(day)}
-                  >
-                    {mealPlan[day]?.snacks_user_logged ? 'Edit snack' : 'Log snack'}
-                  </Button>
-                </div>
-
-                {mealPlan[day]?.over_budget ? (
-                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-                    Over daily budget — some meals kept at minimum targets
-                  </div>
-                ) : null}
-              </section>
-            );
-          })}
+      {viewMode === 'day' ? (
+        <div className="warm-card p-6">
+          {daysToShow.map((day) => (
+            <DayMealsSection
+              key={day}
+              day={day}
+              mealPlan={mealPlan}
+              isGuest={isGuest}
+              isCurrentWeek={isCurrentWeek}
+              todayDayName={todayDayName}
+              completions={completions}
+              onToggleMealCompletion={onToggleMealCompletion}
+              onUpdate={onUpdate}
+              onRate={onRate}
+              onRegenerate={handleRegenerate}
+              onGetRecipe={getRecipe}
+              onCopy={handleCopyClick}
+              onLogClick={handleLogClick}
+              onGenerateSingleMeal={onGenerateSingleMeal}
+              onMealPrepClick={handleMealPrepClick}
+              loadingRecipe={loadingRecipe}
+              onSaveMeal={onSaveMeal}
+              isMealSaved={isMealSaved}
+              onOpenLogSnack={handleOpenLogSnack}
+            />
+          ))}
         </div>
-      </Card>
+      ) : (
+        <div className="space-y-5">
+          {daysToShow.map((day) => (
+            <div key={day} className="warm-card p-6">
+              <DayMealsSection
+                day={day}
+                mealPlan={mealPlan}
+                isGuest={isGuest}
+                isCurrentWeek={isCurrentWeek}
+                todayDayName={todayDayName}
+                completions={completions}
+                onToggleMealCompletion={onToggleMealCompletion}
+                onUpdate={onUpdate}
+                onRate={onRate}
+                onRegenerate={handleRegenerate}
+                onGetRecipe={getRecipe}
+                onCopy={handleCopyClick}
+                onLogClick={handleLogClick}
+                onGenerateSingleMeal={onGenerateSingleMeal}
+                onMealPrepClick={handleMealPrepClick}
+                loadingRecipe={loadingRecipe}
+                onSaveMeal={onSaveMeal}
+                isMealSaved={isMealSaved}
+                onOpenLogSnack={handleOpenLogSnack}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       <RecipeModal
         isOpen={showRecipeModal}
@@ -1483,10 +1437,132 @@ export const MealPlanPage = ({
   );
 };
 
+const DayMealsSection = ({
+  day,
+  mealPlan,
+  isGuest,
+  isCurrentWeek,
+  todayDayName,
+  completions,
+  onToggleMealCompletion,
+  onUpdate,
+  onRate,
+  onRegenerate,
+  onGetRecipe,
+  onCopy,
+  onLogClick,
+  onGenerateSingleMeal,
+  onMealPrepClick,
+  loadingRecipe,
+  onSaveMeal,
+  isMealSaved,
+  onOpenLogSnack,
+}) => {
+  const dayMacros = calculateDayMacros(mealPlan[day]);
+  const mealTypes = mealPlan[day]?.snacks_user_logged
+    ? ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert']
+    : ['breakfast', 'lunch', 'dinner', 'dessert'];
+
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 mb-5">
+        <h3 className="text-xl font-semibold tracking-tight text-foreground capitalize">
+          {day}
+        </h3>
+
+        {dayMacros.hasData ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-semibold tabular-nums" style={{ color: macroColors.calories }}>
+              {dayMacros.calories}
+              <span className="ml-1 font-medium text-muted-foreground">cal</span>
+            </span>
+            <span className="text-border">·</span>
+            <span className="font-medium tabular-nums" style={{ color: macroColors.protein }}>
+              {dayMacros.protein}g
+              <span className="ml-1 text-muted-foreground">P</span>
+            </span>
+            <span className="font-medium tabular-nums" style={{ color: macroColors.carbs }}>
+              {dayMacros.carbs}g
+              <span className="ml-1 text-muted-foreground">C</span>
+            </span>
+            <span className="font-medium tabular-nums" style={{ color: macroColors.fat }}>
+              {dayMacros.fat}g
+              <span className="ml-1 text-muted-foreground">F</span>
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 sm:gap-y-8">
+        {mealTypes.map((mealType) => {
+          const canComplete =
+            !isGuest &&
+            isCurrentWeek &&
+            day === todayDayName &&
+            typeof onToggleMealCompletion === 'function';
+          const isCompleted = canComplete
+            ? (completions || []).some(
+                (c) => c.day_of_week === day && c.meal_type === mealType
+              )
+            : false;
+
+          return (
+            <MealCard
+              key={mealType}
+              day={day}
+              mealType={mealType}
+              meal={mealPlan[day]?.[mealType]}
+              rating={mealPlan[day]?.[`${mealType}_rating`] || 0}
+              onUpdate={onUpdate}
+              onRate={onRate}
+              onRegenerate={mealType === 'snacks' ? undefined : onRegenerate}
+              onGetRecipe={onGetRecipe}
+              onCopy={onCopy}
+              onLogClick={onLogClick}
+              onGenerateSingleMeal={mealType === 'snacks' ? undefined : onGenerateSingleMeal}
+              onMealPrepClick={mealType === 'snacks' ? undefined : onMealPrepClick}
+              loadingRecipe={loadingRecipe}
+              onSaveMeal={onSaveMeal}
+              isMealSaved={isMealSaved}
+              isGuest={isGuest}
+              isAdjusted={(mealPlan[day]?.adjusted_meal_types || []).includes(mealType)}
+              showComplete={canComplete}
+              isCompleted={isCompleted}
+              onToggleComplete={
+                canComplete
+                  ? () => onToggleMealCompletion(day, mealType)
+                  : undefined
+              }
+            />
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex justify-center sm:justify-start">
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          icon={Apple}
+          onClick={() => onOpenLogSnack(day)}
+        >
+          {mealPlan[day]?.snacks_user_logged ? 'Edit snack' : 'Log snack'}
+        </Button>
+      </div>
+
+      {mealPlan[day]?.over_budget ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          Over daily budget — some meals kept at minimum targets
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const mealActionBtnClass =
   'inline-flex h-7 w-7 items-center justify-center rounded-md text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary disabled:cursor-default disabled:opacity-50';
 
-const MealCard = ({ 
+const MealCard = ({
   day, 
   mealType, 
   meal, 
@@ -1525,11 +1601,17 @@ const MealCard = ({
   );
 
   const handleMealTextChange = (value) => {
+    // Textarea shows name only; strip pasted macros without eating trailing spaces.
+    const nextName = value.replace(
+      /\s*\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i,
+      ''
+    );
+
     if (hasMacros && parsedMeal) {
       onUpdate(
         day,
         mealType,
-        formatMealWithMacros(value, {
+        formatMealWithMacros(nextName, {
           calories: parsedMeal.calories,
           protein: parsedMeal.protein,
           carbs: parsedMeal.carbs,
@@ -1538,7 +1620,7 @@ const MealCard = ({
       );
       return;
     }
-    onUpdate(day, mealType, value);
+    onUpdate(day, mealType, nextName);
   };
 
   const handleSave = async () => {
@@ -1580,18 +1662,18 @@ const MealCard = ({
           <button
             type="button"
             onClick={() => setShowAddOptions(true)}
-            className="group flex h-full min-h-[5.5rem] w-full flex-col items-start justify-center gap-1 rounded-lg border border-dashed border-border/80 px-3 py-4 text-left transition-colors hover:border-primary/35 hover:bg-primary/[0.03]"
+            className="group flex h-full min-h-[5.5rem] w-full flex-col items-start justify-center gap-1 rounded-xl border border-cream-300 bg-cream-200 px-3.5 py-4 text-left shadow-soft transition-colors hover:border-primary/40 hover:bg-primary/[0.06]"
           >
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary/80">
               {mealLabel}
             </span>
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground/80 group-hover:text-primary">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-primary/70 group-hover:text-primary">
               <Plus className="h-3.5 w-3.5" />
               Add meal
             </span>
           </button>
         ) : (
-          <div className="space-y-2.5 rounded-lg border border-dashed border-primary/25 bg-primary/[0.03] p-3">
+          <div className="space-y-2.5 rounded-xl border border-primary/25 bg-cream-200 p-3 shadow-soft">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 {mealLabel}
@@ -1622,7 +1704,7 @@ const MealCard = ({
                   setShowAddOptions(false);
                   onLogClick(day, mealType);
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-cream-paper px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-primary/10"
               >
                 <UtensilsCrossed className="h-3.5 w-3.5" />
                 Log meal
@@ -1633,7 +1715,7 @@ const MealCard = ({
                   setShowAddOptions(false);
                   onMealPrepClick?.(day, mealType);
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-cream-paper px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-primary/10"
               >
                 <ChefHat className="h-3.5 w-3.5" />
                 Meal prep

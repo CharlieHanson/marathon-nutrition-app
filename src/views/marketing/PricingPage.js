@@ -109,7 +109,7 @@ export const PricingPage = () => {
             Pricing
           </h1>
           <p className="mt-4 text-lg text-gray-600">
-            Everything you need to plan the week is free today. Plus is in development—join the waitlist if you want more headroom and integrations later.
+            Everything you need to plan the week is free today. Plus is in development. Join the waitlist if you want more headroom and integrations later.
           </p>
         </div>
       </section>
@@ -121,7 +121,7 @@ export const PricingPage = () => {
             <p className="mt-2 text-3xl font-bold text-gray-900">$0</p>
             <p className="mt-1 text-sm text-muted-foreground">Available now</p>
             <p className="mt-4 text-[15px] leading-relaxed text-gray-600">
-              Full meal planning for athletes—training input, preferences, weekly plans, recipes, grocery lists, and ratings.
+              Full meal planning for athletes: training input, preferences, weekly plans, recipes, grocery lists, and ratings.
             </p>
             <Link href="/login" className="mt-6 block">
               <Button variant="primary" size="lg" className="w-full">
@@ -140,7 +140,7 @@ export const PricingPage = () => {
             <p className="mt-2 text-3xl font-bold text-gray-900">TBD</p>
             <p className="mt-1 text-sm text-muted-foreground">Coming later</p>
             <p className="mt-4 text-[15px] leading-relaxed text-gray-600">
-              Higher limits, stronger models, Strava, an assistant chatbot, and more—for athletes who want to go further once we ship it.
+              Higher limits, stronger models, Strava, an assistant chatbot, and more for athletes who want to go further once we ship it.
             </p>
             <Button
               type="button"

@@ -1,68 +1,26 @@
 // src/components/modals/AnalyticsModal.js
 import React from 'react';
-import { TrendingUp, Flame, Dumbbell, Beef, Wheat, Droplet } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
+  BarChart3,
+  Dumbbell,
+  Flame,
+  Utensils,
+  Droplets,
+  X,
+} from 'lucide-react';
 import { macroColors } from '../../../shared/lib/macroColors';
+import { calculateDayMacros } from '../../utils/mealHelpers';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
+  DialogDescription,
   DialogTitle,
-  DialogFooter,
 } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/shared/Button';
+import { PageDecor } from '@/src/components/shared/PageDecor';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks', 'dessert'];
 
-// Extract macros from meal string
-const extractMacros = (mealString) => {
-  if (!mealString || typeof mealString !== 'string') {
-    return { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  }
-  
-  const get = (re) => {
-    const m = mealString.match(re);
-    return m ? Number(m[1]) : 0;
-  };
-  
-  return {
-    calories: get(/Cal:\s*(\d+)/i),
-    protein: get(/P:\s*(\d+)\s*g/i),
-    carbs: get(/C:\s*(\d+)\s*g/i),
-    fat: get(/F:\s*(\d+)\s*g/i),
-  };
-};
-
-// Calculate day totals
-const calculateDayMacros = (dayMeals) => {
-  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-  
-  MEAL_TYPES.forEach(mealType => {
-    const meal = dayMeals?.[mealType];
-    if (meal && typeof meal === 'string') {
-      const macros = extractMacros(meal);
-      totals.calories += macros.calories;
-      totals.protein += macros.protein;
-      totals.carbs += macros.carbs;
-      totals.fat += macros.fat;
-    }
-  });
-  
-  return totals;
-};
-
-// Calculate week totals and averages
 const calculateWeekStats = (mealPlan) => {
   const dayStats = [];
   let totalCalories = 0;
@@ -71,13 +29,13 @@ const calculateWeekStats = (mealPlan) => {
   let totalFat = 0;
   let daysWithData = 0;
 
-  DAYS.forEach(day => {
+  DAYS.forEach((day) => {
     const dayMacros = calculateDayMacros(mealPlan?.[day]);
     dayStats.push({
       day: day.slice(0, 3).charAt(0).toUpperCase() + day.slice(1, 3),
       fullDay: day,
       ...dayMacros,
-      hasData: dayMacros.calories > 0
+      hasData: dayMacros.calories > 0,
     });
 
     if (dayMacros.calories > 0) {
@@ -91,318 +49,381 @@ const calculateWeekStats = (mealPlan) => {
 
   return {
     dayStats,
-    totals: { calories: totalCalories, protein: totalProtein, carbs: totalCarbs, fat: totalFat },
+    totals: {
+      calories: totalCalories,
+      protein: totalProtein,
+      carbs: totalCarbs,
+      fat: totalFat,
+    },
     averages: {
       calories: daysWithData > 0 ? Math.round(totalCalories / daysWithData) : 0,
       protein: daysWithData > 0 ? Math.round(totalProtein / daysWithData) : 0,
       carbs: daysWithData > 0 ? Math.round(totalCarbs / daysWithData) : 0,
       fat: daysWithData > 0 ? Math.round(totalFat / daysWithData) : 0,
     },
-    daysWithData
+    daysWithData,
   };
 };
 
-export const AnalyticsModal = ({ 
-  isOpen, 
-  onClose, 
-  mealPlan,
-  userProfile,
-  trainingPlan
-}) => {
-  const { dayStats, totals, averages, daysWithData } = calculateWeekStats(mealPlan);
-  
-  // Macro distribution for pie chart (calories from each macro)
-  const macroDistribution = [
-    { name: 'Protein', value: averages.protein * 4, grams: averages.protein, color: macroColors.protein },
-    { name: 'Carbs', value: averages.carbs * 4, grams: averages.carbs, color: macroColors.carbs },
-    { name: 'Fat', value: averages.fat * 9, grams: averages.fat, color: macroColors.fat },
-  ];
-  
-  const totalMacroCalories = macroDistribution.reduce((sum, m) => sum + m.value, 0);
-  
-  // Training intensity correlation — expects { [weekday]: { workouts: [...] } } with UI labels
-  const getTrainingInsight = () => {
-    if (!trainingPlan) return null;
-    
-    let highIntensityDays = [];
-    let restDays = [];
-    
-    DAYS.forEach(day => {
-      const dayData = trainingPlan[day];
-      const dayMacros = dayStats.find(d => d.fullDay === day);
-      
-      if (!dayMacros?.hasData) return;
-      
-      const workouts = dayData?.workouts || [];
-      if (workouts.length === 0) {
-        restDays.push(dayMacros.calories);
-        return;
-      }
+const getTrainingInsight = (trainingPlan, dayStats) => {
+  if (!trainingPlan) return null;
 
-      let hasHighIntensity = false;
-      let hasRest = false;
+  const highIntensityDays = [];
+  const restDays = [];
 
-      workouts.forEach((workout) => {
-        const intensity = workout?.intensity || 'Medium';
-        if (intensity === 'High') {
-          hasHighIntensity = true;
-        } else if (intensity === 'Recovery' || workout?.type?.toLowerCase() === 'rest') {
-          hasRest = true;
-        }
-      });
+  DAYS.forEach((day) => {
+    const dayData = trainingPlan[day];
+    const dayMacros = dayStats.find((d) => d.fullDay === day);
 
-      if (hasHighIntensity) {
-        highIntensityDays.push(dayMacros.calories);
-      } else if (hasRest) {
-        restDays.push(dayMacros.calories);
+    if (!dayMacros?.hasData) return;
+
+    const workouts = dayData?.workouts || [];
+    if (workouts.length === 0) {
+      restDays.push(dayMacros.calories);
+      return;
+    }
+
+    let hasHighIntensity = false;
+    let hasRest = false;
+
+    workouts.forEach((workout) => {
+      const intensity = workout?.intensity || 'Medium';
+      if (intensity === 'High') {
+        hasHighIntensity = true;
+      } else if (intensity === 'Recovery' || workout?.type?.toLowerCase() === 'rest') {
+        hasRest = true;
       }
     });
-    
-    const avgHigh = highIntensityDays.length > 0 
+
+    if (hasHighIntensity) {
+      highIntensityDays.push(dayMacros.calories);
+    } else if (hasRest) {
+      restDays.push(dayMacros.calories);
+    }
+  });
+
+  const avgHigh =
+    highIntensityDays.length > 0
       ? Math.round(highIntensityDays.reduce((a, b) => a + b, 0) / highIntensityDays.length)
       : null;
-    const avgRest = restDays.length > 0
+  const avgRest =
+    restDays.length > 0
       ? Math.round(restDays.reduce((a, b) => a + b, 0) / restDays.length)
       : null;
-    
-    return { avgHigh, avgRest, highCount: highIntensityDays.length, restCount: restDays.length };
+
+  return {
+    avgHigh,
+    avgRest,
+    highCount: highIntensityDays.length,
+    restCount: restDays.length,
   };
-  
-  const trainingInsight = getTrainingInsight();
+};
 
-  // Custom tooltip for bar chart
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border text-sm">
-          <p className="font-semibold capitalize">{data.fullDay}</p>
-          <p style={{ color: macroColors.calories }}>{data.calories} cal</p>
-          <p style={{ color: macroColors.protein }}>{data.protein}g protein</p>
-          <p style={{ color: macroColors.carbs }}>{data.carbs}g carbs</p>
-          <p style={{ color: macroColors.fat }}>{data.fat}g fat</p>
-        </div>
-      );
-    }
-    return null;
-  };
+const SectionLabel = ({ children }) => (
+  <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.9px] text-muted-foreground">
+    {children}
+  </p>
+);
 
-  // Custom label for pie chart
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+const SoftCard = ({ children, className = '' }) => (
+  <div
+    className={`rounded-[18px] border border-cream-300 bg-cream-paper p-4 shadow-soft ${className}`}
+  >
+    {children}
+  </div>
+);
 
-    if (percent < 0.1) return null; // Don't show label if slice is too small
+const RowCard = ({ children }) => (
+  <div className="flex items-center justify-between gap-3 rounded-xl border border-cream-300 bg-cream-50 px-3 py-2.5">
+    {children}
+  </div>
+);
 
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="text-xs font-semibold"
-      >
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
+export const AnalyticsModal = ({
+  isOpen,
+  onClose,
+  mealPlan,
+  userProfile: _userProfile,
+  trainingPlan,
+}) => {
+  const { dayStats, totals, averages, daysWithData } = calculateWeekStats(mealPlan);
+  const trainingInsight = getTrainingInsight(trainingPlan, dayStats);
+
+  const macroDistribution = [
+    {
+      name: 'Protein',
+      value: averages.protein * 4,
+      grams: averages.protein,
+      color: macroColors.protein,
+    },
+    {
+      name: 'Carbs',
+      value: averages.carbs * 4,
+      grams: averages.carbs,
+      color: macroColors.carbs,
+    },
+    {
+      name: 'Fat',
+      value: averages.fat * 9,
+      grams: averages.fat,
+      color: macroColors.fat,
+    },
+  ];
+
+  const totalMacroCalories = macroDistribution.reduce((sum, m) => sum + m.value, 0);
+  const maxCalories = Math.max(...dayStats.map((d) => d.calories), 1);
+
+  const averageTiles = [
+    {
+      key: 'calories',
+      icon: Flame,
+      value: String(averages.calories),
+      label: 'calories',
+      color: macroColors.calories,
+    },
+    {
+      key: 'protein',
+      icon: Dumbbell,
+      value: `${averages.protein}g`,
+      label: 'protein',
+      color: macroColors.protein,
+    },
+    {
+      key: 'carbs',
+      icon: Utensils,
+      value: `${averages.carbs}g`,
+      label: 'carbs',
+      color: macroColors.carbs,
+    },
+    {
+      key: 'fat',
+      icon: Droplets,
+      value: `${averages.fat}g`,
+      label: 'fat',
+      color: macroColors.fat,
+    },
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/10 to-primary-50">
-          <DialogTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            Weekly Analytics
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent
+        showClose={false}
+        className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-cream border-cream-300 sm:rounded-2xl"
+      >
+        <PageDecor className="opacity-70" />
 
-        {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1 space-y-6">
-          {daysWithData === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <TrendingUp className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p className="font-medium">No meal data yet</p>
-              <p className="text-sm mt-1">Generate or log some meals to see analytics</p>
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <div className="flex items-start gap-3 px-5 pb-4 pt-5">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <BarChart3 className="h-[18px] w-[18px] text-primary" />
             </div>
-          ) : (
-            <>
-              {/* Summary Cards */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Daily Averages ({daysWithData} days)</h4>
-                <div className="grid grid-cols-4 gap-3">
-                  <div
-                    className="rounded-lg p-3 text-center"
-                    style={{ backgroundColor: `${macroColors.calories}14` }}
-                  >
-                    <Flame className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.calories }} />
-                    <p className="text-2xl font-bold" style={{ color: macroColors.calories }}>{averages.calories}</p>
-                    <p className="text-xs" style={{ color: macroColors.calories }}>calories</p>
-                  </div>
-                  <div
-                    className="rounded-lg p-3 text-center"
-                    style={{ backgroundColor: `${macroColors.protein}14` }}
-                  >
-                    <Beef className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.protein }} />
-                    <p className="text-2xl font-bold" style={{ color: macroColors.protein }}>{averages.protein}g</p>
-                    <p className="text-xs" style={{ color: macroColors.protein }}>protein</p>
-                  </div>
-                  <div
-                    className="rounded-lg p-3 text-center"
-                    style={{ backgroundColor: `${macroColors.carbs}14` }}
-                  >
-                    <Wheat className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.carbs }} />
-                    <p className="text-2xl font-bold" style={{ color: macroColors.carbs }}>{averages.carbs}g</p>
-                    <p className="text-xs" style={{ color: macroColors.carbs }}>carbs</p>
-                  </div>
-                  <div
-                    className="rounded-lg p-3 text-center"
-                    style={{ backgroundColor: `${macroColors.fat}14` }}
-                  >
-                    <Droplet className="w-5 h-5 mx-auto mb-1" style={{ color: macroColors.fat }} />
-                    <p className="text-2xl font-bold" style={{ color: macroColors.fat }}>{averages.fat}g</p>
-                    <p className="text-xs" style={{ color: macroColors.fat }}>fat</p>
-                  </div>
-                </div>
-              </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.9px] text-muted-foreground">
+                Analytics
+              </p>
+              <DialogTitle className="text-xl font-bold leading-snug text-gray-900">
+                Weekly Analytics
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Daily averages, macro distribution, and training sync for this week
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-lg p-2 text-gray-700 hover:bg-cream-200"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
-              {/* Daily Calories Bar Chart */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Daily Calories</h4>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dayStats} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                      <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} width={40} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="calories" radius={[4, 4, 0, 0]}>
-                        {dayStats.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.hasData ? '#f97316' : '#e5e7eb'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+          <div className="flex-1 space-y-3 overflow-y-auto px-5 pb-5">
+            {daysWithData === 0 ? (
+              <div className="flex flex-col items-center px-4 py-12 text-center">
+                <BarChart3 className="h-12 w-12 text-cream-300" strokeWidth={1.5} />
+                <p className="mt-3 text-base font-bold text-muted-foreground">No meal data yet</p>
+                <p className="mt-1 text-sm text-muted-foreground/80">
+                  Generate or log some meals to see analytics
+                </p>
               </div>
-
-              {/* Macro Distribution */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Macro Distribution</h4>
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="h-52 w-52 flex-shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={macroDistribution}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={80}
-                          dataKey="value"
-                          labelLine={false}
-                          label={renderCustomLabel}
+            ) : (
+              <>
+                <SoftCard>
+                  <SectionLabel>Daily Averages ({daysWithData} days)</SectionLabel>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {averageTiles.map((tile) => {
+                      const Icon = tile.icon;
+                      return (
+                        <div
+                          key={tile.key}
+                          className="flex flex-col items-center gap-1.5 rounded-xl px-2 py-3"
                         >
-                          {macroDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                          <Icon className="h-5 w-5" style={{ color: tile.color }} strokeWidth={1.75} />
+                          <p
+                            className="text-xl font-black tabular-nums leading-none"
+                            style={{ color: tile.color }}
+                          >
+                            {tile.value}
+                          </p>
+                          <p className="text-[11px] font-semibold text-muted-foreground">
+                            {tile.label}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex-1 space-y-3">
-                    {macroDistribution.map((macro) => (
-                      <div key={macro.name} className="flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded" style={{ backgroundColor: macro.color }} />
-                          <span className="text-sm text-gray-700 font-medium">{macro.name}</span>
-                        </span>
-                        <span className="text-sm">
-                          <span className="font-semibold">{macro.grams}g</span>
-                          <span className="text-gray-500 ml-1">
-                            ({totalMacroCalories > 0 ? Math.round((macro.value / totalMacroCalories) * 100) : 0}%)
+                </SoftCard>
+
+                <SoftCard>
+                  <SectionLabel>Daily Calories</SectionLabel>
+                  <div className="flex h-40 items-end justify-between gap-1 px-1 pt-2 sm:gap-1.5">
+                    {dayStats.map((day) => {
+                      const heightPct = Math.max((day.calories / maxCalories) * 100, 3);
+                      return (
+                        <div
+                          key={day.fullDay}
+                          className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                        >
+                          <div className="flex w-full flex-1 items-end justify-center">
+                            <div
+                              className={`w-[70%] max-w-[2rem] rounded-md ${
+                                day.hasData ? 'bg-primary' : 'bg-border'
+                              }`}
+                              style={{
+                                height: `${heightPct}%`,
+                                minHeight: 4,
+                              }}
+                              title={
+                                day.hasData
+                                  ? `${day.fullDay}: ${day.calories} cal`
+                                  : `${day.fullDay}: no data`
+                              }
+                            />
+                          </div>
+                          <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                            {day.day}
                           </span>
-                        </span>
-                      </div>
-                    ))}
-                    <div className="pt-2 border-t text-xs text-gray-500">
-                      Based on calories: Protein & Carbs = 4 cal/g, Fat = 9 cal/g
+                          <span className="text-[10px] font-semibold tabular-nums text-muted-foreground/80">
+                            {day.hasData ? day.calories : '—'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </SoftCard>
+
+                <SoftCard>
+                  <SectionLabel>Macro Distribution</SectionLabel>
+                  <div className="space-y-2.5">
+                    {macroDistribution.map((macro) => {
+                      const percentage =
+                        totalMacroCalories > 0
+                          ? Math.round((macro.value / totalMacroCalories) * 100)
+                          : 0;
+                      return (
+                        <RowCard key={macro.name}>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span
+                              className="h-4 w-4 shrink-0 rounded-full"
+                              style={{ backgroundColor: macro.color }}
+                            />
+                            <span className="text-sm font-bold text-gray-900">{macro.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-sm font-extrabold tabular-nums text-gray-900">
+                              {macro.grams}g
+                            </span>
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              ({percentage}%)
+                            </span>
+                          </div>
+                        </RowCard>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2.5 text-[11px] italic text-muted-foreground/80">
+                    Based on calories: Protein &amp; Carbs = 4 cal/g, Fat = 9 cal/g
+                  </p>
+                </SoftCard>
+
+                {trainingInsight && (trainingInsight.avgHigh || trainingInsight.avgRest) ? (
+                  <SoftCard>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Dumbbell className="h-[18px] w-[18px] text-primary" strokeWidth={1.75} />
+                      <p className="text-sm font-bold text-gray-900">Training &amp; Nutrition Sync</p>
                     </div>
-                  </div>
-                </div>
-              </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {trainingInsight.avgHigh ? (
+                        <div>
+                          <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                            High intensity days
+                          </p>
+                          <p className="text-lg font-black tabular-nums text-gray-900">
+                            {trainingInsight.avgHigh} cal
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/80">
+                            {trainingInsight.highCount} day(s)
+                          </p>
+                        </div>
+                      ) : null}
+                      {trainingInsight.avgRest ? (
+                        <div>
+                          <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                            Rest days
+                          </p>
+                          <p className="text-lg font-black tabular-nums text-gray-900">
+                            {trainingInsight.avgRest} cal
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/80">
+                            {trainingInsight.restCount} day(s)
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                    {trainingInsight.avgHigh && trainingInsight.avgRest ? (
+                      <p className="mt-3 text-[11px] font-semibold text-muted-foreground">
+                        {trainingInsight.avgHigh > trainingInsight.avgRest
+                          ? '✓ Good! Eating more on training days.'
+                          : '⚠️ Consider eating more on high intensity days.'}
+                      </p>
+                    ) : null}
+                  </SoftCard>
+                ) : null}
 
-              {/* Training Sync Insight */}
-              {trainingInsight && (trainingInsight.avgHigh || trainingInsight.avgRest) && (
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    <Dumbbell className="w-4 h-4" />
-                    Training & Nutrition Sync
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {trainingInsight.avgHigh && (
-                      <div>
-                        <p className="text-gray-500">High intensity days</p>
-                        <p className="font-semibold text-lg">{trainingInsight.avgHigh} cal</p>
-                        <p className="text-xs text-gray-400">{trainingInsight.highCount} day(s)</p>
-                      </div>
-                    )}
-                    {trainingInsight.avgRest && (
-                      <div>
-                        <p className="text-gray-500">Rest days</p>
-                        <p className="font-semibold text-lg">{trainingInsight.avgRest} cal</p>
-                        <p className="text-xs text-gray-400">{trainingInsight.restCount} day(s)</p>
-                      </div>
-                    )}
+                <SoftCard>
+                  <SectionLabel>Week Totals</SectionLabel>
+                  <div className="space-y-2.5">
+                    {[
+                      {
+                        label: 'Total Calories',
+                        value: `${totals.calories.toLocaleString()} cal`,
+                      },
+                      { label: 'Total Protein', value: `${totals.protein}g` },
+                      { label: 'Total Carbs', value: `${totals.carbs}g` },
+                      { label: 'Total Fat', value: `${totals.fat}g` },
+                    ].map((row) => (
+                      <RowCard key={row.label}>
+                        <span className="text-sm font-semibold text-muted-foreground">
+                          {row.label}
+                        </span>
+                        <span className="text-sm font-extrabold tabular-nums text-gray-900">
+                          {row.value}
+                        </span>
+                      </RowCard>
+                    ))}
                   </div>
-                  {trainingInsight.avgHigh && trainingInsight.avgRest && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      {trainingInsight.avgHigh > trainingInsight.avgRest
-                        ? '✓ Good! Eating more on training days.'
-                        : '⚠️ Consider eating more on high intensity days.'}
-                    </p>
-                  )}
-                </div>
-              )}
+                </SoftCard>
+              </>
+            )}
+          </div>
 
-              {/* Week Totals */}
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Week Totals</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Calories</span>
-                    <span className="font-semibold">{totals.calories.toLocaleString()} cal</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Protein</span>
-                    <span className="font-semibold">{totals.protein}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Carbs</span>
-                    <span className="font-semibold">{totals.carbs}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Fat</span>
-                    <span className="font-semibold">{totals.fat}g</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="relative z-10 border-t border-cream-300 bg-cream-50/80 px-5 py-4">
+            <Button onClick={onClose} variant="primary" className="w-full">
+              Close
+            </Button>
+          </div>
         </div>
-
-        {/* Footer */}
-        <DialogFooter className="p-4 border-t bg-muted/50 sm:space-x-0">
-          <Button onClick={onClose} variant="outline" className="w-full">
-            Close
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
