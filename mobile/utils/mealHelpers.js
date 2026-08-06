@@ -109,8 +109,16 @@ export const parseMeal = (mealString) => {
   const carbsMatch = mealString.match(/C:\s*(\d+)g/);
   const fatMatch = mealString.match(/F:\s*(\d+)g/);
 
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
-  const name = nameMatch ? nameMatch[1].trim() : mealString;
+  // Match at `(` so trailing spaces in the name are not consumed (typing fix).
+  const macroSuffixMatch = mealString.match(
+    /\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i
+  );
+  let name = mealString;
+  if (macroSuffixMatch) {
+    name = mealString.slice(0, macroSuffixMatch.index);
+    // Drop the single spacer written by formatMealWithMacros before `(`.
+    if (name.endsWith(' ')) name = name.slice(0, -1);
+  }
 
   return {
     name,

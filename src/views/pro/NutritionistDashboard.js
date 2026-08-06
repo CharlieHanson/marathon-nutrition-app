@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Users, TrendingUp, Calendar, ArrowRight, User } from 'lucide-react';
 import { authenticatedFetch, getApiUrl } from '../../../shared/services/api';
+import { Card } from '@/src/components/shared/Card';
+import { Button } from '@/src/components/shared/Button';
+import { Avatar, AvatarFallback } from '@/src/components/ui/avatar';
+import { Skeleton } from '@/src/components/ui/skeleton';
 
 export const NutritionistDashboard = ({ currentUser }) => {
   const [stats, setStats] = useState({
@@ -12,23 +16,11 @@ export const NutritionistDashboard = ({ currentUser }) => {
   const [recentClients, setRecentClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  console.log('NutritionistDashboard render', {
-    loading,
-    stats,
-    recentClientsLen: recentClients.length,
-    hasUser: !!currentUser,
-    userId: currentUser?.id,
-  });
-
   const fetchDashboardData = useCallback(async () => {
-    console.log('NutritionistDashboard: fetchDashboardData START');
     setLoading(true);
 
     try {
       if (!currentUser) {
-        console.warn(
-          'NutritionistDashboard: no currentUser, clearing stats/clients'
-        );
         setStats({
           totalClients: 0,
           activeThisWeek: 0,
@@ -39,11 +31,6 @@ export const NutritionistDashboard = ({ currentUser }) => {
       }
 
       const userId = currentUser.id;
-      console.log(
-        'NutritionistDashboard: calling /api/pro/dashboard for',
-        userId
-      );
-
       const res = await authenticatedFetch(
         getApiUrl(`/api/pro/dashboard?userId=${encodeURIComponent(userId)}`)
       );
@@ -63,7 +50,6 @@ export const NutritionistDashboard = ({ currentUser }) => {
       }
 
       const json = await res.json();
-      console.log('NutritionistDashboard: API response', json);
 
       setStats({
         totalClients: json.stats?.totalClients ?? 0,
@@ -81,122 +67,118 @@ export const NutritionistDashboard = ({ currentUser }) => {
       });
       setRecentClients([]);
     } finally {
-      console.log('NutritionistDashboard: fetchDashboardData FINISH');
       setLoading(false);
     }
   }, [currentUser]);
 
   useEffect(() => {
-    console.log(
-      'NutritionistDashboard useEffect: calling fetchDashboardData with user',
-      currentUser?.id
-    );
     fetchDashboardData();
   }, [fetchDashboardData]);
 
   if (loading) {
-    console.log('NutritionistDashboard: showing "Loading dashboard..."');
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600">Loading dashboard...</p>
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-9 w-48 mb-2" />
+          <Skeleton className="h-5 w-72" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-card" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-64 w-full rounded-card" />
+          <Skeleton className="h-64 w-full rounded-card" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
           Manage your clients and track their progress
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <StatCard
           icon={Users}
           label="Total Clients"
           value={stats.totalClients}
-          color="blue"
+          accent="bg-primary-50 text-primary"
         />
         <StatCard
           icon={TrendingUp}
           label="Active This Week"
           value={stats.activeThisWeek}
-          color="green"
+          accent="bg-green-50 text-green-700"
         />
         <StatCard
           icon={Calendar}
           label="Pending Reviews"
           value={stats.pendingReviews}
-          color="orange"
+          accent="bg-secondary-50 text-secondary-700"
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Recent Clients */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Recent Clients
-            </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <Card
+          title="Recent Clients"
+          headerAction={
             <Link href="/pro/clients">
-              <button className="text-primary hover:text-primary-700 text-sm font-medium flex items-center gap-1">
-                View All
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <Button variant="ghost" size="sm" icon={ArrowRight}>
+                View all
+              </Button>
             </Link>
-          </div>
-
+          }
+        >
           {recentClients.length === 0 ? (
             <div className="text-center py-8">
-              <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600 mb-4">No clients yet</p>
+              <Users className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-muted-foreground mb-4">No clients yet</p>
               <Link href="/pro/profile">
-                <button className="text-primary hover:text-primary-700 text-sm font-medium">
-                  Share your invite code →
-                </button>
+                <Button variant="outline" size="sm">
+                  Share your invite code
+                </Button>
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-1 -mx-1">
               {recentClients.map((client) => (
                 <Link
                   key={client.id}
                   href={`/pro/clients/${client.client_user_id}`}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-cream-200 transition-colors"
                 >
-                  <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 border border-primary-100">
+                      <AvatarFallback className="bg-primary-50 text-primary font-semibold">
                         {client.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {client.name || 'Unknown Client'}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Added{' '}
-                          {new Date(client.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {client.name || 'Unknown Client'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Added{' '}
+                        {new Date(client.created_at).toLocaleDateString()}
+                      </p>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-400" />
                   </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0" />
                 </Link>
               ))}
             </div>
           )}
-        </div>
+        </Card>
 
-        {/* Quick Links */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </h2>
-          <div className="space-y-3">
+        <Card title="Quick Actions">
+          <div className="space-y-2">
             <QuickLink
               href="/pro/clients"
               icon={Users}
@@ -210,46 +192,38 @@ export const NutritionistDashboard = ({ currentUser }) => {
               description="Update business info and invite code"
             />
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
 };
 
-// Helper Components
-const StatCard = ({ icon: Icon, label, value, color }) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    orange: 'bg-primary-50 text-primary-600',
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">{label}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-        </div>
+const StatCard = ({ icon: Icon, label, value, accent }) => (
+  <Card>
+    <div className="flex items-center gap-4">
+      <div className={`p-3 rounded-xl ${accent}`}>
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
       </div>
     </div>
-  );
-};
+  </Card>
+);
 
 const QuickLink = ({ href, icon: Icon, label, description }) => (
-  <Link href={href}>
-    <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group">
-      <div className="p-2 bg-primary-50 rounded-lg group-hover:bg-primary-100 transition-colors">
-        <Icon className="w-5 h-5 text-primary" />
-      </div>
-      <div className="flex-1">
-        <p className="font-medium text-gray-900">{label}</p>
-        <p className="text-sm text-gray-500">{description}</p>
-      </div>
-      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+  <Link
+    href={href}
+    className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-200 transition-colors group"
+  >
+    <div className="p-2 bg-primary-50 rounded-xl group-hover:bg-primary-100 transition-colors">
+      <Icon className="w-5 h-5 text-primary" />
     </div>
+    <div className="flex-1 min-w-0">
+      <p className="font-medium text-foreground">{label}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
   </Link>
 );

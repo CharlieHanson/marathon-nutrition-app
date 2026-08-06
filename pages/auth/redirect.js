@@ -59,7 +59,7 @@ export default function AuthRedirect() {
       if (!status?.hasCompletedOnboarding) {
         router.replace('/onboarding');
       } else {
-        router.replace('/training');
+        router.replace('/dashboard');
       }
     } catch (e) {
       console.error('AuthRedirect: error routing user', e);
@@ -96,7 +96,7 @@ export default function AuthRedirect() {
 
   if (showMobileChoice) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 p-6">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-cream p-6">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckIcon />
@@ -124,7 +124,7 @@ export default function AuthRedirect() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+    <div className="flex items-center justify-center min-h-screen bg-cream">
       <p className="text-primary font-semibold">Signing you in...</p>
     </div>
   );

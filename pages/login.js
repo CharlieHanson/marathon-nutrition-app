@@ -8,17 +8,17 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading, isGuest } = useAuth();
 
-  // ✅ Only redirect guests -> /training
+  // ✅ Only redirect guests -> /dashboard
   //    Do NOT redirect logged-in users here; Auth + /auth/redirect handles that.
   React.useEffect(() => {
     if (!loading && isGuest) {
-      router.push('/training');
+      router.push('/dashboard');
     }
   }, [loading, isGuest, router]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );

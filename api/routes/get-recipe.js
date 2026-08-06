@@ -23,6 +23,7 @@ import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage } from '../lib/rateLimiter.js';
 import { getRequestUserId } from '../lib/requestUser.js';
+import { OPENAI_MEAL_MODEL } from '../lib/aiCompletion.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -49,8 +50,13 @@ function parseMealString(mealString) {
   const proteinMatch = mealString.match(/P:\s*(\d+)g/i);
   const carbsMatch = mealString.match(/C:\s*(\d+)g/i);
   const fatMatch = mealString.match(/F:\s*(\d+)g/i);
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
-  const description = (nameMatch ? nameMatch[1] : mealString).trim();
+  const nameMatch = mealString.match(
+    /\s*\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i
+  );
+  const description = (nameMatch
+    ? mealString.slice(0, nameMatch.index)
+    : mealString
+  ).trim();
 
   const hasMacros = calMatch || proteinMatch || carbsMatch || fatMatch;
   return {
@@ -244,14 +250,21 @@ export default async function handler(req, res) {
 - Optional brief notes.${contextBlock}${constraintBlock}
 Return ONLY JSON that matches the provided schema. No extra text.`;
 
-    const resp = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const isGpt5 = String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('gpt-5');
+    const request = {
+      model: OPENAI_MEAL_MODEL,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.4,
-      max_tokens: 900,
+      max_completion_tokens: Math.max(900, isGpt5 ? 4000 : 900),
       response_format: { type: 'json_schema', json_schema: recipeSchema(clampedServings) },
-    });
+    };
+    if (!(isGpt5 || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o'))) {
+      request.temperature = 0.4;
+    }
+    if (isGpt5 || String(OPENAI_MEAL_MODEL).toLowerCase().startsWith('o')) {
+      request.reasoning_effort = 'low';
+    }
 
+    const resp = await openai.chat.completions.create(request);
     let text = resp.choices?.[0]?.message?.content ?? '';
     let structured;
     try {

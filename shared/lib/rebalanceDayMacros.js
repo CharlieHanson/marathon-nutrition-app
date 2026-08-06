@@ -32,8 +32,12 @@ export function parseMealMacros(mealString) {
   const proteinMatch = mealString.match(/P:\s*(\d+)\s*g/i);
   const carbsMatch = mealString.match(/C:\s*(\d+)\s*g/i);
   const fatMatch = mealString.match(/F:\s*(\d+)\s*g/i);
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
-  const name = nameMatch ? nameMatch[1].trim() : mealString.trim();
+  const nameMatch = mealString.match(
+    /\s*\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i
+  );
+  const name = nameMatch
+    ? mealString.slice(0, nameMatch.index).trim()
+    : mealString.trim();
 
   return {
     name,

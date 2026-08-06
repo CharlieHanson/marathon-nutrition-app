@@ -47,14 +47,14 @@ export default function HelpPage() {
         <title>Help & Support - Alimenta</title>
         <meta name="description" content="Get help with Alimenta nutrition planning" />
       </Head>
-      <div className="min-h-screen bg-gradient-to-b from-white to-primary-50">
+      <div className="min-h-screen bg-cream">
         {/* Header with Back Button */}
-        <div className="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div className="bg-white/80 backdrop-blur-md border-b border-cream-300 sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4 h-16">
               <button
                 onClick={() => router.back()}
-                className="p-2 text-gray-600 hover:text-primary hover:bg-primary-50 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-primary hover:bg-primary-50 rounded-xl transition-colors"
                 aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -76,7 +76,7 @@ export default function HelpPage() {
               {faqs.map((faq, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  className="warm-card p-6"
                 >
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {faq.question}
@@ -90,7 +90,7 @@ export default function HelpPage() {
           </section>
 
           {/* Legal Links */}
-          <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <section className="warm-card p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Legal Information</h2>
             <div className="space-y-4">
               <button

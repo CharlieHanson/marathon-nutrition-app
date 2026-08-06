@@ -53,7 +53,7 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+    <div className="flex items-center justify-center min-h-screen bg-cream">
       <div className="text-primary font-semibold">{msg}</div>
     </div>
   );

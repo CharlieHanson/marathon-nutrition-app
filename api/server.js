@@ -47,17 +47,7 @@ app.use(
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 
-// ── Auth gate ───────────────────────────────────────────────────────────────
-// Keep /health public. Flip REQUIRE_AUTH to "true" after web/mobile clients
-// have shipped Bearer token support.
-if (process.env.REQUIRE_AUTH === 'true') {
-  app.use('/api', requireAuth);
-}
-
-// ── Lazy route mounting ─────────────────────────────────────────────────────
-// Paths are preserved exactly as they were under pages/api so existing clients
-// keep working. Handlers do their own method checking (and return 405), so each
-// path is registered with app.all().
+// Public marketing waitlist (must not require auth)
 function mount(path, importFn) {
   let handlerPromise = null;
   app.all(path, async (req, res, next) => {
@@ -72,6 +62,25 @@ function mount(path, importFn) {
     }
   });
 }
+
+mount('/api/waitlist', () => import('./routes/waitlist.js'));
+
+// ── Auth gate ───────────────────────────────────────────────────────────────
+// Keep /health and /api/waitlist public. Flip REQUIRE_AUTH to "true" after web/mobile clients
+// have shipped Bearer token support.
+if (process.env.REQUIRE_AUTH === 'true') {
+  app.use('/api', (req, res, next) => {
+    // Express strips the mount prefix for app.use('/api', …): path is `/waitlist`.
+    if (req.path === '/waitlist') return next();
+    return requireAuth(req, res, next);
+  });
+}
+
+// ── Lazy route mounting ─────────────────────────────────────────────────────
+// Paths are preserved exactly as they were under pages/api so existing clients
+// keep working. Handlers do their own method checking (and return 405), so each
+// path is registered with app.all().
+// (mount defined above for public /api/waitlist)
 
 mount('/api/auth/apple-exchange', () => import('./routes/auth/apple-exchange.js'));
 mount('/api/delete-account', () => import('./routes/delete-account.js'));

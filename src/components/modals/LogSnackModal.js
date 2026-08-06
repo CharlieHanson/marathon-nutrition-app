@@ -1,5 +1,13 @@
-// src/components/modals/LogSnackModal.js
 import React, { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/shared/Button';
+import { Input } from '@/src/components/shared/Input';
+import { Select } from '@/src/components/shared/Select';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -11,9 +19,13 @@ function parseSnack(mealString) {
   const proteinMatch = mealString.match(/P:\s*(\d+)\s*g/i);
   const carbsMatch = mealString.match(/C:\s*(\d+)\s*g/i);
   const fatMatch = mealString.match(/F:\s*(\d+)\s*g/i);
-  const nameMatch = mealString.match(/^(.+?)\s*\(/);
+  const nameMatch = mealString.match(
+    /\s*\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i
+  );
   return {
-    name: nameMatch ? nameMatch[1].trim() : mealString.trim(),
+    name: nameMatch
+      ? mealString.slice(0, nameMatch.index).trim()
+      : mealString.trim(),
     calories: calMatch ? calMatch[1] : '',
     protein: proteinMatch ? proteinMatch[1] : '',
     carbs: carbsMatch ? carbsMatch[1] : '',
@@ -59,8 +71,6 @@ export function LogSnackModal({
     }
   }, [isOpen, defaultDay, existingSnack, snacksUserLogged]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = name.trim();
@@ -88,43 +98,35 @@ export function LogSnackModal({
     onSubmit({ day, name: trimmed, ...macros });
   };
 
+  const dayOptions = DAYS.map((d) => ({
+    value: d,
+    label: d.charAt(0).toUpperCase() + d.slice(1),
+  }));
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-lg font-bold text-gray-900">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md p-0 gap-0">
+        <DialogHeader className="px-5 py-4 border-b">
+          <DialogTitle>
             {snacksUserLogged ? 'Edit Snack' : 'Log Snack'}
-          </h2>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-800">
-            ✕
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-5 py-4">
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-600">Day</label>
-            <select
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2"
-            >
-              {DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d.charAt(0).toUpperCase() + d.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Day"
+            options={dayOptions}
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            placeholder="Select day"
+          />
 
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-600">Snack name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2"
-              placeholder="e.g. Greek yogurt"
-            />
-          </div>
+          <Input
+            label="Snack name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Greek yogurt"
+          />
 
           <div className="grid grid-cols-4 gap-2">
             {[
@@ -133,16 +135,15 @@ export function LogSnackModal({
               ['carbs', 'C', carbs, setCarbs],
               ['fat', 'F', fat, setFat],
             ].map(([key, label, value, setter]) => (
-              <div key={key}>
-                <label className="mb-1 block text-xs font-semibold text-gray-500">{label}</label>
-                <input
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  type="number"
-                  min="0"
-                  className="w-full rounded-lg border border-gray-300 px-2 py-2 text-center"
-                />
-              </div>
+              <Input
+                key={key}
+                label={label}
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                type="number"
+                min="0"
+                className="[&_input]:text-center"
+              />
             ))}
           </div>
 
@@ -150,27 +151,24 @@ export function LogSnackModal({
 
           <div className="flex items-center justify-between gap-3 pt-2">
             {snacksUserLogged ? (
-              <button
+              <Button
                 type="button"
                 disabled={submitting}
                 onClick={() => onDelete?.({ day })}
-                className="text-sm font-semibold text-red-600 hover:text-red-700"
+                variant="ghost"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 Remove
-              </button>
+              </Button>
             ) : (
               <span />
             )}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
+            <Button type="submit" disabled={submitting} variant="primary">
               {submitting ? 'Saving…' : snacksUserLogged ? 'Update Snack' : 'Log Snack'}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -7,6 +7,7 @@ import { useFoodPreferences } from '../src/hooks/useFoodPreferences';
 import { useWorkoutLog, DAYS, addDaysToDateString } from '../src/hooks/useWorkoutLog';
 import { useMealPlan } from '../src/hooks/useMealPlan';
 import { useSavedMeals } from '../src/hooks/useSavedMeals';
+import { useMealCompletions } from '../src/hooks/useMealCompletions';
 import { Layout } from '../src/components/layout/Layout';
 
 function localDateForDay(weekStarting, dayName) {
@@ -25,6 +26,7 @@ export default function MealsPage() {
   const workoutLog = useWorkoutLog(user, isGuest);
   const mealPlan = useMealPlan(user, isGuest);
   const savedMeals = useSavedMeals(user, isGuest);
+  const mealCompletions = useMealCompletions(user, isGuest);
 
   React.useEffect(() => {
     if (!loading && !user && !isGuest) {
@@ -97,7 +99,7 @@ export default function MealsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="flex items-center justify-center min-h-screen bg-cream">
         <p className="text-primary font-semibold">Loading...</p>
       </div>
     );
@@ -172,6 +174,8 @@ export default function MealsPage() {
         savedMeals={savedMeals.savedMeals}
         onUseSavedMeal={savedMeals.useSavedMeal}
         onDeleteSavedMeal={savedMeals.removeSavedMeal}
+        completions={mealCompletions.completions}
+        onToggleMealCompletion={mealCompletions.toggleMealCompletion}
       />
     </Layout>
   );

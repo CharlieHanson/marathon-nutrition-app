@@ -316,7 +316,7 @@ const getStyles = (colors, isDarkMode) =>
     },
     card: {
       flex: 1,
-      backgroundColor: colors.cardBackground,
+      backgroundColor: isDarkMode ? colors.cardBackground : colors.inputBackground,
       borderRadius: 20,
       paddingHorizontal: 16,
       paddingVertical: 14,
@@ -330,6 +330,7 @@ const getStyles = (colors, isDarkMode) =>
       minHeight: 88,
     },
     cardEmpty: {
+      backgroundColor: isDarkMode ? colors.cardBackground : colors.inputBackground,
       borderStyle: 'dashed',
       borderColor: colors.borderDark,
       borderWidth: 1.5,

@@ -91,8 +91,14 @@ export const validateDayMacros = (dayMacros, targetMacros, tolerance = 0.15) => 
  */
 export const extractMealName = (mealString) => {
   if (!mealString) return '';
-  const match = mealString.match(/^(.+?)\s*\(/);
-  return match ? match[1].trim() : mealString;
+  const s = String(mealString);
+  const macroSuffixMatch = s.match(
+    /\(\s*Cal:\s*\d+\s*,\s*P:\s*\d+g\s*,\s*C:\s*\d+g\s*,\s*F:\s*\d+g\s*\)\s*$/i
+  );
+  if (!macroSuffixMatch) return s;
+  let name = s.slice(0, macroSuffixMatch.index);
+  if (name.endsWith(' ')) name = name.slice(0, -1);
+  return name;
 };
 
 /**

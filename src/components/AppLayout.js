@@ -39,7 +39,7 @@ export const AppLayout = ({ children }) => {
       isGuest={isGuest}
       onSignOut={signOut}
       onDisableGuestMode={disableGuestMode}
-      currentView={router.pathname.slice(1) || 'training'}
+      currentView={router.pathname.slice(1) || 'dashboard'}
       onViewChange={(view) => router.push(`/${view}`)}
     >
       {children}

@@ -1,406 +1,347 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { ArrowRight, Users, TrendingUp, Clock, Shield, BarChart3, CheckCircle, Zap } from 'lucide-react';
+import {
+  ArrowRight,
+  BarChart3,
+  Check,
+  Clock,
+  Shield,
+  Users,
+} from 'lucide-react';
+import { Button } from '@/src/components/shared/Button';
+import { cn } from '@/src/lib/utils';
+import { RevealOnScroll } from '../marketing/RevealOnScroll';
+import { WaitlistModal } from '@/src/components/modals/WaitlistModal';
+
+const OUTCOMES = [
+  'Macro bounds your clients can’t break',
+  'Compliance without spreadsheets',
+  'Invite codes that onboard in minutes',
+];
+
+const FEATURES = [
+  {
+    icon: Users,
+    title: 'Client dashboard',
+    body: 'See every client in one place—who’s active, who needs a check-in, and who’s on track.',
+  },
+  {
+    icon: Shield,
+    title: 'Macro boundaries',
+    body: 'Set calories and macros per client. AI plans stay inside your guardrails on every meal.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Compliance & ratings',
+    body: 'Follow weekly adherence, meal scores, and notes so you adjust guidance—not rebuild plans.',
+  },
+  {
+    icon: Clock,
+    title: 'Hours back every week',
+    body: 'Clients log training and generate plans within your parameters. You review and refine.',
+  },
+];
+
+const STEPS = [
+  {
+    number: '1',
+    title: 'Get your invite code',
+    description:
+      'Join Pro and share a simple 8-character code with clients by email, text, or your site.',
+  },
+  {
+    number: '2',
+    title: 'Set their boundaries',
+    description:
+      'When a client connects, define macro ranges and notes. Guidance shows up when they generate plans.',
+  },
+  {
+    number: '3',
+    title: 'Monitor and adjust',
+    description:
+      'Track compliance, view ratings, leave feedback, and update bounds as training evolves.',
+  },
+];
+
+const WHY_PRO = [
+  {
+    title: 'Persistent client history',
+    body: 'Plans and ratings stick across weeks—not lost when a chat ends.',
+  },
+  {
+    title: 'Hard macro enforcement',
+    body: 'Min/max bounds on calories and macros, not soft suggestions.',
+  },
+  {
+    title: 'Automatic compliance views',
+    body: 'Dashboards instead of hand-built spreadsheets.',
+  },
+  {
+    title: 'Invite-code onboarding',
+    body: 'Clients connect with an 8-character code, not back-and-forth threads.',
+  },
+];
+
+function BrandPro({ className = 'text-2xl sm:text-3xl' }) {
+  return (
+    <div className={cn('flex items-center gap-2', className)}>
+      <span className="brand-wordmark" aria-label="Alimenta Pro">
+        <span className="text-primary">Al</span>
+        <span className="text-gray-800">imenta</span>
+      </span>
+      <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
+        Pro
+      </span>
+    </div>
+  );
+}
+
+function WaitlistButton({ size = 'lg', className = '', light = false, onClick }) {
+  return (
+    <Button
+      type="button"
+      variant="primary"
+      size={size}
+      icon={ArrowRight}
+      className={cn(
+        light ? 'bg-cream text-primary hover:bg-white hover:text-primary' : '',
+        className
+      )}
+      onClick={onClick}
+    >
+      Join waitlist
+    </Button>
+  );
+}
 
 export const ProLandingPage = () => {
-  const router = useRouter();
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-primary-50">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold tracking-tight" aria-label="Alimenta">
-                <span className="text-primary">Al</span>
-                <span className="text-gray-800">imenta</span>
-              </span>
-              <span className="text-sm font-medium text-gray-500">Pro</span>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* <Link href="/">
-                <button className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                  For Athletes
-                </button>
-              </Link> */}
-              <Link href="/login?role=nutritionist">
-                <button className="px-6 py-2 text-primary font-medium hover:bg-primary-50 rounded-lg transition-colors">
-                  Sign In
-                </button>
-              </Link>
-            </div>
-          </div>
+    <div className="min-h-screen bg-cream text-foreground">
+      <nav className="fixed top-0 z-50 w-full border-b border-cream-300/60 bg-cream/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/pro" className="shrink-0">
+            <BrandPro />
+          </Link>
+          <WaitlistButton size="sm" onClick={() => setWaitlistOpen(true)} />
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-animated"></div>
-        
-        <div className="max-w-7xl mx-auto text-center relative z-10">
-          <div className="inline-block px-4 py-2 bg-primary-100 rounded-full text-primary font-semibold text-sm mb-6">
-            For Sports Nutritionists & Dietitians
-          </div>
-          
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Manage Your Clients'
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-600"> Nutrition Plans with AI</span>
-          </h1>
-          
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Replace spreadsheets with AI-powered client management. Set macro boundaries, track compliance, scale your practice.
-          </p>
+      <main className="pt-16">
+        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-animated-hero"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -right-16 top-0 h-[70%] w-[55%] rounded-full bg-primary/15 blur-3xl animate-blob"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -left-20 bottom-0 h-[55%] w-[50%] rounded-full bg-peach/70 blur-3xl animate-blob animation-delay-2000"
+            aria-hidden="true"
+          />
 
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/login?role=nutritionist">
-              <button className="px-8 py-4 bg-gradient-to-r from-primary to-primary-600 text-white rounded-lg font-semibold text-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2">
-                Start Free Trial
-                <ArrowRight className="w-5 h-5" />
-              </button>
+          <RevealOnScroll
+            className="relative z-10 mx-auto max-w-3xl text-center"
+            y={32}
+          >
+            <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-primary">
+              For sports nutritionists & dietitians
+            </p>
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
+              Client nutrition plans with your professional guardrails.
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-gray-600">
+              Replace spreadsheets with AI meal planning inside macro bounds you
+              set—then track compliance as athletes cook.
+            </p>
+            <div className="mt-8 flex justify-center">
+              <WaitlistButton size="lg" onClick={() => setWaitlistOpen(true)} />
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Pro is in early access. Join the waitlist—we&apos;ll reach out when seats open.
+            </p>
+          </RevealOnScroll>
+        </section>
+
+        <section className="border-y border-cream-300/70 bg-cream-50/80 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-5xl flex-col items-start justify-center gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-10 sm:gap-y-3">
+            {OUTCOMES.map((text, i) => (
+              <RevealOnScroll key={text} delayMs={i * 80} y={20}>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </span>
+                  <span className="text-sm font-medium text-gray-700 sm:text-[15px]">
+                    {text}
+                  </span>
+                </div>
+              </RevealOnScroll>
+            ))}
+          </div>
+        </section>
+
+        <section id="features" className="px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <RevealOnScroll className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Built for clinical control
+              </h2>
+              <p className="mt-3 text-lg text-gray-600">
+                AI flexibility with structure your practice can stand behind.
+              </p>
+            </RevealOnScroll>
+
+            <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+              {FEATURES.map((feature, i) => {
+                const Icon = feature.icon;
+                return (
+                  <RevealOnScroll key={feature.title} delayMs={i * 80} y={32}>
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-mint text-primary">
+                      <Icon className="h-5 w-5" strokeWidth={1.75} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {feature.title}
+                    </h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-gray-600">
+                      {feature.body}
+                    </p>
+                  </RevealOnScroll>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="how-it-works"
+          className="bg-gradient-to-b from-mint/25 to-cream px-4 py-20 sm:px-6 lg:px-8"
+        >
+          <div className="mx-auto max-w-7xl">
+            <RevealOnScroll className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                How it works
+              </h2>
+              <p className="mt-3 text-lg text-gray-600">
+                From invite code to client dashboard in three steps.
+              </p>
+            </RevealOnScroll>
+
+            <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
+              {STEPS.map((step, i) => (
+                <RevealOnScroll key={step.number} delayMs={i * 90} y={36}>
+                  <div className="rounded-card border border-border/80 bg-card p-6 shadow-soft sm:p-7">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      {step.number}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">{step.title}</h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-gray-600">
+                      {step.description}
+                    </p>
+                  </div>
+                </RevealOnScroll>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl">
+            <RevealOnScroll className="text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Why not a generic chatbot?
+              </h2>
+              <p className="mt-3 text-lg text-gray-600">
+                Generic GPTs lose history and ignore hard macro rules. Pro keeps professional control.
+              </p>
+            </RevealOnScroll>
+
+            <ul className="mt-12 space-y-4">
+              {WHY_PRO.map((item, i) => (
+                <RevealOnScroll key={item.title} delayMs={i * 70} y={24} asElement="li">
+                  <div className="flex gap-4 rounded-card border border-border/80 bg-card px-5 py-4 shadow-soft">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-gray-900">{item.title}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                </RevealOnScroll>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <RevealOnScroll y={32}>
+          <section className="bg-primary px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+            <div className="mx-auto max-w-3xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Ready to scale your practice?
+              </h2>
+              <p className="mt-3 text-lg text-primary-100">
+                Join the waitlist for Alimenta Pro. We&apos;ll notify you when access opens.
+              </p>
+              <div className="mt-8 flex justify-center">
+                <WaitlistButton size="lg" light onClick={() => setWaitlistOpen(true)} />
+              </div>
+              <p className="mt-6 text-sm text-primary-100">
+                Questions? Email us at alimentanutrition@gmail.com
+              </p>
+            </div>
+          </section>
+        </RevealOnScroll>
+      </main>
+
+      <WaitlistModal
+        isOpen={waitlistOpen}
+        onClose={() => setWaitlistOpen(false)}
+        userType="nutritionist"
+        title="Join the Pro waitlist"
+        description="Tell us about your practice. We’ll reach out when Pro access opens."
+      />
+
+      <footer className="border-t border-cream-300 bg-cream-200 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 sm:flex-row sm:justify-between">
+          <BrandPro className="text-2xl opacity-90" />
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <Link
+              href="/"
+              className="text-sm text-gray-600 transition-colors hover:text-primary"
+            >
+              For athletes
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-sm text-gray-600 transition-colors hover:text-primary"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="text-sm text-gray-600 transition-colors hover:text-primary"
+            >
+              Terms
+            </Link>
+            <Link
+              href="/support"
+              className="text-sm text-gray-600 transition-colors hover:text-primary"
+            >
+              Support
             </Link>
           </div>
-
-          {/* Social Proof */}
-          <div className="mt-12 flex flex-wrap justify-center gap-8 items-center text-gray-600 text-sm">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span>Save 10+ hours per week</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span>Unlimited clients</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span>Cancel anytime</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Solution: Key Features */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Your Workflow, Supercharged
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Keep the flexibility of AI with the structure your practice needs
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Feature 1 */}
-            <div className="flex gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Client Management Dashboard</h3>
-                <p className="text-gray-600 mb-4">
-                  See all your clients in one place. Track who's active, who needs a check-in, and who's crushing their goals.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Sort by last active, compliance, or custom tags</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Invite clients via simple 8-character code</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="flex gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Set Macro Boundaries</h3>
-                <p className="text-gray-600 mb-4">
-                  Define calorie and macro ranges for each client. The AI stays within your guardrails—every single meal.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Set min/max for calories, protein, carbs, and fats</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Update anytime as client needs change</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Compliance & Feedback Tracking</h3>
-                <p className="text-gray-600 mb-4">
-                  See which meals clients rate highly, which they skip, and where you need to adjust guidance.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Weekly compliance percentage per client</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>View meal ratings and client notes</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="flex gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Save Hours Every Week</h3>
-                <p className="text-gray-600 mb-4">
-                  Clients generate their own plans within your parameters. You review and adjust, not create from scratch.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Clients input training schedules themselves</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>Leave notes on plans, not endless Slack messages</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              How It Works
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From signup to your first client in under 5 minutes
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <StepCard
-              number="1"
-              title="Create Your Account"
-              description="Sign up and get your unique 8-character invite code. Share it with clients via email, text, or your website."
-            />
-            <StepCard
-              number="2"
-              title="Set Client Boundaries"
-              description="When a client connects, set their macro ranges and any notes. They'll see your guidance when generating plans."
-            />
-            <StepCard
-              number="3"
-              title="Monitor & Adjust"
-              description="Track compliance, view meal ratings, and leave feedback. Update macro bounds as their training evolves."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Comparison */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary-50 to-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-12 text-center">
-            Alimenta Pro vs. DIY GPTs
-          </h2>
-
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="grid grid-cols-2 divide-x divide-gray-200">
-              {/* Header */}
-              <div className="bg-gray-50 p-6">
-                <h3 className="font-bold text-gray-900 text-lg">Custom ChatGPT</h3>
-              </div>
-              <div className="bg-gradient-to-r from-primary to-primary-600 p-6">
-                <h3 className="font-bold text-white text-lg">Alimenta Pro</h3>
-              </div>
-
-              {/* Rows */}
-              <ComparisonRow
-                feature="Client meal history"
-                left="❌ Lost after session"
-                leftBad={true}
-              />
-              <ComparisonRow
-                feature=""
-                right="✅ Persistent across weeks"
-                rightGood={true}
-              />
-
-              <ComparisonRow
-                feature="Macro enforcement"
-                left="❌ Suggestions only"
-                leftBad={true}
-              />
-              <ComparisonRow
-                feature=""
-                right="✅ Hard boundaries"
-                rightGood={true}
-              />
-
-              <ComparisonRow
-                feature="Compliance tracking"
-                left="❌ Manual spreadsheets"
-                leftBad={true}
-              />
-              <ComparisonRow
-                feature=""
-                right="✅ Automatic dashboards"
-                rightGood={true}
-              />
-
-              <ComparisonRow
-                feature="Client onboarding"
-                left="❌ Email back-and-forth"
-                leftBad={true}
-              />
-              <ComparisonRow
-                feature=""
-                right="✅ Simple invite code"
-                rightGood={true}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof / Testimonial Placeholder 
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-12">
-            <div className="flex justify-center mb-6">
-              <div className="flex -space-x-2">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white"></div>
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-2 border-white"></div>
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white"></div>
-              </div>
-            </div>
-            <p className="text-xl text-gray-700 italic mb-4">
-              "I was spending 2-3 hours per client per week on meal plans. Now it's 15 minutes of review time, and my clients are more engaged than ever."
-            </p>
-            <p className="font-semibold text-gray-900">— Beta Tester, Sports Nutritionist</p>
-          </div>
-        </div>
-      </section> */}
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-primary to-primary-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Scale Your Practice?
-          </h2>
-          <p className="text-xl text-primary-100 mb-8">
-            Start your free trial today. No credit card required.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login?role=nutritionist">
-              <button className="px-8 py-4 bg-white text-primary rounded-lg font-semibold text-lg hover:shadow-2xl transition-all transform hover:scale-105">
-                Start Free Trial
-              </button>
-            </Link>
-          </div>
-          <p className="text-primary-100 text-sm mt-6">
-            Questions? Email us at alimentanutrition@gmail.com
-          </p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold tracking-tight opacity-80" aria-label="Alimenta">
-                <span className="text-primary">Al</span>
-                <span className="text-gray-800">imenta</span>
-              </span>
-              <span className="text-sm text-gray-600">Pro</span>
-            </div>
-            <div className="flex gap-6 text-sm text-gray-600">
-              <Link href="/login" className="hover:text-gray-900">For Athletes</Link>
-              <Link href="/login?role=nutritionist" className="hover:text-gray-900">Sign In</Link>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600 text-center mt-6">
-            © 2025 Alimenta Pro. Built for nutritionists who demand results.
+          <p className="text-sm text-gray-600">
+            © {new Date().getFullYear()} Alimenta Pro
           </p>
         </div>
       </footer>
     </div>
   );
 };
-
-// Helper Components
-const PainPoint = ({ icon, title, description }) => (
-  <div className="text-center">
-    <div className="text-4xl mb-4">{icon}</div>
-    <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-    <p className="text-gray-600 text-sm">{description}</p>
-  </div>
-);
-
-const StepCard = ({ number, title, description }) => (
-  <div className="relative">
-    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-12 h-12 bg-gradient-to-r from-primary to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
-      {number}
-    </div>
-    <div className="pt-8 p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-      <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">{title}</h3>
-      <p className="text-gray-600 text-center">{description}</p>
-    </div>
-  </div>
-);
-
-const ComparisonRow = ({ feature, left, right, leftBad, rightGood }) => (
-  <>
-    {feature && (
-      <>
-        <div className="col-span-2 bg-gray-50 px-6 py-3 font-semibold text-gray-900 text-sm">
-          {feature}
-        </div>
-      </>
-    )}
-    {left && (
-      <div className={`px-6 py-4 text-sm ${leftBad ? 'text-red-600' : 'text-gray-700'}`}>
-        {left}
-      </div>
-    )}
-    {right && (
-      <div className={`px-6 py-4 text-sm ${rightGood ? 'text-green-600 font-medium' : 'text-gray-700'}`}>
-        {right}
-      </div>
-    )}
-  </>
-);
 
 export default ProLandingPage;

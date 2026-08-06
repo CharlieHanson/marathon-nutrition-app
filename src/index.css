@@ -1,6 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Quicksand:wght@300;400;500;600;700&family=Questrial&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Alimenta brand → shadcn CSS variables (HSL channels) */
+    --background: 46 45% 95%; /* cream #F7F4EC */
+    --foreground: 0 0% 15%;
+    --card: 45 71% 98%; /* cream-paper #FEFCF6 */
+    --card-foreground: 0 0% 15%;
+    --popover: 45 71% 98%;
+    --popover-foreground: 0 0% 15%;
+    --primary: 156 34% 36%; /* #3D7C65 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 37 79% 56%; /* #E8A838 */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 40 29% 92%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 30 60% 91%; /* peach soft */
+    --accent-foreground: 156 34% 28%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 29% 87%; /* cream-300 */
+    --input: 40 29% 87%;
+    --ring: 156 34% 36%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    /* Reserve scrollbar space so sticky header / right controls don't jump
+       when page height toggles between scrollable and not */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  h1, h2, h3 {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  .warm-card {
+    @apply bg-card rounded-card border border-border shadow-soft;
+  }
+
+  .warm-input {
+    @apply w-full px-3.5 py-3 bg-card border border-input rounded-[13px]
+      text-[15px] text-foreground placeholder:text-muted-foreground
+      focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-primary;
+  }
+
+  .brand-wordmark {
+    @apply font-brand tracking-tight;
+  }
+
+  .page-decor {
+    @apply pointer-events-none absolute inset-0 overflow-hidden z-0;
+  }
+
+  .page-decor-mint {
+    position: absolute;
+    border-radius: 9999px;
+    background: #E0ECDE;
+    width: min(72vw, 520px);
+    height: min(72vw, 520px);
+    top: -10%;
+    right: -18%;
+  }
+
+  .page-decor-peach {
+    position: absolute;
+    border-radius: 9999px;
+    background: #F7E9DA;
+    width: min(78vw, 560px);
+    height: min(78vw, 560px);
+    top: 28%;
+    left: -22%;
+  }
+}
 
 @keyframes blob {
   0% {
@@ -41,52 +128,48 @@
   }
 }
 
-/**
-@keyframes gradient-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.bg-gradient-animated {
-  background: linear-gradient(
-    135deg,
-    #ffffff 0%,
-    #fff8f0 15%,
-    #fff0e6 30%,
-    #ffe8d6 45%,
-    #ffd9b3 60%,
-    #ffe8d6 75%,
-    #ffffff 100%
-  );
-  background-size: 300% 300%;
-  animation: gradient-flow 20s ease infinite;
-}
-*/
+/* Soft marketing gradient (subtle) */
 .bg-gradient-animated {
   background: linear-gradient(
     -45deg,
-    #ffffff,
+    #F7F4EC,
+    #E0ECDE,
+    #F7E9DA,
     #EBF4F0,
-    #D5EBE3,
-    #A8C9BA,
-    #7AA994,
-    #A8C9BA,
-    #D5EBE3,
-    #EBF4F0,
-    #ffffff
+    #F7E9DA,
+    #E0ECDE,
+    #F7F4EC
   );
   background-size: 400% 400%;
-  animation: gradient-flow 15s ease infinite;
+  animation: gradient-flow 18s ease infinite;
 }
 
-/* Intensity Slider with Orange Gradient */
+/* Hero — higher contrast mint/peach so motion is readable */
+.bg-gradient-animated-hero {
+  background: linear-gradient(
+    125deg,
+    #f7f4ec 0%,
+    #d5ebe3 18%,
+    #c8e0d4 32%,
+    #f0e2d2 48%,
+    #e0ecde 62%,
+    #f7e9da 78%,
+    #ebf4f0 90%,
+    #f7f4ec 100%
+  );
+  background-size: 280% 280%;
+  animation: gradient-flow 10s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-gradient-animated,
+  .bg-gradient-animated-hero {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
+/* Intensity Slider */
 .intensity-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -118,14 +201,13 @@
   background: #3D7C65;
   cursor: pointer;
   border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
 }
 
 .intensity-slider::-webkit-slider-thumb:hover {
   background: #326654;
   transform: scale(1.1);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .intensity-slider::-moz-range-thumb {
@@ -135,14 +217,13 @@
   background: #3D7C65;
   cursor: pointer;
   border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease;
 }
 
 .intensity-slider::-moz-range-thumb:hover {
   background: #326654;
   transform: scale(1.1);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .intensity-slider::-moz-range-track {

@@ -233,7 +233,7 @@ export default function SupportPage() {
 }
 
 const styles = {
-  main: { padding: "48px 16px", background: "#F7F8F9", minHeight: "100vh" },
+  main: { padding: "48px 16px", background: "#F7F4EC", minHeight: "100vh" },
   container: {
     maxWidth: 900,
     margin: "0 auto",
