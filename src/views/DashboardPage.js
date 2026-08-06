@@ -22,7 +22,11 @@ import {
   parseMeal,
 } from '../utils/mealHelpers';
 import { readDashboardCache, writeDashboardCache } from '../utils/dashboardCache';
+// Fuel & Recovery card — temporarily disabled, see render section below.
+// import { getFuelRecoveryInsight } from '../utils/fuelRecovery';
+// import { getFuelTimeline, pickPrimaryWorkout } from '../utils/fuelRecoveryTimeline';
 import { DashboardSkeleton } from '../components/shared/LoadingSkeleton';
+// import { FuelRecoveryCard } from '../components/dashboard/FuelRecoveryCard';
 import { Skeleton } from '@/src/components/ui/skeleton';
 
 const MEAL_CHIP_ORDER = ['breakfast', 'lunch', 'dinner', 'dessert'];
@@ -350,6 +354,29 @@ export const DashboardPage = ({
     eatenMacros.calories === 0 ||
     eatenMacros.calories <= todayMacros.calories * 1.08;
 
+  // Fuel & Recovery card — temporarily disabled, see render section below.
+  // const hasTrainingInfo = !isGuest && !workoutLoading;
+  // const isRestDay = hasTrainingInfo && todayWorkouts.length === 0;
+  // const primaryWorkout = useMemo(() => pickPrimaryWorkout(todayWorkouts), [todayWorkouts]);
+  //
+  // const fuelRecovery = useMemo(
+  //   () =>
+  //     getFuelRecoveryInsight({
+  //       hasLoggedMeal: eatenMacros.calories > 0,
+  //       macroTargets: todayMacros,
+  //       macroEaten: eatenMacros,
+  //       hasTrainingInfo,
+  //       isRestDay,
+  //       workout: primaryWorkout,
+  //     }),
+  //   [eatenMacros, todayMacros, hasTrainingInfo, isRestDay, primaryWorkout]
+  // );
+  //
+  // const fuelTimeline = useMemo(
+  //   () => getFuelTimeline({ workouts: todayWorkouts }),
+  //   [todayWorkouts]
+  // );
+
   const displayStreak = (() => {
     const raw = streakInfo.streak ?? 0;
     const last = streakInfo.last_streak_date;
@@ -569,6 +596,14 @@ export const DashboardPage = ({
         </div>
         <ChevronRight className="w-[18px] h-[18px] shrink-0 text-gray-400" />
       </button>
+
+      {/* Fuel & Recovery — temporarily disabled
+      <FuelRecoveryCard
+        {...fuelRecovery}
+        timeline={fuelTimeline}
+        onOpen={() => onNavigate?.(fuelRecovery.openTarget)}
+      />
+      */}
     </div>
   );
 };
