@@ -13,6 +13,7 @@ import {
   AestheticCard,
   AestheticSectionLabel,
 } from '../../ui/AestheticSheet';
+import { NutritionCitation } from '../../ui/NutritionCitation';
 
 /**
  * Parse cookbook-style recipe text from the API into sections.
@@ -188,6 +189,11 @@ export const RecipeModal = ({ visible, recipe, mealName, onClose, onShare, loadi
               <Text style={styles.fallbackText}>{recipe}</Text>
             </AestheticCard>
           ) : null}
+
+          <NutritionCitation>
+            Ingredient amounts are AI-generated to approximately match this meal's stored macros.
+            This view does not show per-ingredient nutrition values.
+          </NutritionCitation>
         </>
       )}
     </AestheticSheet>

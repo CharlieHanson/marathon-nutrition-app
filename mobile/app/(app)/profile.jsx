@@ -23,6 +23,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import PreferencesScreen from './preferences';
 import { parseHeightCm, computeNutritionTargets } from '../../../shared/lib/tdeeCalc.js';
 import { AestheticCard } from '../../components/ui/AestheticSheet';
+import { NutritionCitation } from '../../components/ui/NutritionCitation';
 
 const { width } = Dimensions.get('window');
 
@@ -910,6 +911,9 @@ export default function ProfileScreen() {
                       ))}
                     </View>
                   </View>
+                  <NutritionCitation>
+                    BMR uses the Mifflin–St Jeor equation (Mifflin et al., Am J Clin Nutr 1990). TDEE applies standard activity multipliers plus a goal adjustment. Protein is based on body weight; fat is 25% of calories; carbs fill the remainder. These targets are not validated by our ML service.
+                  </NutritionCitation>
                 </ScrollView>
               )}
             </View>
