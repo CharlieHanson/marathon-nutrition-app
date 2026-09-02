@@ -18,6 +18,7 @@ import { RevealOnScroll } from './marketing/RevealOnScroll';
 
 const HERO_MOBILE = '/mobile-screenshots/dashboard.png';
 const HERO_WEB = '/web-screenshots/dashboard.png';
+const APP_STORE_URL = 'https://apps.apple.com/us/app/alimenta-nutrition/id6757525735';
 
 const OUTCOMES = [
   'Plans that follow your training week',
@@ -89,15 +90,28 @@ function MobileAppCarousel() {
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-12 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2">
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-4 inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2 transition-shadow hover:shadow-soft"
+          >
             <Smartphone className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold text-primary">Coming Soon to iOS</span>
-          </div>
+            <span className="text-sm font-semibold text-primary">Now on iOS</span>
+          </a>
           <h2 className="mb-4 text-4xl font-bold text-gray-900">Take Alimenta Anywhere</h2>
           <p className="mx-auto max-w-2xl text-lg text-gray-600">
             The same powerful AI nutrition planning, now in your pocket. Track meals, adjust
             training, and generate plans on the go.
           </p>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+          >
+            Download on the App Store
+          </a>
         </div>
 
         <div className="relative mx-auto max-w-4xl">
@@ -229,11 +243,11 @@ export const LandingPage = () => {
                   Get started
                 </Button>
               </Link>
-              <Link href="/how-it-works">
+              <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="lg">
-                  See how it works
+                  View on App Store
                 </Button>
-              </Link>
+              </a>
             </div>
             <p className="mt-6 text-sm text-muted-foreground">
               <Link href="/features" className="font-medium text-primary hover:underline">
