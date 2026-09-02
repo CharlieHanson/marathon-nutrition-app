@@ -15,6 +15,7 @@ import { fetchSavedMealsByType, incrementMealUsage } from '../../../../shared/li
 import { macroColors } from '../../../../shared/lib/macroColors';
 import { getDayMealToggles, getActiveMealTypes } from '../../../utils/mealHelpers';
 import { AestheticSheet, AestheticCard, AestheticSectionLabel } from '../../ui/AestheticSheet';
+import { NutritionCitation } from '../../ui/NutritionCitation';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -180,6 +181,7 @@ const getStyles = (colors) =>
     },
     macrosContainer: {
       padding: 12,
+      paddingBottom: 4,
       backgroundColor: colors.successLight,
       borderWidth: 1,
       borderColor: colors.successBorder,
@@ -729,6 +731,10 @@ export const LogMealModal = ({
                   <Text style={styles.macroChipValue}>{estimatedMacros.fat}g</Text>
                 </View>
               </View>
+              <NutritionCitation>
+                These estimates come from our meal-type machine learning models, which predict
+                calories and macros from your description. They are approximations.
+              </NutritionCitation>
             </View>
           )}
         </>

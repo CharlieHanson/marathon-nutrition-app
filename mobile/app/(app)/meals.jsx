@@ -68,6 +68,7 @@ import { useUsageLimits, DAILY_LIMITS } from '../../hooks/useUsageLimits';
 import { usePostHog } from 'posthog-react-native';
 import { capture } from '../../lib/analytics';
 import { MealsSkeleton } from '../../components/ui/Skeleton';
+import { NutritionCitation } from '../../components/ui/NutritionCitation';
 
 const { width } = Dimensions.get('window');
 
@@ -980,10 +981,11 @@ export default function MealsScreen() {
           </Text>
           .
         </Text>
-        <Text style={styles.medicalDisclaimer}>
-          AI-generated meals and recipes are suggestions and for informational purposes only - not
-          professional or medical advice.
-        </Text>
+        <NutritionCitation>
+          Meal macros are calculated from USDA-based food-type densities after AI generation, then
+          scaled to your daily targets. Values are estimates. AI-generated meals and recipes are
+          suggestions for informational purposes only — not professional or medical advice.
+        </NutritionCitation>
       </ScrollView>
 
       {/* Modals */}
@@ -1274,15 +1276,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   preferencesHintLink: {
     color: colors.primary,
     fontWeight: '700',
-  },
-  medicalDisclaimer: {
-    marginTop: 0,
-    marginBottom: 16,
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.textTertiary || colors.textSecondary,
-    textAlign: 'center',
-    fontWeight: '500',
   },
   debugPromptContainer: {
     position: 'absolute',

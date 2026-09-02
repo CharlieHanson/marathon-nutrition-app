@@ -14,6 +14,7 @@ import { useNetwork } from '../../../context/NetworkContext';
 import { apiClient } from '../../../../shared/services/api';
 import { macroColors } from '../../../../shared/lib/macroColors';
 import { AestheticSheet } from '../../ui/AestheticSheet';
+import { NutritionCitation } from '../../ui/NutritionCitation';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
@@ -717,6 +718,11 @@ export const MealPrepModal = ({
               <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
               <Text style={styles.secondaryButtonText}>Back to Days</Text>
             </TouchableOpacity>
+
+            <NutritionCitation>
+              Per-serving macros are calculated from USDA-based food-type densities after AI
+              generation, then scaled to your average targets for the selected days.
+            </NutritionCitation>
           </View>
         )}
       </ScrollView>

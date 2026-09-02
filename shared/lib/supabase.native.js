@@ -14,25 +14,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Create a storage adapter for AsyncStorage
+// Expo Router static web export runs this file in Node (no window).
+// AsyncStorage's web backend crashes there; skip persistence until a real client.
+const canUseNativeStorage =
+  (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') ||
+  typeof window !== 'undefined';
+
 const AsyncStorageAdapter = {
   getItem: async (key) => {
+    if (!canUseNativeStorage) return null;
     return await AsyncStorage.getItem(key);
   },
   setItem: async (key, value) => {
+    if (!canUseNativeStorage) return;
     await AsyncStorage.setItem(key, value);
   },
   removeItem: async (key) => {
+    if (!canUseNativeStorage) return;
     await AsyncStorage.removeItem(key);
   },
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,       // Save session to AsyncStorage
-    autoRefreshToken: true,     // Auto-refresh token before it expires
-    storage: AsyncStorageAdapter, // Use AsyncStorage instead of localStorage
-    detectSessionInUrl: false,  // Disable URL detection (not applicable in React Native)
+    persistSession: canUseNativeStorage,
+    autoRefreshToken: canUseNativeStorage,
+    storage: canUseNativeStorage ? AsyncStorageAdapter : undefined,
+    detectSessionInUrl: false,
   },
 });
 
